@@ -1,0 +1,27 @@
+.search-container {
+  display: flex;
+  gap: 5px;
+  max-width: 500px;
+  margin: 10px 0;
+}
+
+.search-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 2px solid #333;
+  border-radius: 25px; /* Bo tròn kiểu hiện đại */
+  outline: none;
+}
+
+.search-button {
+  background-color: #333;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+}
+
+.search-button:hover {
+  background-color: #555;
+}
