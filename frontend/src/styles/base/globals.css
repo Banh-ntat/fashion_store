@@ -47,7 +47,7 @@
 
   /* Layout */
   --container-max: 1280px;
-  --header-height: 72px;
+  --header-height: 96px;
 }
 
 /* ─── CSS Reset ─────────────────────────────────────────────────────────────── */
@@ -96,7 +96,7 @@ ul {
 .container {
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 0 var(--space-xl);
+  padding: 0 var(--space-lg);
 }
 
 .section {

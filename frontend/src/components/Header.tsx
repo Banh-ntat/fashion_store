@@ -1,15 +1,9 @@
-import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import '../styles/components/Header.css';
+import { useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import SearchBar from "./SearchBar";
+import "../styles/components/Header.css";
 
-// ─── Icon Components ─────────────────────────────────
-
-const SearchIcon = () => (
-  <svg className="searchIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
+/* Icons */
 
 const CartIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -32,36 +26,25 @@ const ArrowIcon = () => (
   </svg>
 );
 
-// ─── Navigation Links ───────────────────────────────
+/* Navigation */
 
 const navLinks = [
-  { to: '/', label: 'Trang Chủ' },
-  { to: '/about', label: 'Giới Thiệu' },
-  { to: '/services', label: 'Dịch Vụ' },
-  { to: '/policy', label: 'Chính Sách' },
+  { to: "/", label: "Trang Chủ" },
+  { to: "/about", label: "Giới Thiệu" },
+  { to: "/services", label: "Dịch Vụ" },
+  { to: "/policy", label: "Chính Sách" }
 ];
 
-// ─── Header Component ───────────────────────────────
-
 export default function Header() {
-  const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
-      setMenuOpen(false);
-    }
-  };
 
   const closeMenu = () => setMenuOpen(false);
 
   return (
     <>
       <header className="header">
-        <div className="container headerInner">
+        <div className="headerInner">
 
           {/* Logo */}
           <Link to="/" className="logo" onClick={closeMenu}>
@@ -71,15 +54,15 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <nav className="nav">
             {navLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
-                end={to === '/'}
+                end={to === "/"}
                 className={({ isActive }) =>
-                  `navLink ${isActive ? 'navLinkActive' : ''}`
+                  `navLink ${isActive ? "navLinkActive" : ""}`
                 }
               >
                 {label}
@@ -89,16 +72,7 @@ export default function Header() {
 
           {/* Search */}
           <div className="searchWrapper">
-            <form onSubmit={handleSearch} className="searchBar">
-              <SearchIcon />
-              <input
-                type="text"
-                placeholder="Tìm kiếm sản phẩm…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="searchInput"
-              />
-            </form>
+            <SearchBar />
           </div>
 
           {/* Actions */}
@@ -106,7 +80,7 @@ export default function Header() {
 
             <button
               className="iconBtn"
-              onClick={() => navigate('/cart')}
+              onClick={() => navigate("/cart")}
             >
               <CartIcon />
               <span className="cartBadge">3</span>
@@ -114,7 +88,7 @@ export default function Header() {
 
             <button
               className="iconBtn"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
             >
               <UserIcon />
             </button>
@@ -124,7 +98,7 @@ export default function Header() {
             </Link>
 
             <button
-              className={`hamburger ${menuOpen ? 'hamburgerOpen' : ''}`}
+              className={`hamburger ${menuOpen ? "hamburgerOpen" : ""}`}
               onClick={() => setMenuOpen(!menuOpen)}
             >
               <span className="hamburgerLine" />
@@ -137,19 +111,10 @@ export default function Header() {
       </header>
 
       {/* Mobile Menu */}
-      <div className={`mobileMenu ${menuOpen ? 'mobileMenuOpen' : ''}`}>
+      <div className={`mobileMenu ${menuOpen ? "mobileMenuOpen" : ""}`}>
 
         <div className="mobileSearchWrapper">
-          <form onSubmit={handleSearch} className="searchBar">
-            <SearchIcon />
-            <input
-              type="text"
-              placeholder="Tìm kiếm sản phẩm…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="searchInput"
-            />
-          </form>
+          <SearchBar />
         </div>
 
         <nav className="mobileNavLinks">
@@ -166,7 +131,11 @@ export default function Header() {
         </nav>
 
         <div className="mobileActions">
-          <Link to="/login" className="mobileLoginBtn" onClick={closeMenu}>
+          <Link
+            to="/login"
+            className="mobileLoginBtn"
+            onClick={closeMenu}
+          >
             Đăng Nhập / Đăng Ký
           </Link>
         </div>
