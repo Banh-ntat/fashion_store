@@ -31,7 +31,6 @@ const ArrowIcon = () => (
 const navLinks = [
   { to: "/", label: "Trang Chủ" },
   { to: "/about", label: "Giới Thiệu" },
-  { to: "/services", label: "Dịch Vụ" },
   { to: "/policy", label: "Chính Sách" }
 ];
 
@@ -54,7 +53,6 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <nav className="nav">
             {navLinks.map(({ to, label }) => (
               <NavLink

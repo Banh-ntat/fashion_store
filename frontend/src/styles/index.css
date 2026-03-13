@@ -24,6 +24,5 @@
 /* ── 3. Pages ── */
 @import './pages/Home.css';
 @import './pages/About.css';
-@import './pages/Services.css';
 @import './pages/Policy.css';
 @import './pages/Placeholder.css';

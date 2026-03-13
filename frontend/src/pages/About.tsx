@@ -18,34 +18,15 @@ const features = [
   },
 ];
 
-const team = [
-  {
-    name: 'Linh Nguyễn',
-    role: 'Giám Đốc Sáng Tạo',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop',
-  },
-  {
-    name: 'Minh Trần',
-    role: 'Trưởng Bộ Phận Thiết Kế',
-    image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&h=200&fit=crop',
-  },
-  {
-    name: 'An Phạm',
-    role: 'Chiến Lược Thương Hiệu',
-    image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=200&fit=crop',
-  },
-];
-
 export default function About() {
   return (
     <>
-      {/* Hero */}
       <section className="hero">
         <div className="container">
           <div className="heroInner">
 
             <div className="heroText">
-              <span className="tag">Thành lập 2019</span>
+              <span className="tag">Thành lập 2026</span>
 
               <h1 className="heroTitle">
                 Về Thương Hiệu Của Chúng Tôi
@@ -76,7 +57,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* Story */}
       <section className="storySection">
         <div className="container">
           <div className="storyGrid">
@@ -118,9 +98,9 @@ export default function About() {
               <div className="storyStats">
 
                 {[
-                  { num: '2019', label: 'Năm thành lập' },
-                  { num: '50K+', label: 'Khách hàng' },
-                  { num: '500+', label: 'Sản phẩm' },
+                  { num: '2026', label: 'Năm thành lập' },
+                  { num: '1k', label: 'Khách hàng' },
+                  { num: '100+', label: 'Sản phẩm' },
                 ].map(({ num, label }) => (
                   <div key={label} className="storyStat">
                     <span className="storyStatNum">{num}</span>
@@ -135,7 +115,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* Features */}
       <section className="featuresSection">
         <div className="container">
 
@@ -154,41 +133,6 @@ export default function About() {
                 <div className="featureIcon">{icon}</div>
                 <h3 className="featureTitle">{title}</h3>
                 <p className="featureDesc">{desc}</p>
-              </div>
-            ))}
-
-          </div>
-        </div>
-      </section>
-
-      {/* Team */}
-      <section className="teamSection">
-        <div className="container">
-
-          <div className="featureHeader">
-            <span className="sectionTag">Đội Ngũ Của Chúng Tôi</span>
-            <h2 className="sectionTitle">Những Người Sáng Tạo</h2>
-            <p className="sectionSubtitle">
-              Những con người đam mê đứng sau thương hiệu
-            </p>
-          </div>
-
-          <div className="teamGrid">
-
-            {team.map(({ name, role, image }) => (
-              <div key={name} className="teamCard">
-
-                <div className="teamImageWrapper">
-                  <img
-                    src={image}
-                    alt={name}
-                    className="teamImage"
-                  />
-                </div>
-
-                <h3 className="teamName">{name}</h3>
-                <p className="teamRole">{role}</p>
-
               </div>
             ))}
 

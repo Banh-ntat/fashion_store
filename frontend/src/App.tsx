@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { products, categories, cart, auth, promotions } from './api/client';
 import About from './pages/About';
-import Services from './pages/Services';
 import Policy from './pages/Policy';
 import Layout from './components/Layout';
 import ProductDetail from './components/ProductDetail';
@@ -285,7 +284,6 @@ function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
         <Route path="/policy" element={<Policy />} />
       </Route>
     </Routes>

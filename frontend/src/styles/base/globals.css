@@ -4,7 +4,6 @@
   --color-primary: #F55554;
   --color-primary-dark: #D63F3E;
   --color-primary-light: #FF7A7A;
-  --color-primary-ultra-light: #FFF0F0;
   --color-secondary: #FFFFFF;
   --color-text: #1E1E1E;
   --color-text-muted: #6B6B6B;
@@ -16,8 +15,7 @@
   --color-dark: #1E1E1E;
 
   /* Typography */
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: sans-serif;
 
   /* Spacing */
   --space-xs: 4px;
@@ -63,7 +61,7 @@ html {
 }
 
 body {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   color: var(--color-text);
   background-color: var(--color-bg);
   line-height: 1.6;
@@ -85,7 +83,7 @@ a {
 button {
   cursor: pointer;
   border: none;
-  font-family: var(--font-body);
+  font-family: var(--font-display);
 }
 
 ul {
@@ -99,12 +97,18 @@ ul {
   padding: 0 var(--space-lg);
 }
 
+.container-narrow {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
 .section {
-  padding: var(--space-3xl) 0;
+  padding: 24px 0;
 }
 
 .section-header {
-  margin-bottom: var(--space-2xl);
+  margin-bottom: var(--space-xl);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
