@@ -1,0 +1,211 @@
+/* ─── Services Page ──────────────────────────────────────────────────────────── */
+
+/* ─── Container scoped ─── */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+  width: 100%;
+}
+
+.hero {
+  padding: 96px 0 64px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+}
+
+.heroTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--color-text);
+  margin-bottom: var(--space-lg);
+}
+
+.heroTitle em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--color-primary);
+}
+
+.heroSubtitle {
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  line-height: 1.8;
+  font-weight: 300;
+  max-width: 520px;
+}
+
+/* ─── Services Grid section ─── */
+.servicesSection {
+  padding: 96px 0;
+  background: white;
+}
+
+/* ─── Services Grid ─── */
+.servicesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.serviceCard {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  gap: var(--space-lg);
+  align-items: flex-start;
+  transition: transform var(--transition-slow), box-shadow var(--transition-slow), border-color var(--transition-base);
+}
+
+.serviceCard:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+  border-color: transparent;
+}
+
+.serviceCardHighlight {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.serviceCardHighlight:hover {
+  box-shadow: var(--shadow-primary);
+}
+
+/* ─── Icon ─── */
+.iconWrapper {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-ultra-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconWrapperHighlight {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* ─── Card Content ─── */
+.cardContent {
+  flex: 1;
+}
+
+.cardHeader {
+  margin-bottom: var(--space-sm);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.serviceCardHighlight .cardTitle {
+  color: white;
+}
+
+.cardSubtitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.cardSubtitleHighlight {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cardDesc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.serviceCardHighlight .cardDesc {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ─── CTA ─── */
+.ctaSection {
+  padding: var(--space-3xl) 0;
+  background: var(--color-text);
+}
+
+.ctaInner {
+  text-align: center;
+}
+
+.ctaTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  color: white;
+  margin-bottom: var(--space-md);
+  letter-spacing: -0.01em;
+}
+
+.ctaDesc {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: var(--space-xl);
+  font-weight: 300;
+}
+
+.ctaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 36px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.ctaBtn:hover {
+  background: var(--color-primary-dark);
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-2px);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .servicesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .servicesGrid {
+    grid-template-columns: 1fr;
+  }
+}

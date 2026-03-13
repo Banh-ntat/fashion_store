@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { products, cart, promotions } from '../api/client';
-import './ProductDetail.css';
+import '../styles/components/ProductDetail.css';
 
 interface Product {
   id: number;

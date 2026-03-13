@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { products, categories, cart, auth, promotions } from './api/client';
+import About from './pages/About';
+import Services from './pages/Services';
+import Policy from './pages/Policy';
+import Layout from './components/Layout';
 import ProductDetail from './components/ProductDetail';
+import './styles/index.css';
 import './App.css';
 
 interface Product {
@@ -273,25 +278,18 @@ function App() {
 
   return (
     <div className="app">
-      <nav className="navbar">
-        <Link to="/" className="logo">Fashion Store</Link>
-        <div className="nav-links">
-          <Link to="/">Home</Link>
-          <Link to="/cart">Cart</Link>
-          {user ? (
-            <button onClick={handleLogout}>Logout</button>
-          ) : (
-            <Link to="/login">Login</Link>
-          )}
-        </div>
-      </nav>
-      <Routes>
+    <Routes>
+      <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/product/:id" element={<ProductDetail />} />
-      </Routes>
-    </div>
+        <Route path="/about" element={<About />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/policy" element={<Policy />} />
+      </Route>
+    </Routes>
+  </div>
   );
 }
 

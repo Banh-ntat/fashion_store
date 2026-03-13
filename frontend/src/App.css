@@ -379,6 +379,16 @@ body {
   color: #666;
 }
 
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+ 
+.app-main {
+  flex: 1;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .home {
