@@ -1,0 +1,148 @@
+.checkout-page .sectionContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 40px;
+  width: 100%;
+}
+
+.checkoutTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-text, #1E1E1E);
+  margin-bottom: 32px;
+}
+
+.checkoutLoginHint,
+.checkoutEmpty {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.checkoutLoginHint a,
+.checkoutEmpty a {
+  color: var(--color-primary, #F55554);
+  font-weight: 500;
+}
+
+.checkoutForm {
+  margin-top: 24px;
+}
+
+.checkoutMain {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 48px;
+  align-items: start;
+}
+
+.checkoutSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.checkoutSectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+.checkoutLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.checkoutInput {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 1rem;
+}
+
+.checkoutInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.checkoutSummary {
+  background: #f8f8f8;
+  padding: 24px;
+  border-radius: var(--radius-md, 12px);
+  position: sticky;
+  top: calc(var(--header-height, 72px) + 24px);
+}
+
+.checkoutItems {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.checkoutItem {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+}
+
+.checkoutItemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkoutItemPrice {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.checkoutTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  font-size: 1.1rem;
+  border-top: 2px solid #ddd;
+}
+
+.checkoutSubmit {
+  width: 100%;
+  padding: 14px;
+  background: var(--color-primary, #F55554);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.checkoutSubmit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.checkoutSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .checkoutMain {
+    grid-template-columns: 1fr;
+  }
+
+  .checkoutSummary {
+    position: static;
+  }
+}

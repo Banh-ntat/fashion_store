@@ -1,0 +1,231 @@
+.hero {
+  position: relative;
+  padding: 80px 0 72px;
+  overflow: hidden;
+  background: #fafaf9;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.55;
+  z-index: 0;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 80% at 50% 50%,
+    transparent 30%,
+    #fafaf9 100%
+  );
+  z-index: 1;
+}
+
+.hero .heroBlobLeft,
+.hero .heroBlobRight {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.18;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero .heroBlobLeft {
+  width: 320px;
+  height: 320px;
+  background: #f43f5e;
+  top: -80px;
+  left: -80px;
+}
+
+.hero .heroBlobRight {
+  width: 260px;
+  height: 260px;
+  background: #3b82f6;
+  bottom: -60px;
+  right: -60px;
+}
+
+.hero .heroStripe {
+  position: absolute;
+  top: 0;
+  right: 120px;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, #f43f5e44, transparent);
+  transform: rotate(12deg);
+  transform-origin: top center;
+  z-index: 1;
+}
+
+.hero .heroStripe2 {
+  position: absolute;
+  top: 0;
+  right: 80px;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, #3b82f633, transparent);
+  transform: rotate(12deg);
+  transform-origin: top center;
+  z-index: 1;
+}
+
+.hero .container-narrow {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.heroTitle {
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.heroTitle span {
+  position: relative;
+  display: inline-block;
+}
+
+.heroTitle span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #f43f5e, #fb923c);
+  border-radius: 2px;
+}
+
+.heroSubtitle {
+  font-size: 1.05rem;
+  color: #6b7280;
+  line-height: 1.7;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+
+.policyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+}
+
+
+.policyCard {
+  position: relative;
+  padding: var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-white);
+  overflow: hidden;
+
+  text-align: center;
+
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.policyCard:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+}
+
+.policyCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--card-bg);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.policyCard:hover::before {
+  opacity: 1;
+}
+
+.policyCard > * {
+  position: relative;
+  z-index: 1;
+}
+
+.policyIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-md, 16px);
+}
+
+.policyIconInner {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.policyCard:hover .policyIconInner {
+  transform: scale(1.12) rotate(-4deg);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--card-accent) 25%, transparent);
+  border-color: var(--card-accent);
+}
+
+.policyIconInner svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+
+.policyCard h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  transition: color 0.2s ease;
+}
+
+.policyCard:hover h3 {
+  color: var(--card-accent);
+}
+
+
+.policyCard p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+
+@media (max-width: 1024px) {
+  .policyGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .policyGrid {
+    grid-template-columns: 1fr;
+  }
+}

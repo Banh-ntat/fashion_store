@@ -1,0 +1,64 @@
+.wishlist-page .sectionContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+  width: 100%;
+}
+
+.wishlistTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-text, #1E1E1E);
+  margin-bottom: 8px;
+}
+
+.wishlistSubtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin-bottom: 32px;
+}
+
+.wishlistEmpty {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  padding: 48px 0;
+}
+
+.wishlistEmpty a {
+  color: var(--color-primary, #F55554);
+  font-weight: 500;
+}
+
+.wishlistGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.wishlistCardWrap {
+  position: relative;
+}
+
+.wishlistRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.wishlistRemove:hover {
+  background: var(--color-primary, #F55554);
+}

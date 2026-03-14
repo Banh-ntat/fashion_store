@@ -1,0 +1,120 @@
+import { useState, useEffect } from 'react';
+import { admin } from '../../api/client';
+import AdminLayout from '../../components/admin/AdminLayout';
+import './Admin.css';
+
+interface UserProfile {
+  id: number;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+  phone: string;
+  address: string;
+  role: string;
+}
+
+const ROLE_CHOICES = [
+  { value: 'customer', label: 'Customer' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'product_manager', label: 'Product Manager' },
+  { value: 'order_manager', label: 'Order Manager' },
+  { value: 'customer_support', label: 'Customer Support' },
+];
+
+export default function AdminUsers() {
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = () => {
+    admin.users
+      .list()
+      .then((res) => {
+        setUsers(res.data.results || res.data);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+
+  const handleRoleChange = async (userId: number, newRole: string) => {
+    try {
+      await admin.users.update(userId, { role: newRole });
+      loadUsers();
+    } catch {
+      alert('Có lỗi xảy ra!');
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    const roleMap: Record<string, string> = {
+      admin: 'role-admin',
+      product_manager: 'role-product',
+      order_manager: 'role-order',
+      customer_support: 'role-support',
+      customer: 'role-customer',
+    };
+    return roleMap[role] || '';
+  };
+
+  const getRoleLabel = (role: string) => {
+    return ROLE_CHOICES.find((r) => r.value === role)?.label || role;
+  };
+
+  if (loading) return <AdminLayout><div className="loading">Loading...</div></AdminLayout>;
+
+  return (
+    <AdminLayout>
+      <div className="admin-page">
+        <div className="page-header">
+          <h3>Quản lý người dùng</h3>
+        </div>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((profile) => (
+              <tr key={profile.id}>
+                <td>{profile.user.id}</td>
+                <td>{profile.user.username}</td>
+                <td>{profile.user.email}</td>
+                <td>{profile.phone || '-'}</td>
+                <td>
+                  <span className={`role-badge ${getRoleBadge(profile.role)}`}>
+                    {getRoleLabel(profile.role)}
+                  </span>
+                </td>
+                <td>
+                  <select
+                    className="role-select"
+                    value={profile.role}
+                    onChange={(e) => handleRoleChange(profile.user.id, e.target.value)}
+                  >
+                    {ROLE_CHOICES.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminLayout>
+  );
+}

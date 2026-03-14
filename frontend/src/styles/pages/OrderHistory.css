@@ -1,0 +1,121 @@
+.order-history-page .sectionContainer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 40px;
+  width: 100%;
+}
+
+.orderHistoryTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-text, #1E1E1E);
+  margin-bottom: 32px;
+}
+
+.orderLoginHint,
+.orderEmpty {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.orderLoginHint a,
+.orderEmpty a {
+  color: var(--color-primary, #F55554);
+  font-weight: 500;
+}
+
+.orderList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.orderCard {
+  background: #fff;
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  padding: 20px;
+  border: 1px solid #eee;
+}
+
+.orderCardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.orderId {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.orderDate {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.orderStatus {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full, 999px);
+  margin-left: auto;
+}
+
+.orderStatus--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.orderStatus--shipping {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.orderStatus--completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.orderItems {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+}
+
+.orderItem {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.orderItemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orderItemPrice {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.orderTotal {
+  font-size: 1rem;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.orderTotal strong {
+  color: var(--color-primary);
+}
