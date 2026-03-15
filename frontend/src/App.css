@@ -330,47 +330,6 @@ body {
   box-shadow: 0 4px 15px rgba(229, 57, 53, 0.4);
 }
 
-/* Cart Page */
-.cart-page {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 0 2rem;
-}
-
-.cart-page h2 {
-  margin-bottom: 1.5rem;
-  color: #333;
-}
-
-.cart-items {
-  list-style: none;
-}
-
-.cart-items li {
-  background: white;
-  padding: 1.2rem;
-  margin-bottom: 1rem;
-  border-radius: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.cart-items button {
-  padding: 8px 16px;
-  background: #e53935;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.cart-items button:hover {
-  background: #c62828;
-}
-
 /* Loading */
 .loading {
   text-align: center;

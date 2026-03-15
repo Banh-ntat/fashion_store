@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import permissions, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,8 +9,9 @@ from datetime import datetime
 from core.permissions import (
     IsAdminOrReadOnly, IsProductManager, IsAdmin
 )
-from .models import Category, Promotion, Product
-from .serializers import CategorySerializer, PromotionSerializer, ProductSerializer
+from rest_framework.permissions import IsAuthenticated
+from .models import Category, Promotion, Product, ProductVariant, Color, Size, ProductImage
+from .serializers import CategorySerializer, PromotionSerializer, ProductSerializer, ProductVariantSerializer, ColorSerializer, SizeSerializer, ProductImageSerializer
 
 
 class ProductPagination(PageNumberPagination):
@@ -58,16 +60,25 @@ class PromotionViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related("category", "promotion").all()
     serializer_class = ProductSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
     pagination_class = ProductPagination
     filterset_fields = ["category", "promotion"]
     search_fields = ["name", "description"]
     ordering_fields = ["id", "price", "name"]
-    filter_backends = []  # Disable all filters
+    filter_backends = [filters.OrderingFilter]  # Enable only ordering, search is custom
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
+        # Tìm kiếm nâng cao với Q objects - tìm kiếm một phần (partial matching)
+        search_query = self.request.query_params.get('search', '')
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(category__name__icontains=search_query)
+            )
+
         # Lọc theo category
         category_id = self.request.query_params.get('category')
         if category_id:
@@ -129,3 +140,45 @@ class ProductViewSet(viewsets.ModelViewSet):
         ).exclude(id=product.id)[:4]
         serializer = self.get_serializer(related_products, many=True)
         return Response(serializer.data)
+
+
+class ColorViewSet(viewsets.ModelViewSet):
+    """Quản lý màu sắc"""
+    queryset = Color.objects.all()
+    serializer_class = ColorSerializer
+    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+
+
+class SizeViewSet(viewsets.ModelViewSet):
+    """Quản lý kích thước"""
+    queryset = Size.objects.all()
+    serializer_class = SizeSerializer
+    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+
+
+class ProductVariantViewSet(viewsets.ModelViewSet):
+    """Quản lý biến thể sản phẩm (màu + size + tồn kho)"""
+    queryset = ProductVariant.objects.select_related('product', 'color', 'size').all()
+    serializer_class = ProductVariantSerializer
+    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset
+
+
+class ProductImageViewSet(viewsets.ModelViewSet):
+    """Quản lý ảnh sản phẩm"""
+    queryset = ProductImage.objects.all()
+    serializer_class = ProductImageSerializer
+    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset

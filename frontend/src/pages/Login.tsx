@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/AuthPages.css';
@@ -23,6 +23,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [facebookLoading, setFacebookLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const { setUser } = useAuth();
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (onLoginSuccess) {
         onLoginSuccess();
       } else {
-        navigate('/');
+        navigate(redirectTo);
       }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } }; message?: string };
@@ -82,7 +84,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (onLoginSuccess) {
         onLoginSuccess();
       } else {
-        navigate('/');
+        navigate(redirectTo);
       }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } }; message?: string };
@@ -110,7 +112,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (onLoginSuccess) {
         onLoginSuccess();
       } else {
-        navigate('/');
+        navigate(redirectTo);
       }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } }; message?: string };

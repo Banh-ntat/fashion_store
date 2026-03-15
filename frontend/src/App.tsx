@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { cart, auth } from './api/client';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import About from './pages/About';
 import Policy from './pages/Policy';
 import Products from './pages/Products';
 import Search from './pages/Search';
+import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import OrderHistory from './pages/OrderHistory';
@@ -27,45 +26,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import './styles/index.css';
 import './App.css';
 
-function CartPage() {
-  const [items, setItems] = useState<unknown[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    cart
-      .get()
-      .then((res) => setItems(res.data.items || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleRemove = async (id: number) => {
-    await cart.removeItem(id);
-    setItems(items.filter((i: any) => i.id !== id));
-  };
-
-  if (loading) return <div className="loading">Loading...</div>;
-
-  return (
-    <div className="cart-page">
-      <h2>Your Cart</h2>
-      {items.length === 0 ? (
-        <p>Cart is empty</p>
-      ) : (
-        <ul className="cart-items">
-          {items.map((item: any) => (
-            <li key={item.id}>
-              <span>{item.product?.name}</span>
-              <span>Qty: {item.quantity}</span>
-              <button onClick={() => handleRemove(item.id)}>Remove</button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function App() {
   return (
     <AuthProvider>
@@ -78,7 +38,7 @@ function App() {
             <Route path="/auth/facebook/callback" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/cart" element={<CartPage />} />
+            <Route path="/cart" element={<Cart />} />
             <Route path="/products" element={<Products />} />
             <Route path="/search" element={<Search />} />
             <Route path="/checkout" element={<Checkout />} />

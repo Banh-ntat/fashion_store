@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, Navigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import CategoryCard from '../components/CategoryCard';
 import { mockCategories, mockHotDeals, mockNewArrivals } from '../data/mockData';
@@ -12,6 +12,14 @@ const ArrowRight = ({ size = 16 }: { size?: number }) => (
 );
 
 export default function Home() {
+  const [searchParams] = useSearchParams();
+  const categoryId = searchParams.get('category');
+
+  // Chuyển hướng đến trang sản phẩm nếu có tham số category
+  if (categoryId) {
+    return <Navigate to={`/products?category=${categoryId}`} replace />;
+  }
+
   const handleAddToCart = (product: Product) => {
     console.log('Added to cart:', product.name);
   };

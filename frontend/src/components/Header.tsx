@@ -100,7 +100,6 @@ export default function Header() {
             {user ? (
               <div className="headerUserMenu">
                 <span className="headerUserName">
-                  <UserIcon />
                   Chào, {displayName}
                 </span>
                 <Link to="/profile" className="headerIconLink" title="Tài khoản" aria-label="Tài khoản">

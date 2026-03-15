@@ -363,9 +363,105 @@
   overflow-y: auto;
 }
 
+.modal-large {
+  max-width: 800px;
+}
+
 .modal h3 {
   margin: 0 0 20px;
   color: #1a1a2e;
+}
+
+/* Variant Management */
+.btn-variant {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-variant:hover {
+  background: #4f46e5;
+}
+
+.quick-add-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.btn-quick-add {
+  background: #f0f0f0;
+  border: 1px dashed #999;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-quick-add:hover {
+  background: #e0e0e0;
+}
+
+.quick-add-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.quick-add-form input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.quick-add-form input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.variant-table {
+  margin-top: 20px;
+}
+
+.variant-table th,
+.variant-table td {
+  text-align: left;
+}
+
+.color-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 15px;
+  align-items: end;
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
 }
 
 /* Form */

@@ -80,9 +80,20 @@ export default function OrderHistory() {
                 <ul className="orderItems">
                   {order.items?.map((item) => (
                     <li key={item.id} className="orderItem">
-                      <span className="orderItemName">
-                        {item.product?.name ?? 'Sản phẩm'}
-                      </span>
+                      <div className="orderItemInfo">
+                        <span className="orderItemName">
+                          {item.product?.name ?? 'Sản phẩm'}
+                        </span>
+                        {item.variant_info && (
+                          <span className="orderItemVariant">
+                            <span 
+                              className="variantColor"
+                              style={{ backgroundColor: item.variant_info.color.code }}
+                            />
+                            {item.variant_info.color.name} / {item.variant_info.size.name}
+                          </span>
+                        )}
+                      </div>
                       <span className="orderItemQty">x{item.quantity}</span>
                       <span className="orderItemPrice">{item.price}đ</span>
                     </li>

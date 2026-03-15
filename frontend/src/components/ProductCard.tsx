@@ -36,7 +36,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
     setIsAdding(true);
     try {
-      await cart.addItem(product.id, 1);
+      await cart.addItem({ product_id: product.id, quantity: 1 });
     } catch {
       // Silent fail, user might not be logged in
     } finally {

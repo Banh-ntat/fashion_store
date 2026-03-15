@@ -141,6 +141,30 @@ export const products = {
   related: (id: number) => api.get(`/products/${id}/related/`),
 };
 
+export const colors = {
+  list: () => api.get('/products/colors/'),
+  get: (id: number) => api.get(`/products/colors/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/products/colors/', data),
+  update: (id: number, data: Record<string, unknown>) => api.put(`/products/colors/${id}/`, data),
+  delete: (id: number) => api.delete(`/products/colors/${id}/`),
+};
+
+export const sizes = {
+  list: () => api.get('/products/sizes/'),
+  get: (id: number) => api.get(`/products/sizes/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/products/sizes/', data),
+  update: (id: number, data: Record<string, unknown>) => api.put(`/products/sizes/${id}/`, data),
+  delete: (id: number) => api.delete(`/products/sizes/${id}/`),
+};
+
+export const variants = {
+  list: (params?: Record<string, unknown>) => api.get('/products/variants/', { params }),
+  get: (id: number) => api.get(`/products/variants/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/products/variants/', data),
+  update: (id: number, data: Record<string, unknown>) => api.put(`/products/variants/${id}/`, data),
+  delete: (id: number) => api.delete(`/products/variants/${id}/`),
+};
+
 export const categories = {
   list: () => api.get('/products/categories/'),
   get: (id: number) => api.get(`/products/categories/${id}/`),
@@ -160,8 +184,8 @@ export const cart = {
       const first = list[0] as { items?: unknown[] } | undefined;
       return { data: { items: first?.items ?? [] } };
     }),
-  addItem: (productId: number, quantity: number) =>
-    api.post('/cart/cart-items/', { product_id: productId, quantity }),
+  addItem: (payload: { product_id?: number; product_variant_id?: number; quantity: number }) =>
+    api.post('/cart/cart-items/', payload),
   updateItem: (id: number, quantity: number) =>
     api.patch(`/cart/cart-items/${id}/`, { quantity }),
   removeItem: (id: number) => api.delete(`/cart/cart-items/${id}/`),
@@ -171,6 +195,13 @@ export const orders = {
   list: () => api.get('/orders/orders/'),
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post('/orders/orders/', data),
+  /** Tạo đơn từ giỏ: total_price, name, phone, address */
+  checkout: (data: {
+    total_price: string | number;
+    name: string;
+    phone: string;
+    address: string;
+  }) => api.post('/orders/orders/checkout/', data),
 };
 
 export const reviews = {
@@ -187,12 +218,16 @@ export const profiles = {
 };
 
 export const admin = {
-  // Products
+  // Products - support FormData for image upload
   products: {
     list: (params?: Record<string, unknown>) => api.get('/products/', { params }),
     get: (id: number) => api.get(`/products/${id}/`),
-    create: (data: Record<string, unknown>) => api.post('/products/', data),
-    update: (id: number, data: Record<string, unknown>) => api.put(`/products/${id}/`, data),
+    create: (data: Record<string, unknown> | FormData) => api.post('/products/', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    }),
+    update: (id: number, data: Record<string, unknown> | FormData) => api.put(`/products/${id}/`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    }),
     delete: (id: number) => api.delete(`/products/${id}/`),
   },
   // Categories
@@ -210,6 +245,30 @@ export const admin = {
     create: (data: Record<string, unknown>) => api.post('/products/promotions/', data),
     update: (id: number, data: Record<string, unknown>) => api.put(`/products/promotions/${id}/`, data),
     delete: (id: number) => api.delete(`/products/promotions/${id}/`),
+  },
+  // Colors
+  colors: {
+    list: () => api.get('/products/colors/'),
+    get: (id: number) => api.get(`/products/colors/${id}/`),
+    create: (data: Record<string, unknown>) => api.post('/products/colors/', data),
+    update: (id: number, data: Record<string, unknown>) => api.put(`/products/colors/${id}/`, data),
+    delete: (id: number) => api.delete(`/products/colors/${id}/`),
+  },
+  // Sizes
+  sizes: {
+    list: () => api.get('/products/sizes/'),
+    get: (id: number) => api.get(`/products/sizes/${id}/`),
+    create: (data: Record<string, unknown>) => api.post('/products/sizes/', data),
+    update: (id: number, data: Record<string, unknown>) => api.put(`/products/sizes/${id}/`, data),
+    delete: (id: number) => api.delete(`/products/sizes/${id}/`),
+  },
+  // Product Variants
+  variants: {
+    list: (params?: Record<string, unknown>) => api.get('/products/variants/', { params }),
+    get: (id: number) => api.get(`/products/variants/${id}/`),
+    create: (data: Record<string, unknown>) => api.post('/products/variants/', data),
+    update: (id: number, data: Record<string, unknown>) => api.put(`/products/variants/${id}/`, data),
+    delete: (id: number) => api.delete(`/products/variants/${id}/`),
   },
   // Orders (backend: api/orders/ + router 'orders' => /orders/orders/)
   orders: {

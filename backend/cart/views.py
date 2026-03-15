@@ -19,7 +19,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return CartItem.objects.filter(cart__user=self.request.user).select_related(
-            "cart", "product", "product__category"
+            "cart", "product", "product__product", "product__product__category", "product__color", "product__size"
         )
 
     def perform_create(self, serializer):

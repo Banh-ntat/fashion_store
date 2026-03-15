@@ -1,4 +1,4 @@
-import type { Product, ApiProduct } from '../types';
+import type { Product, ApiProduct, ProductVariant } from '../types';
 
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop';
@@ -20,6 +20,7 @@ export function normalizeProduct(api: ApiProduct): Product {
     image: api.image ?? PLACEHOLDER_IMAGE,
     category: api.category,
     promotion: api.promotion,
+    variants: api.variants ?? [],
   };
 }
 
