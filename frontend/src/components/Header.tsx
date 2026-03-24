@@ -108,6 +108,9 @@ export default function Header() {
                 <Link to="/wishlist" className="headerIconLink" title="Yêu thích" aria-label="Yêu thích">
                   <HeartIcon />
                 </Link>
+                <Link to="/my-feedback" className="headerIconLink" title="Đánh giá sản phẩm" aria-label="Đánh giá">
+                  ⭐
+                </Link>
                 <button type="button" className="logoutBtn" onClick={() => { closeMenu(); logout(); navigate('/'); }}>
                   Đăng xuất
                 </button>
@@ -165,6 +168,7 @@ export default function Header() {
               <span className="mobileUserName">Chào, {displayName}</span>
               <Link to="/profile" className="mobileNavLink" onClick={closeMenu}>Tài khoản</Link>
               <Link to="/orders" className="mobileNavLink" onClick={closeMenu}>Đơn hàng</Link>
+              <Link to="/my-feedback" className="mobileNavLink" onClick={closeMenu}>Đánh giá sản phẩm</Link>
               <Link to="/wishlist" className="mobileNavLink" onClick={closeMenu}>Yêu thích</Link>
               <button type="button" className="mobileLogoutBtn" onClick={() => { closeMenu(); logout(); navigate('/'); }}>
                 Đăng xuất

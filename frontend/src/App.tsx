@@ -9,6 +9,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import OrderHistory from './pages/OrderHistory';
+import MyFeedback from './pages/MyFeedback';
 import Wishlist from './pages/Wishlist';
 import Layout from './components/Layout';
 import ProductDetail from './components/ProductDetail';
@@ -44,6 +45,7 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/orders" element={<OrderHistory />} />
+            <Route path="/my-feedback" element={<MyFeedback />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/about" element={<About />} />

@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { products, cart, promotions } from '../api/client';
+import { products, cart, promotions, reviews as reviewsApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../hooks/useWishlist';
 import '../styles/components/ProductDetail.css';
-import type { ProductVariant } from '../types';
+import type { ProductVariant, Review } from '../types';
 
 /** Ảnh placeholder khi API không trả về image */
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x500?text=San+pham';
+
+const FEEDBACK_TYPES = [
+  { value: 'quality', label: 'Chất lượng sản phẩm' },
+  { value: 'price', label: 'Giá cả' },
+  { value: 'shipping', label: 'Vấn đề giao hàng' },
+  { value: 'size', label: 'Kích thước/Size' },
+  { value: 'service', label: 'Chăm sóc khách hàng' },
+  { value: 'other', label: 'Khác' },
+];
 
 interface Product {
   id: number;
@@ -41,6 +50,9 @@ function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [reviewsList, setReviewsList] = useState<Review[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,17 +76,20 @@ function ProductDetail() {
           setLoading(false);
           return;
         }
-        const [relatedRes, promotionsRes] = await Promise.all([
+        const [relatedRes, promotionsRes, reviewsRes] = await Promise.all([
           products.related(productId),
           promotions.active(),
+          reviewsApi.getByProduct(productId),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
         setActivePromotions((promotionsRes?.data ?? []) as Promotion[]);
+        setReviewsList((reviewsRes?.data ?? []) as Review[]);
       } catch (error) {
         console.error('Error fetching product:', error);
         setProduct(null);
         setRelatedProducts([]);
         setActivePromotions([]);
+        setReviewsList([]);
       } finally {
         setLoading(false);
       }
@@ -135,6 +150,58 @@ function ProductDetail() {
     const priceNum = parseFloat(price);
     return (priceNum - (priceNum * discountPercent) / 100).toFixed(2);
   };
+
+  const handleOpenReview = async (variantId: number) => {
+    if (!user) {
+      alert('Vui lòng đăng nhập để đánh giá sản phẩm');
+      return;
+    }
+    try {
+      const res = await reviewsApi.getPurchasable();
+      const purchasable = (res?.data ?? []) as { variant_id: number }[];
+      const canReview = purchasable.some(p => p.variant_id === variantId);
+      if (canReview) {
+        setShowReviewModal(true);
+        setReviewForm({ rating: 5, feedback_type: 'quality', content: '' });
+      } else {
+        alert('Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công.');
+      }
+    } catch {
+      alert('Không thể tải thông tin. Vui lòng thử lại.');
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const selectedVariant = product?.variants?.find(
+      (v) => v.size.name === selectedSize && v.color.name === selectedColor
+    );
+    if (!selectedVariant) {
+      alert('Vui lòng chọn size và màu sắc trước khi đánh giá.');
+      return;
+    }
+
+    try {
+      await reviewsApi.create({
+        product: selectedVariant.id,
+        rating: reviewForm.rating,
+        feedback_type: reviewForm.feedback_type,
+        content: reviewForm.content,
+      });
+      alert('Cảm ơn bạn đã đánh giá!');
+      setShowReviewModal(false);
+      // Reload reviews
+      const reviewsRes = await reviewsApi.getByProduct(Number(id));
+      setReviewsList((reviewsRes?.data ?? []) as Review[]);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Không thể gửi đánh giá.';
+      alert(msg);
+    }
+  };
+
+  const averageRating = reviewsList.length > 0
+    ? (reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length).toFixed(1)
+    : 0;
 
   if (loading) return <div className="loading">Đang tải...</div>;
   if (!product) {
@@ -210,10 +277,10 @@ function ProductDetail() {
           <div className="product-rating">
             <div className="rating-stars">
               {[1, 2, 3, 4, 5].map((star) => (
-                <span key={star}>★</span>
+                <span key={star} className={star <= Number(averageRating) ? 'filled' : ''}>★</span>
               ))}
             </div>
-            <span className="rating-count">(12 đánh giá)</span>
+            <span className="rating-count">({reviewsList.length} đánh giá)</span>
           </div>
 
           <div className="product-price">
@@ -338,8 +405,60 @@ function ProductDetail() {
               </div>
             )}
           </div>
+
+          {/* Review Button */}
+          {user && selectedVariant && (
+            <div className="review-cta">
+              <button
+                className="btn-review-product"
+                onClick={() => handleOpenReview(selectedVariant.id)}
+              >
+                ⭐ Viết đánh giá sản phẩm này
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Reviews Section */}
+      <section className="product-reviews">
+        <h2>📝 Đánh giá sản phẩm ({reviewsList.length})</h2>
+        {reviewsList.length > 0 ? (
+          <div className="reviews-list">
+            {reviewsList.map((review) => (
+              <div key={review.id} className="review-item">
+                <div className="review-header">
+                  <div className="review-user">
+                    <span className="user-avatar">{review.user.username.charAt(0).toUpperCase()}</span>
+                    <span className="user-name">{review.user.username}</span>
+                  </div>
+                  <div className="review-meta">
+                    <span className="review-date">
+                      {new Date(review.created_at).toLocaleDateString('vi-VN')}
+                    </span>
+                    <span className="feedback-type-badge">
+                      {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
+                    </span>
+                  </div>
+                </div>
+                <div className="review-stars">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span key={s} className={s <= review.rating ? 'filled' : ''}>★</span>
+                  ))}
+                </div>
+                {review.content && <p className="review-text">{review.content}</p>}
+                {review.variant_info && (
+                  <p className="review-variant">
+                    Phân loại: {review.variant_info.color.name} | {review.variant_info.size.name}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="no-reviews">Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!</p>
+        )}
+      </section>
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
@@ -367,6 +486,65 @@ function ProductDetail() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Viết đánh giá sản phẩm</h3>
+            {selectedVariant && (
+              <div className="modal-product-info">
+                <strong>{product?.name}</strong>
+                <p>Màu: {selectedVariant.color.name} | Size: {selectedVariant.size.name}</p>
+              </div>
+            )}
+            <form onSubmit={handleSubmitReview}>
+              <div className="form-group">
+                <label>Đánh giá của bạn:</label>
+                <div className="star-picker">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span
+                      key={s}
+                      className={s <= reviewForm.rating ? 'selected' : ''}
+                      onClick={() => setReviewForm({ ...reviewForm, rating: s })}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Loại feedback:</label>
+                <select
+                  value={reviewForm.feedback_type}
+                  onChange={(e) => setReviewForm({ ...reviewForm, feedback_type: e.target.value })}
+                >
+                  {FEEDBACK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Nội dung (tùy chọn):</label>
+                <textarea
+                  value={reviewForm.content}
+                  onChange={(e) => setReviewForm({ ...reviewForm, content: e.target.value })}
+                  placeholder="Chia sẻ trải nghiệm của bạn..."
+                  rows={4}
+                />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowReviewModal(false)}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn-primary">
+                  Gửi đánh giá
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
