@@ -64,3 +64,25 @@ export interface Order {
   created_at: string;
   items: OrderItem[];
 }
+
+export interface PurchasableProduct {
+  order_id: number;
+  variant_id: number;
+  product_name: string;
+  variant_info: { color: { id: number; name: string; code: string }; size: { id: number; name: string } };
+  price: string;
+  purchased_at: string;
+  days_remaining: number;
+}
+
+export interface Review {
+  id: number;
+  user: { id: number; username: string };
+  product: number;
+  product_name: string;
+  variant_info: { color: { id: number; name: string; code: string }; size: { id: number; name: string } } | null;
+  rating: number;
+  feedback_type: string;
+  content: string;
+  created_at: string;
+}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { reviews, orders } from '../api/client';
+import { reviews as reviewsApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { PurchasableProduct } from '../types';
-import '../styles/pages/OrderHistory.css';
+import '../styles/pages/MyFeedback.css';
 
 const FEEDBACK_TYPES = [
   { value: 'quality', label: 'Chất lượng sản phẩm' },
@@ -43,10 +43,16 @@ export default function MyFeedback() {
 
   const loadData = async () => {
     try {
+      console.log('Loading feedback data...');
+      const token = localStorage.getItem('access_token');
+      console.log('Token exists:', !!token);
+
       const [purchRes, reviewsRes] = await Promise.all([
-        reviews.getPurchasable(),
-        reviews.getMyReviews(),
+        reviewsApi.getPurchasable(),
+        reviewsApi.getMyReviews(),
       ]);
+      console.log('Purchasable response:', purchRes);
+      console.log('My reviews response:', reviewsRes);
       setPurchasableProducts(purchRes?.data ?? []);
       setMyReviews(reviewsRes?.data ?? []);
     } catch (err) {
@@ -67,7 +73,7 @@ export default function MyFeedback() {
     if (!selectedProduct) return;
 
     try {
-      await reviews.create({
+      await reviewsApi.create({
         product: selectedProduct.variant_id,
         rating: reviewForm.rating,
         feedback_type: reviewForm.feedback_type,
@@ -84,7 +90,7 @@ export default function MyFeedback() {
 
   if (!user) {
     return (
-      <div className="order-history-page">
+      <div className="my-feedback-page">
         <div className="empty-state">
           <h2>Vui lòng đăng nhập để xem đánh giá của bạn</h2>
           <Link to="/login" className="btn-primary">Đăng nhập</Link>

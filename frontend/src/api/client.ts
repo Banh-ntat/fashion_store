@@ -205,9 +205,13 @@ export const orders = {
 };
 
 export const reviews = {
-  list: (productId?: number) => api.get('/reviews/', { params: { product: productId } }),
-  create: (productId: number, rating: number) =>
-    api.post('/reviews/', { product: productId, rating }),
+  list: (productId?: number) => api.get('/reviews/reviews/', { params: { product: productId } }),
+  getMyReviews: () => api.get('/reviews/reviews/my_reviews/'),
+  getPurchasable: () => api.get('/reviews/reviews/purchasable/'),
+  getByProduct: (productId: number) => api.get(`/reviews/reviews/by_product/${productId}/`),
+  create: (data: { product: number; rating: number; feedback_type?: string; content?: string }) =>
+    api.post('/reviews/reviews/', data),
+  delete: (id: number) => api.delete(`/reviews/reviews/${id}/`),
 };
 
 /** Profile của user đăng nhập (backend trả về list chỉ có 1 phần tử) */

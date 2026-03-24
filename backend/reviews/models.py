@@ -5,10 +5,24 @@ from products.models import ProductVariant
 
 
 class Review(models.Model):
+    FEEDBACK_TYPES = [
+        ('quality', 'Chất lượng sản phẩm'),
+        ('price', 'Giá cả'),
+        ('shipping', 'Vấn đề giao hàng'),
+        ('size', 'Kích thước/Size'),
+        ('service', 'Chăm sóc khách hàng'),
+        ('other', 'Khác'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(ProductVariant, on_delete=models.CASCADE)
-    rating = models.IntegerField()
+    rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    feedback_type = models.CharField(max_length=20, choices=FEEDBACK_TYPES, default='quality')
+    content = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class Comment(models.Model):
