@@ -15,7 +15,10 @@ export default function Products() {
   const { items: categories } = useCategories();
 
   const currentCategory = categories.find(c => c.id === categoryId);
-  const title = currentCategory ? currentCategory.name : 'Tất cả sản phẩm';
+
+  // Split title: if category selected, show italic category name; else plain
+  const titleMain = currentCategory ? 'Danh mục' : 'Tất cả';
+  const titleItalic = currentCategory ? currentCategory.name : 'sản phẩm';
 
   const handleAddToCart = (product: Product) => {
     console.log('Đã thêm vào giỏ:', product.name);
@@ -24,18 +27,25 @@ export default function Products() {
   return (
     <section className="products-page">
       <div className="sectionContainer">
+
+        {/* ── Header ── */}
         <div className="sectionHeader">
           <div>
-            <h1 className="sectionTitle">{title}</h1>
+            <h1 className="sectionTitle">
+              {titleMain} <em>{titleItalic}</em>
+            </h1>
             <p className="sectionSubtitle">
               {loading
-                ? 'Đang tải sản phẩm...'
+                ? 'Đang tải sản phẩm…'
                 : `${products.length} sản phẩm có sẵn`}
             </p>
           </div>
         </div>
 
+        {/* ── Body ── */}
         <div className="productsLayout">
+
+          {/* Sidebar */}
           <aside className="productsSidebar">
             <h3 className="sidebarTitle">Danh mục</h3>
             <nav className="categoryNav">
@@ -59,17 +69,19 @@ export default function Products() {
             </nav>
           </aside>
 
+          {/* Main */}
           <div className="productsMain">
             {error && (
               <p className="productsFallbackNote">{error}</p>
             )}
+
             {loading ? (
               <div className="productsLoading">
-                <div className="loading">Đang tải...</div>
+                <div className="loading">Đang tải</div>
               </div>
             ) : products.length === 0 ? (
               <p className="productsEmpty">
-                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '16px' }}>📦</span>
+                <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '12px' }}>📦</span>
                 Chưa có sản phẩm nào trong danh mục này.
               </p>
             ) : (

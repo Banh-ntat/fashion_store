@@ -20,10 +20,8 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const productImage = product.image || PLACEHOLDER_IMAGE;
   const productStock = product.stock ?? 99;
 
-  const calculateDiscountedPrice = (price: string, discountPercent: number) => {
-    const priceNum = parseFloat(price);
-    return (priceNum - (priceNum * discountPercent) / 100).toFixed(0);
-  };
+  const discountedPrice = (price: string, pct: number) =>
+    (parseFloat(price) * (1 - pct / 100)).toFixed(0);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -38,7 +36,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     try {
       await cart.addItem({ product_id: product.id, quantity: 1 });
     } catch {
-      // Silent fail, user might not be logged in
+      // silent — user may not be logged in
     } finally {
       setIsAdding(false);
     }
@@ -50,23 +48,31 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     toggleWishlist(product.id);
   };
 
+  const outOfStock = productStock === 0;
+
   return (
     <Link to={`/product/${product.id}`} className="productCard">
+      {/* ── Image ── */}
       <div className="productCardImageWrapper">
-        <img src={productImage} alt={product.name} className="productCardImage" />
+        <img
+          src={productImage}
+          alt={product.name}
+          className="productCardImage"
+          loading="lazy"
+        />
+
         {product.promotion && (
           <span className="productCardDiscount">
             -{product.promotion.discount_percent}%
           </span>
         )}
 
-        {/* Quick action buttons */}
+        {/* Quick actions */}
         <div className="productCardActions">
           <button
-            className="productCardActionBtn"
+            className={`productCardActionBtn${isWishlisted ? ' wishlisted' : ''}`}
             onClick={handleWishlist}
             aria-label={isWishlisted ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
-            title={isWishlisted ? 'Bỏ yêu thích' : 'Yêu thích'}
           >
             {isWishlisted ? '♥' : '♡'}
           </button>
@@ -74,13 +80,14 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             to={`/product/${product.id}`}
             className="productCardActionBtn"
             onClick={(e) => e.stopPropagation()}
-            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
           >
             👁
           </Link>
         </div>
       </div>
 
+      {/* ── Info ── */}
       <div className="productCardContent">
         <p className="productCardCategory">{product.category.name}</p>
         <h3 className="productCardName">{product.name}</h3>
@@ -89,7 +96,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {product.promotion ? (
             <>
               <span className="productCardCurrentPrice">
-                {calculateDiscountedPrice(product.price, product.promotion.discount_percent)}đ
+                {discountedPrice(product.price, product.promotion.discount_percent)}đ
               </span>
               <span className="productCardOldPrice">{product.price}đ</span>
             </>
@@ -99,11 +106,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         <button
-          className={`productCardAddBtn ${isAdding ? 'adding' : ''}`}
+          className={`productCardAddBtn${isAdding ? ' adding' : ''}`}
           onClick={handleAddToCart}
-          disabled={productStock === 0}
+          disabled={outOfStock || isAdding}
         >
-          {productStock === 0 ? 'Hết hàng' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ'}
+          {outOfStock ? 'Hết hàng' : isAdding ? 'Đang thêm…' : 'Thêm vào giỏ'}
         </button>
       </div>
     </Link>
