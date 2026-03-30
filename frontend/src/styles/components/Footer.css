@@ -1,125 +1,111 @@
-/* ─────────────────────────────────────────────
-   FOOTER — Layout 4 cột, nền sáng, tiêu đề đỏ
-   (Tham khảo TORANO / thời trang nam)
-   ───────────────────────────────────────────── */
-
-:root {
-  --footer-bg: #f8f9fa;
-  --footer-surface: #fff;
-  --footer-border: #e0e0e0;
-  --footer-text: #2d2d2d;
-  --footer-text-muted: #5a5a5a;
-  --footer-heading: #d32f2f;
-  --footer-heading-hover: #b71c1c;
-  --footer-subheading: #2d2d2d;
-  --footer-input-border: #ccc;
-  --footer-btn-bg: #d32f2f;
-  --footer-btn-hover: #b71c1c;
-  --footer-cert-bg: #2e7d32;
-  --footer-cert-text: #fff;
-  --footer-social-border: #dee2e6;
-  --footer-social-hover: #d32f2f;
-  --footer-tag-bg: #fff;
-  --footer-tag-border: #dee2e6;
-  --footer-tag-text: #495057;
-}
+/* ══════════════════════════════════════════
+   FOOTER — Editorial Dark
+   ══════════════════════════════════════════ */
 
 .footer {
-  background: var(--footer-bg);
-  color: var(--footer-text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  padding: 0;
+  background: #111;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
 }
 
-/* ── Main: 4 cột (Brand | Liên hệ | Liên kết | Bản đồ) ─── */
+/* ── Top decorative border ── */
+.footer::before {
+  content: '';
+  display: block;
+  height: 2px;
+  background: linear-gradient(to right, var(--color-primary, #d32f2f) 0%, transparent 100%);
+}
+
+/* ── Main grid ── */
 
 .footerMain {
-  max-width: 1200px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 48px 24px 24px;
+  padding: 72px 48px 48px;
   display: grid;
-  grid-template-columns: 1fr 1.1fr 0.7fr 1.2fr;
-  gap: 32px 28px;
+  grid-template-columns: 1.4fr 1.1fr 0.8fr 1.1fr;
+  gap: 40px 48px;
   align-items: start;
 }
 
 .footerCol {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-/* Tiêu đề chính — đỏ, đậm */
+/* Heading */
 .footerHeading {
-  font-size: 1rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.05rem;
   font-weight: 700;
-  color: var(--footer-heading);
-  margin: 0 0 8px 0;
-  line-height: 1.3;
+  color: #fff;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
   position: relative;
-  display: inline-block;
+  padding-bottom: 14px;
 }
 
 .footerHeading::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
-  bottom: -2px;
-  width: 24px;
-  height: 2px;
-  background: var(--footer-heading);
-  opacity: 0.6;
+  bottom: 0;
+  width: 28px;
+  height: 1.5px;
+  background: var(--color-primary, #d32f2f);
 }
 
-/* Mô tả / nội dung chữ */
+/* Description */
 .footerDesc {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--footer-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.75;
+  color: rgba(255,255,255,0.4);
   margin: 0;
+  max-width: 280px;
 }
 
-/* Tiêu đề phụ — đậm, xám đậm */
+/* Sub-heading */
 .footerSubHeading {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--footer-subheading);
-  margin: 20px 0 12px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--footer-border);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin: 24px 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
-/* ── Cột 1: Brand + Social + Thanh toán ────── */
+/* ── Brand column ── */
 
 .footerSocials {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .footerSocialIcon {
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--footer-social-border);
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  color: var(--footer-text-muted);
+  color: rgba(255,255,255,0.45);
   text-decoration: none;
-  background: var(--footer-surface);
-  transition: all 0.25s ease;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 
 .footerSocialIcon:hover {
-  border-color: var(--footer-social-hover);
-  color: var(--footer-social-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.15);
+  border-color: var(--color-primary, #d32f2f);
+  color: white;
+  background: rgba(211, 47, 47, 0.12);
 }
 
+/* Tags (payment/shipping) */
 .footerPaymentLogos,
 .footerShippingLogos {
   display: flex;
@@ -129,169 +115,103 @@
 
 .footerPaymentItem,
 .footerShippingItem {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  padding: 6px 12px;
-  background: var(--footer-tag-bg);
-  border: 1px solid var(--footer-tag-border);
-  border-radius: 6px;
-  color: var(--footer-tag-text);
-  transition: all 0.2s ease;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.55);
+  transition: border-color 0.2s, color 0.2s;
 }
 
 .footerPaymentItem:hover,
 .footerShippingItem:hover {
-  border-color: var(--footer-heading);
-  color: var(--footer-heading);
+  border-color: var(--color-primary, #d32f2f);
+  color: white;
 }
 
-/* ── Cột 2: Liên hệ + Vận chuyển ───────────── */
+/* ── Contact column ── */
 
 .footerContactList {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .footerContactList p {
-  font-size: 0.875rem;
-  line-height: 1.7;
-  color: var(--footer-text-muted);
-  margin: 0 0 4px 0;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.4);
+  margin: 0;
 }
 
 .footerContactList a {
-  color: var(--footer-heading);
+  color: rgba(255,255,255,0.65);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: color 0.2s;
 }
 
 .footerContactList a:hover {
-  text-decoration: underline;
-  opacity: 0.8;
+  color: var(--color-primary, #d32f2f);
 }
 
-.footerShippingLogos {
+/* ── Nav links ── */
+
+.footerNavList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.footerShippingItem {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 6px 10px;
-  background: var(--footer-surface);
-  border: 1px solid var(--footer-border);
-  border-radius: 6px;
-  color: var(--footer-text-muted);
-}
-
-/* ── Cột 3: Nhóm liên kết ──────────────────── */
-
-.footerNavList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.footerNavList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.footerNavList li {
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .footerNavLink {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  color: var(--footer-text-muted);
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.4);
   text-decoration: none;
-  transition: all 0.25s ease;
-}
-
-.footerNavLink::before {
-  content: "›";
-  font-size: 1.1rem;
-  color: var(--footer-heading);
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all 0.25s ease;
+  transition: color 0.2s, padding-left 0.2s;
+  position: relative;
+  padding-left: 0;
 }
 
 .footerNavLink:hover {
-  color: var(--footer-heading);
-  transform: translateX(4px);
+  color: white;
+  padding-left: 12px;
 }
 
-.footerNavLink:hover::before {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ── Cột 4: Google Map ─────────────────────── */
-
-.footerColMap .footerHeading::after {
-  width: 100%;
-}
+/* ── Map column ── */
 
 .footerMapWrap {
   width: 100%;
-  aspect-ratio: 4/3;
-  min-height: 200px;
-  border-radius: 8px;
+  aspect-ratio: 4 / 3;
+  min-height: 180px;
   overflow: hidden;
-  border: 1px solid var(--footer-border);
-  background: var(--footer-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #1a1a1a;
+  filter: grayscale(40%) contrast(1.05);
 }
 
 .footerMapWrap iframe {
   display: block;
 }
 
-.footerCertBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 10px 14px;
-  background: var(--footer-cert-bg);
-  color: var(--footer-cert-text);
-  border-radius: 6px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.2);
-}
-
-.footerCertIcon {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-/* ── Hàng giữa: Thanh toán + Vận chuyển ────── */
+/* ── Middle row ── */
 
 .footerMiddle {
-  max-width: 1200px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 24px 24px 28px;
-  border-top: 1px solid var(--footer-border);
+  padding: 28px 48px;
+  border-top: 1px solid rgba(255,255,255,0.06);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 32px 24px;
+  gap: 32px;
   align-items: start;
 }
 
@@ -302,65 +222,54 @@
 }
 
 .footerMiddle .footerSubHeading {
-  margin: 0 0 8px 0;
-  padding-bottom: 6px;
+  margin: 0 0 8px;
 }
 
-/* ── Bottom bar ────────────────────────────── */
+/* ── Bottom bar ── */
 
 .footerBottom {
-  max-width: 1200px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 16px 24px;
-  border-top: 1px solid var(--footer-border);
-  text-align: center;
+  padding: 20px 48px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .footerCopy {
-  font-size: 0.8rem;
-  color: var(--footer-text-muted);
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.25);
   margin: 0;
+  letter-spacing: 0.04em;
 }
 
-/* ── Responsive ────────────────────────────── */
+/* ── Responsive ── */
 
-@media (max-width: 992px) {
+@media (max-width: 1024px) {
   .footerMain {
     grid-template-columns: 1fr 1fr;
-    padding: 40px 20px 24px;
+    padding: 56px 32px 40px;
+    gap: 36px 40px;
   }
-
-  .footerColMap {
-    grid-column: 1 / -1;
-  }
-
-  .footerMiddle {
-    grid-template-columns: 1fr;
-    padding: 20px 20px 24px;
-  }
+  .footerColMap { grid-column: 1 / -1; }
+  .footerMapWrap { max-height: 220px; }
+  .footerMiddle { padding: 24px 32px; }
+  .footerBottom { padding: 18px 32px; }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 640px) {
   .footerMain {
     grid-template-columns: 1fr;
-    gap: 28px;
-    padding: 32px 16px 24px;
+    padding: 48px 20px 32px;
+    gap: 32px;
   }
-
-  .footerColMap {
-    grid-column: auto;
-  }
-
-  .footerMapWrap {
-    min-height: 180px;
-  }
-
+  .footerColMap { grid-column: auto; }
   .footerMiddle {
-    padding: 20px 16px 22px;
+    grid-template-columns: 1fr;
+    padding: 24px 20px;
     gap: 24px;
   }
-
-  .footerBottom {
-    padding: 14px 16px;
-  }
+  .footerBottom { padding: 16px 20px; flex-direction: column; text-align: center; }
 }
