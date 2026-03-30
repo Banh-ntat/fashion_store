@@ -15,7 +15,6 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('category');
 
-  // Chuyển hướng đến trang sản phẩm nếu có tham số category
   if (categoryId) {
     return <Navigate to={`/products?category=${categoryId}`} replace />;
   }
@@ -26,55 +25,49 @@ export default function Home() {
 
   return (
     <>
-      {/* HERO */}
+      {/* ── HERO ── */}
       <section className="hero">
         <div className="sectionContainer">
           <div className="heroContent">
 
             <div className="heroText">
-
               <div className="heroTag">
-                <span className="heroTagDot"></span>
+                <span className="heroTagDot" />
                 Bộ Sưu Tập Mới 2025
               </div>
 
               <h1 className="heroTitle">
-                Bộ Sưu Tập<br />
-                <em>Thời Trang Mới</em>
+                Thời Trang<br />
+                <em>Vượt Thời Gian</em>
               </h1>
 
               <p className="heroSubtitle">
-                Khám phá bộ sưu tập được tuyển chọn kỹ lưỡng,
-                kết hợp hoàn hảo giữa phong cách hiện đại và vẻ đẹp vượt thời gian.
+                Khám phá bộ sưu tập được tuyển chọn kỹ lưỡng —
+                kết hợp hoàn hảo giữa phong cách hiện đại và vẻ đẹp tinh tế.
               </p>
 
               <div className="heroActions">
                 <Link to="/" className="heroPrimaryBtn">
-                  Mua Sắm Ngay <ArrowRight size={14} />
+                  Mua Sắm Ngay <ArrowRight size={13} />
                 </Link>
-
                 <Link to="/about" className="heroSecondaryBtn">
-                  Câu Chuyện Của Chúng Tôi <ArrowRight size={14} />
+                  Câu Chuyện Của Chúng Tôi <ArrowRight size={13} />
                 </Link>
               </div>
 
               <div className="heroStats">
-
                 <div className="heroStat">
                   <span className="heroStatNum">500+</span>
                   <span className="heroStatLabel">Sản Phẩm</span>
                 </div>
-
                 <div className="heroStat">
                   <span className="heroStatNum">50k+</span>
                   <span className="heroStatLabel">Khách Hàng</span>
                 </div>
-
                 <div className="heroStat">
                   <span className="heroStatNum">4.9★</span>
                   <span className="heroStatLabel">Đánh Giá</span>
                 </div>
-
               </div>
             </div>
 
@@ -84,33 +77,30 @@ export default function Home() {
                 alt="New Fashion Collection"
                 className="heroImgMain"
               />
-
               <div className="heroImgBadge">
                 <div className="heroBadgeIcon">✦</div>
-                <div className="heroBadgeText">
+                <div>
                   <span className="heroBadgeTitle">New Arrivals</span>
                   <span className="heroBadgeSub">Just dropped this week</span>
                 </div>
               </div>
-
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* CATEGORIES */}
+      {/* ── CATEGORIES ── */}
       <section className="pageSection">
         <div className="sectionContainer">
-
           <div className="sectionHeader">
             <div>
+              <div className="sectionDivider" />
               <h2 className="sectionTitle">Danh Mục Sản Phẩm</h2>
               <p className="sectionSubtitle">Tìm chính xác những gì bạn đang tìm kiếm</p>
             </div>
-
             <Link to="/" className="viewAll">
-              Xem Tất Cả <ArrowRight size={12} />
+              Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
@@ -119,37 +109,26 @@ export default function Home() {
               <CategoryCard key={category.id} category={category} />
             ))}
           </div>
-
         </div>
       </section>
 
-      {/* PROMO */}
+      {/* ── PROMO ── */}
       <div className="sectionContainer">
         <div className="promoBanner">
-
           <div className="promoContent">
-
             <span className="promoTag">Ưu Đãi Có Hạn</span>
-
             <h2 className="promoTitle">
-              Sale Hè<br />Giảm Đến 50%
+              Sale Hè<br />Giảm 50%
             </h2>
-
-            <p className="promoSubtitle">
-              Mua sắm ngay trước khi hết hàng
-            </p>
-
+            <p className="promoSubtitle">Mua sắm ngay trước khi hết hàng</p>
             <div className="promoCode">
               <span className="promoCodeLabel">Mã:</span>
               <span className="promoCodeValue">SUMMER50</span>
             </div>
-
             <br />
-
             <Link to="/" className="promoBtn">
-              Nhận Ưu Đãi <ArrowRight size={14} />
+              Nhận Ưu Đãi <ArrowRight size={13} />
             </Link>
-
           </div>
 
           <img
@@ -157,24 +136,22 @@ export default function Home() {
             alt="Sale Hè"
             className="promoImage"
           />
-
         </div>
       </div>
 
-      {/* HOT DEALS */}
+      {/* ── HOT DEALS ── */}
       <section className="pageSection">
         <div className="sectionContainer">
-
           <div className="sectionHeader">
             <div>
-              <h2 className="sectionTitle">Ưu Đãi Hot 🔥</h2>
+              <div className="sectionDivider" />
+              <h2 className="sectionTitle">Ưu Đãi Hot</h2>
               <p className="sectionSubtitle">
-                Đừng bỏ lỡ những ưu đãi có thời hạn cực kỳ hấp dẫn này
+                Đừng bỏ lỡ những ưu đãi có thời hạn cực kỳ hấp dẫn
               </p>
             </div>
-
             <Link to="/" className="viewAll">
-              Xem Tất Cả <ArrowRight size={12} />
+              Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
@@ -187,24 +164,22 @@ export default function Home() {
               />
             ))}
           </div>
-
         </div>
       </section>
 
-      {/* NEW ARRIVALS */}
+      {/* ── NEW ARRIVALS ── */}
       <section className="pageSectionWhite">
         <div className="sectionContainer">
-
           <div className="sectionHeader">
             <div>
-              <h2 className="sectionTitle">Hàng Mới Về ✦</h2>
+              <div className="sectionDivider" />
+              <h2 className="sectionTitle">Hàng Mới Về</h2>
               <p className="sectionSubtitle">
                 Những sản phẩm mới nhất vừa được thêm vào bộ sưu tập
               </p>
             </div>
-
             <Link to="/" className="viewAll">
-              Xem Tất Cả <ArrowRight size={12} />
+              Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
@@ -217,7 +192,6 @@ export default function Home() {
               />
             ))}
           </div>
-
         </div>
       </section>
     </>
