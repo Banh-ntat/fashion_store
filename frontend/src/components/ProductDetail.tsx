@@ -230,7 +230,7 @@ function ProductDetail() {
       {/* Active Promotions Banner */}
       {activePromotions.length > 0 && (
         <div className="promotions-banner">
-          <h3>🔥 Khuyến mãi đang diễn ra</h3>
+          <h3>Khuyến mãi đang diễn ra</h3>
           <div className="promotions-list">
             {activePromotions.map((promo) => (
               <span key={promo.id} className="promo-tag">
@@ -356,7 +356,7 @@ function ProductDetail() {
               onClick={handleAddToCart}
               disabled={variantStock === 0}
             >
-              {variantStock === 0 ? 'Hết hàng' : '🛒 Thêm vào giỏ hàng'}
+              {variantStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
             </button>
             <button
               type="button"
@@ -371,21 +371,18 @@ function ProductDetail() {
           {/* Trust Badges */}
           <div className="product-trust-badges">
             <div className="trust-badge">
-              <div className="trust-badge-icon">🚚</div>
               <div className="trust-badge-text">
                 <strong>Miễn phí vận chuyển</strong>
                 <span>Đơn hàng từ 500K</span>
               </div>
             </div>
             <div className="trust-badge">
-              <div className="trust-badge-icon">✅</div>
               <div className="trust-badge-text">
                 <strong>Chính hãng 100%</strong>
                 <span>Cam kết authentic</span>
               </div>
             </div>
             <div className="trust-badge">
-              <div className="trust-badge-icon">🔄</div>
               <div className="trust-badge-text">
                 <strong>Đổi trả dễ dàng</strong>
                 <span>Trong 30 ngày</span>
@@ -413,7 +410,7 @@ function ProductDetail() {
                 className="btn-review-product"
                 onClick={() => handleOpenReview(selectedVariant.id)}
               >
-                ⭐ Viết đánh giá sản phẩm này
+                Viết đánh giá sản phẩm này
               </button>
             </div>
           )}
@@ -422,7 +419,7 @@ function ProductDetail() {
 
       {/* Reviews Section */}
       <section className="product-reviews">
-        <h2>📝 Đánh giá sản phẩm ({reviewsList.length})</h2>
+        <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>
         {reviewsList.length > 0 ? (
           <div className="reviews-list">
             {reviewsList.map((review) => (
