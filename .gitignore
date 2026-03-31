@@ -40,3 +40,7 @@ yarn-error.log
 # Environment
 .env
 .env.local
+.venv/
+backend/.venv/
+frontend/.venv/
+node_modules/
