@@ -34,25 +34,16 @@ export default function MyFeedback() {
   const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     loadData();
   }, [user]);
 
   const loadData = async () => {
     try {
-      console.log('Loading feedback data...');
-      const token = localStorage.getItem('access_token');
-      console.log('Token exists:', !!token);
-
       const [purchRes, reviewsRes] = await Promise.all([
         reviewsApi.getPurchasable(),
         reviewsApi.getMyReviews(),
       ]);
-      console.log('Purchasable response:', purchRes);
-      console.log('My reviews response:', reviewsRes);
       setPurchasableProducts(purchRes?.data ?? []);
       setMyReviews(reviewsRes?.data ?? []);
     } catch (err) {
@@ -71,7 +62,6 @@ export default function MyFeedback() {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
-
     try {
       await reviewsApi.create({
         product: selectedProduct.variant_id,
@@ -100,46 +90,39 @@ export default function MyFeedback() {
   }
 
   if (loading) {
-    return <div className="order-history-page"><div className="loading">Đang tải...</div></div>;
+    return <div className="my-feedback-page"><div className="loading">Đang tải...</div></div>;
   }
 
   return (
-    <div className="order-history-page">
-      <h1>📝 Đánh giá sản phẩm đã mua</h1>
+    <div className="my-feedback-page">
+
+      {/* BỎ ICON, chỉ còn chữ */}
+      <h1>Đánh giá sản phẩm đã mua</h1>
       <p className="page-desc">Đánh giá các sản phẩm bạn đã nhận được để giúp chúng tôi cải thiện dịch vụ.</p>
 
       {/* Sản phẩm có thể đánh giá */}
       {purchasableProducts.length > 0 && (
         <section className="orders-section">
-          <h2>🎁 Sản phẩm có thể đánh giá ({purchasableProducts.length})</h2>
+          <h2>Sản phẩm có thể đánh giá ({purchasableProducts.length})</h2>
           <p className="section-hint">Các sản phẩm bạn đã mua và nhận hàng thành công (trong vòng 14 ngày)</p>
           <div className="orders-list">
             {purchasableProducts.map((item) => (
               <div key={`${item.order_id}-${item.variant_id}`} className="order-card purchasable">
                 <div className="order-header">
                   <span className="order-id">Đơn hàng #{item.order_id}</span>
-                  <span className="order-date">
-                    {new Date(item.purchased_at).toLocaleDateString('vi-VN')}
-                  </span>
+                  <span className="order-date">{new Date(item.purchased_at).toLocaleDateString('vi-VN')}</span>
                 </div>
                 <div className="order-items">
                   <div className="order-item">
                     <div className="item-info">
                       <h4>{item.product_name}</h4>
-                      <p className="item-variant">
-                        Màu: {item.variant_info.color.name} | Size: {item.variant_info.size.name}
-                      </p>
+                      <p className="item-variant">Màu: {item.variant_info.color.name} | Size: {item.variant_info.size.name}</p>
                       <p className="item-price">{parseFloat(item.price).toLocaleString('vi-VN')}đ</p>
                     </div>
                     <div className="item-actions">
-                      <span className="days-remaining">
-                        Còn {item.days_remaining} ngày để đánh giá
-                      </span>
-                      <button
-                        className="btn-review"
-                        onClick={() => handleOpenReview(item)}
-                      >
-                        ⭐ Viết đánh giá
+                      <span className="days-remaining">Còn {item.days_remaining} ngày để đánh giá</span>
+                      <button className="btn-review" onClick={() => handleOpenReview(item)}>
+                        Viết đánh giá
                       </button>
                     </div>
                   </div>
@@ -150,44 +133,51 @@ export default function MyFeedback() {
         </section>
       )}
 
+      {/* NÚT ĐỔI SANG btn-primary ĐỂ ĐỎ */}
       {purchasableProducts.length === 0 && (
         <div className="empty-state">
           <p>Không có sản phẩm nào có thể đánh giá.</p>
-          <Link to="/products" className="btn-secondary">Tiếp tục mua sắm</Link>
+          <Link to="/products" className="btn-primary">Tiếp tục mua sắm</Link>
         </div>
       )}
 
-      {/* Đánh giá đã gửi */}
+      {/* ĐÁNH GIÁ ĐÃ GỬI - layout Shopee, không box */}
       {myReviews.length > 0 && (
         <section className="orders-section">
-          <h2>📋 Đánh giá của bạn ({myReviews.length})</h2>
-          <div className="orders-list">
+          <h2>Đánh giá của bạn ({myReviews.length})</h2>
+          <div className="review-done-list">
             {myReviews.map((review) => (
-              <div key={review.id} className="order-card review-done">
-                <div className="order-header">
-                  <h4>{review.product_name}</h4>
-                  <span className="review-date">
-                    {new Date(review.created_at).toLocaleDateString('vi-VN')}
-                  </span>
+              <div key={review.id} className="review-done-item">
+                <div className="review-avatar">
+                  {user?.username?.charAt(0).toUpperCase() ?? 'U'}
                 </div>
-                <div className="review-content">
+                <div className="review-body">
+                  <div className="review-meta">
+                    <span className="review-username">{user?.username}</span>
+                    <span className="review-time">{new Date(review.created_at).toLocaleDateString('vi-VN')}</span>
+                  </div>
                   <div className="review-stars">
-                    {[1, 2, 3, 4, 5].map((s) => (
+                    {[1,2,3,4,5].map((s) => (
                       <span key={s} className={s <= review.rating ? 'filled' : ''}>★</span>
                     ))}
                   </div>
-                  <span className="feedback-type-badge">
-                    {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
-                  </span>
+                  {review.content && <p className="review-text">{review.content}</p>}
+                  <div className="review-product-snippet">
+                    <div className="snippet-info">
+                      <span className="snippet-name">{review.product_name}</span>
+                      <span className="snippet-variant">
+                        {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                {review.content && <p className="review-text">{review.content}</p>}
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Review Modal */}
+      {/* Modal */}
       {showReviewModal && selectedProduct && (
         <div className="modal-overlay">
           <div className="modal">
@@ -200,14 +190,12 @@ export default function MyFeedback() {
               <div className="form-group">
                 <label>Đánh giá của bạn:</label>
                 <div className="star-picker">
-                  {[1, 2, 3, 4, 5].map((s) => (
+                  {[1,2,3,4,5].map((s) => (
                     <span
                       key={s}
                       className={s <= reviewForm.rating ? 'selected' : ''}
                       onClick={() => setReviewForm({ ...reviewForm, rating: s })}
-                    >
-                      ★
-                    </span>
+                    >★</span>
                   ))}
                 </div>
               </div>
@@ -232,17 +220,14 @@ export default function MyFeedback() {
                 />
               </div>
               <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowReviewModal(false)}>
-                  Hủy
-                </button>
-                <button type="submit" className="btn-primary">
-                  Gửi đánh giá
-                </button>
+                <button type="button" className="btn-secondary" onClick={() => setShowReviewModal(false)}>Hủy</button>
+                <button type="submit" className="btn-primary">Gửi đánh giá</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

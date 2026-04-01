@@ -1,3 +1,7 @@
+/* ============================================
+   WISHLIST PAGE
+   ============================================ */
+
 .wishlist-page .sectionContainer {
   max-width: 1280px;
   margin: 0 auto;
@@ -5,74 +9,119 @@
   width: 100%;
 }
 
+/* ── Tiêu đề (gạch dưới đỏ như Giỏ hàng) ── */
 .wishlistTitle {
   font-family: var(--font-display, Georgia, serif);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text, #1E1E1E);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  display: inline-block;
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--color-primary, #F55554);
 }
 
 .wishlistSubtitle {
   font-size: 0.95rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #666);
   margin-bottom: 32px;
+  margin-top: 8px;
 }
 
+/* ── Empty state ── */
 .wishlistEmpty {
   font-size: 1rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #666);
   padding: 48px 0;
+  text-align: center;
 }
 
 .wishlistEmpty a {
   color: var(--color-primary, #F55554);
   font-weight: 500;
+  text-decoration: none;
 }
 
+.wishlistEmpty a:hover {
+  text-decoration: underline;
+}
+
+/* ── Grid ── */
 .wishlistGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 24px;
 }
 
+/* ── Card wrap ── */
 .wishlistCardWrap {
   position: relative;
 }
 
-/* Ảnh sản phẩm lọt vừa khung, không bị cắt */
+/* ── Ảnh đồng đều kích thước ── */
 .wishlist-page .productCardImageWrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f8f8f8;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
 }
 
 .wishlist-page .productCardImage {
-  object-fit: contain;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
+/* ── Remove button ── */
 .wishlistRemove {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 1;
-  width: 32px;
-  height: 32px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: none;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #555;
+  font-size: 0.75rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  line-height: 1;
 }
 
 .wishlistRemove:hover {
   background: var(--color-primary, #F55554);
+  color: #fff;
+}
+
+/* ── Loading ── */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 0.95rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .wishlist-page .sectionContainer {
+    padding: 0 16px;
+  }
+
+  .wishlistGrid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .wishlist-page .productCardImageWrapper {
+    height: 200px;
+  }
 }
