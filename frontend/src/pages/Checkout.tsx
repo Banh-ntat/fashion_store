@@ -28,12 +28,12 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/checkout';
-  
+
   const [items, setItems] = useState<CartItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<'shipping' | 'confirm'>('shipping');
-  
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -145,25 +145,29 @@ export default function Checkout() {
   return (
     <section className="pageSection checkout-page">
       <div className="sectionContainer checkout-container">
+
         {/* Step Indicator */}
         <div className="checkout-steps">
           <div className={`checkout-step ${step === 'shipping' ? 'active' : ''} ${step === 'confirm' ? 'completed' : ''}`}>
-            <span className="checkout-step-num">1</span>
-            <span className="checkout-step-label">Thông tin giao hàng</span>
+            <span className="checkout-step-num">{step === 'confirm' ? '✓' : '1'}</span>
+            <span className="checkout-step-label">Giao hàng</span>
           </div>
           <div className="checkout-step-line" />
           <div className={`checkout-step ${step === 'confirm' ? 'active' : ''}`}>
             <span className="checkout-step-num">2</span>
-            <span className="checkout-step-label">Xác nhận đơn hàng</span>
+            <span className="checkout-step-label">Xác nhận</span>
           </div>
         </div>
 
         <div className="checkout-layout">
+
           {/* Main Form Area */}
           <div className="checkout-main">
             {step === 'shipping' && (
               <div className="checkout-card">
-                <h2 className="checkout-card-title">Thông tin giao hàng</h2>
+                <div className="checkout-card-header">
+                  <h2 className="checkout-card-title">Thông tin giao hàng</h2>
+                </div>
                 <form
                   className="checkout-form"
                   onSubmit={(e) => {
@@ -227,21 +231,24 @@ export default function Checkout() {
 
             {step === 'confirm' && (
               <div className="checkout-card">
-                <h2 className="checkout-card-title">Xác nhận đơn hàng</h2>
-                
+                <div className="checkout-card-header">
+                  <h2 className="checkout-card-title">Xác nhận đơn hàng</h2>
+                </div>
+
+                {/* Shipping info */}
                 <div className="checkout-summary-section">
                   <h3>Thông tin giao hàng</h3>
                   <div className="checkout-info-grid">
                     <div className="checkout-info-item">
-                      <span className="checkout-info-label">Người nhận:</span>
+                      <span className="checkout-info-label">Người nhận</span>
                       <span>{form.name}</span>
                     </div>
                     <div className="checkout-info-item">
-                      <span className="checkout-info-label">Điện thoại:</span>
+                      <span className="checkout-info-label">Điện thoại</span>
                       <span>{form.phone}</span>
                     </div>
                     <div className="checkout-info-item">
-                      <span className="checkout-info-label">Địa chỉ:</span>
+                      <span className="checkout-info-label">Địa chỉ</span>
                       <span>{form.address}</span>
                     </div>
                   </div>
@@ -254,8 +261,9 @@ export default function Checkout() {
                   </button>
                 </div>
 
+                {/* Product list */}
                 <div className="checkout-summary-section">
-                  <h3>Sản phẩm ({items.length})</h3>
+                  <h3>Sản phẩm — {items.length} món</h3>
                   <ul className="checkout-product-list">
                     {items.map((item) => {
                       const unitPrice = getUnitPrice(item);
@@ -267,14 +275,14 @@ export default function Checkout() {
                             <span className="checkout-product-name">{item.product?.name}</span>
                             {item.variant_info && (
                               <span className="checkout-product-variant">
-                                <span 
+                                <span
                                   className="checkout-variant-color"
                                   style={{ backgroundColor: item.variant_info.color.code }}
                                 />
                                 {item.variant_info.color.name} / {item.variant_info.size.name}
                               </span>
                             )}
-                            <span className="checkout-product-qty">x{item.quantity}</span>
+                            <span className="checkout-product-qty">× {item.quantity}</span>
                           </div>
                           <span className="checkout-product-price">
                             {(unitPrice * item.quantity).toLocaleString('vi-VN')}₫
@@ -285,6 +293,7 @@ export default function Checkout() {
                   </ul>
                 </div>
 
+                {/* Actions */}
                 <div className="checkout-actions">
                   <button
                     type="button"
@@ -292,7 +301,7 @@ export default function Checkout() {
                     onClick={() => setStep('shipping')}
                     disabled={submitting}
                   >
-                    Quay lại
+                    ← Quay lại
                   </button>
                   <button
                     type="button"
@@ -300,18 +309,18 @@ export default function Checkout() {
                     onClick={handleSubmit}
                     disabled={submitting}
                   >
-                    {submitting ? 'Đang xử lý...' : `Đặt hàng (${total.toLocaleString('vi-VN')}₫)`}
+                    {submitting ? 'Đang xử lý...' : `Đặt hàng — ${total.toLocaleString('vi-VN')}₫`}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar - Order Summary */}
+          {/* Sidebar */}
           <aside className="checkout-sidebar">
             <div className="checkout-summary-box">
               <h3 className="checkout-summary-title">Tóm tắt đơn hàng</h3>
-              
+
               <div className="checkout-summary-rows">
                 <div className="checkout-summary-row">
                   <span>Tạm tính ({items.length} sản phẩm)</span>
@@ -319,14 +328,23 @@ export default function Checkout() {
                 </div>
                 <div className="checkout-summary-row">
                   <span>Phí vận chuyển</span>
-                  <span>
-                    {shippingFee === 0 ? 'Miễn phí' : `${shippingFee.toLocaleString('vi-VN')}₫`}
-                  </span>
+                  {shippingFee === 0 ? (
+                    <span className="checkout-free-shipping-badge">Miễn phí</span>
+                  ) : (
+                    <span>{shippingFee.toLocaleString('vi-VN')}₫</span>
+                  )}
                 </div>
                 {shippingFee > 0 && (
                   <p className="checkout-free-shipping-hint">
                     Miễn phí vận chuyển đơn từ 500.000₫
                   </p>
+                )}
+                {shippingFee === 0 && (
+                  <div className="checkout-ship-note">
+                    <span className="checkout-ship-note-text">
+                      Đơn hàng đủ điều kiện miễn phí vận chuyển ( từ 500.000₫ trở lên)
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -336,6 +354,7 @@ export default function Checkout() {
               </div>
             </div>
           </aside>
+
         </div>
       </div>
     </section>

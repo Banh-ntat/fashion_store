@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+
 /* ─── Checkout Page ─────────────────────────────────────────────────────────── */
 
 .checkout-page .checkout-container {
@@ -13,19 +15,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
-  margin-bottom: var(--space-xl);
+  gap: 0;
+  margin-bottom: 2rem;
 }
 
 .checkout-step {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 10px;
   color: var(--color-text-muted);
 }
 
 .checkout-step.active {
-  color: var(--color-primary);
+  color: var(--color-text);
 }
 
 .checkout-step.completed {
@@ -33,46 +35,57 @@
 }
 
 .checkout-step-num {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid currentColor;
+  border: 1.5px solid currentColor;
   border-radius: 50%;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-family: 'Lora', serif;
+  font-weight: 600;
+  font-size: 15px; /* tăng từ 13px -> 15px */
+  background: var(--color-bg-white);
+  color: var(--color-text-muted);
 }
 
-.checkout-step.active .checkout-step-num,
+.checkout-step.active .checkout-step-num {
+  background: var(--color-text);
+  color: var(--color-bg-white);
+  border-color: var(--color-text);
+}
+
 .checkout-step.completed .checkout-step-num {
-  background: currentColor;
+  background: #22c55e;
   color: white;
+  border-color: #22c55e;
 }
 
 .checkout-step-label {
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 14px; /* tăng từ 12px -> 14px */
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.checkout-step.active .checkout-step-label {
+  color: var(--color-text);
 }
 
 .checkout-step-line {
-  width: 60px;
-  height: 2px;
+  width: 40px;
+  height: 1px;
   background: var(--color-border);
-}
-
-.checkout-step-line::after {
-  content: '→';
-  position: relative;
-  left: -10px;
-  color: var(--color-border);
+  margin: 0 12px;
 }
 
 /* ─── Layout ─────────────────────────────────────────────────────────────── */
 
 .checkout-layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 300px;
   gap: var(--space-xl);
   align-items: start;
 }
@@ -82,17 +95,24 @@
 .checkout-card {
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  padding: var(--space-lg);
+  border: 0.5px solid var(--color-border);
+  padding: 1.5rem;
 }
 
 .checkout-card-title {
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-family: 'Lora', serif;
+  font-size: 30px; 
+  font-weight: 600;
   color: var(--color-text);
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--color-border);
+  letter-spacing: -0.01em;
+}
+
+.checkout-card-header {
+  position: relative;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 0.5px solid var(--color-border);
+  text-align: center;
 }
 
 /* ─── Form Fields ───────────────────────────────────────────────────────── */
@@ -110,23 +130,29 @@
 }
 
 .checkout-field label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; /* từ 10px -> 12px */
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .checkout-input {
-  padding: 12px 16px;
-  border: 1px solid var(--color-border);
+  font-family: 'DM Sans', sans-serif;
+  padding: 11px 14px;
+  border: 0.5px solid var(--color-border);
   border-radius: var(--radius-sm);
-  font-size: 1rem;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  font-size: 15px; /* từ 13px -> 15px */
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: var(--color-bg-white);
 }
 
 .checkout-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(245, 85, 84, 0.1);
+  box-shadow: 0 0 0 3px rgba(216, 90, 48, 0.1);
 }
 
 .checkout-textarea {
@@ -140,34 +166,39 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 24px;
-  font-size: 1rem;
-  font-weight: 600;
+  padding: 11px 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; /* từ 13px -> 15px */
+  font-weight: 500;
+  letter-spacing: 0.02em;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.15s;
   text-decoration: none;
-  border: none;
+  border: 0.5px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
 }
 
 .checkout-btn-primary {
-  background: var(--color-primary);
+  background: #e60808;
   color: white;
+  border-color: #e90707;
 }
 
 .checkout-btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
-  transform: translateY(-1px);
+  background: #993C1D;
+  border-color: #993C1D;
 }
 
 .checkout-btn-secondary {
-  background: var(--color-bg);
+  background: transparent;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 0.5px solid var(--color-border);
 }
 
 .checkout-btn-secondary:hover:not(:disabled) {
-  background: var(--color-border);
+  background: var(--color-bg);
 }
 
 .checkout-btn:disabled {
@@ -179,57 +210,77 @@
   width: 100%;
 }
 
-/* ─── Confirm Step ───────────────────────────────────────────────────────── */
+/* ─── Confirm Step — Sections ────────────────────────────────────────────── */
 
 .checkout-summary-section {
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 0.5px solid var(--color-border);
 }
 
 .checkout-summary-section:last-of-type {
   border-bottom: none;
+  margin-bottom: 0;
 }
 
 .checkout-summary-section h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--space-md);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; /* từ 10px -> 12px */
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
 }
+
+/* ─── Info Grid ──────────────────────────────────────────────────────────── */
 
 .checkout-info-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0;
 }
 
 .checkout-info-item {
   display: flex;
-  gap: var(--space-sm);
-  font-size: 0.95rem;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .checkout-info-label {
+  font-size: 14px; /* từ 12px -> 14px */
   color: var(--color-text-muted);
+  font-weight: 400;
   min-width: 90px;
 }
 
+.checkout-info-item span:last-child {
+  font-size: 15px; /* từ 13px -> 15px */
+  color: var(--color-text);
+  font-weight: 400;
+  text-align: right;
+  flex: 1;
+  padding-left: 12px;
+}
+
 .checkout-edit-btn {
-  margin-top: var(--space-sm);
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  color: var(--color-primary);
+  margin-top: 10px;
+  padding: 3px 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; /* từ 11px -> 13px */
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
   background: transparent;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--color-border);
+  border-radius: 20px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background 0.15s;
 }
 
 .checkout-edit-btn:hover {
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-bg);
 }
 
 /* ─── Product List ─────────────────────────────────────────────────────── */
@@ -240,24 +291,25 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 10px;
 }
 
 .checkout-product-item {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm);
+  gap: 12px;
+  padding: 10px;
   background: var(--color-bg);
   border-radius: var(--radius-sm);
 }
 
 .checkout-product-img {
-  width: 60px;
-  height: 75px;
+  width: 44px;
+  height: 55px;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  background: white;
+  border-radius: 6px;
+  border: 0.5px solid var(--color-border);
+  background: var(--color-bg-white);
 }
 
 .checkout-product-info {
@@ -269,6 +321,8 @@
 }
 
 .checkout-product-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; /* từ 13px -> 15px */
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
@@ -279,26 +333,31 @@
 .checkout-product-variant {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
+  gap: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; /* từ 11px -> 13px */
   color: var(--color-text-muted);
 }
 
 .checkout-variant-color {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  border: 1px solid var(--color-border);
+  border: 0.5px solid var(--color-border);
+  display: inline-block;
 }
 
 .checkout-product-qty {
-  font-size: 0.85rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; /* từ 11px -> 13px */
   color: var(--color-text-muted);
 }
 
 .checkout-product-price {
-  font-weight: 600;
-  color: var(--color-primary);
+  font-family: 'Lora', serif;
+  font-size: 15px; /* từ 13px -> 15px */
+  font-weight: 500;
+  color: var(--color-text);
   white-space: nowrap;
 }
 
@@ -306,8 +365,8 @@
 
 .checkout-actions {
   display: flex;
-  gap: var(--space-md);
-  margin-top: var(--space-lg);
+  gap: 10px;
+  margin-top: 1.25rem;
 }
 
 .checkout-actions .checkout-btn {
@@ -324,53 +383,101 @@
 .checkout-summary-box {
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: var(--space-lg);
+  border: 0.5px solid var(--color-border);
+  padding: 1.25rem;
 }
 
 .checkout-summary-title {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-family: 'Lora', serif;
+  font-size: 25px; /* từ 15px -> 17px */
+  font-weight: 600;
   color: var(--color-text);
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--color-border);
+  letter-spacing: -0.01em;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 0.5px solid var(--color-border);
 }
 
 .checkout-summary-rows {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0;
   margin-bottom: var(--space-md);
 }
 
 .checkout-summary-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.95rem;
+  align-items: baseline;
+  padding: 5px 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; /* từ 13px -> 15px */
   color: var(--color-text);
 }
 
-.checkout-free-shipping-hint {
-  font-size: 0.8rem;
+.checkout-summary-row span:first-child {
   color: var(--color-text-muted);
-  margin-top: var(--space-xs);
+  font-weight: 400;
+}
+
+.checkout-free-shipping-badge {
+  font-size: 13px; /* từ 11px -> 13px */
+  color: #16a34a;
+  background: #dcfce7;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.checkout-free-shipping-hint {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; /* từ 11px -> 13px */
+  color: var(--color-text-muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.checkout-ship-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-top: 10px;
+}
+
+.checkout-ship-note-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; /* từ 11px -> 13px */
+  color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
 .checkout-summary-total {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding-top: var(--space-md);
-  border-top: 2px solid var(--color-border);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--color-text);
+  align-items: baseline;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 0.5px solid var(--color-border);
+}
+
+.checkout-summary-total span:first-child {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; /* từ 12px -> 14px */
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .checkout-summary-total span:last-child {
-  color: var(--color-primary);
-  font-size: 1.4rem;
+  font-family: 'Lora', serif;
+  font-size: 22px; /* từ 20px -> 22px */
+  font-weight: 600;
+  color: #de0101;
+  letter-spacing: -0.02em;
 }
 
 /* ─── Empty / Login / Loading States ───────────────────────────────────── */
@@ -382,7 +489,7 @@
   padding: var(--space-3xl) var(--space-lg);
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  border: 0.5px solid var(--color-border);
 }
 
 .checkout-login-icon,
@@ -393,14 +500,18 @@
 
 .checkout-login-prompt h2,
 .checkout-empty h2 {
-  font-size: 1.5rem;
+  font-family: 'Lora', serif;
+  font-size: 1.6rem; /* từ 1.4rem -> 1.6rem */
+  font-weight: 600;
   margin-bottom: var(--space-sm);
 }
 
 .checkout-login-prompt p,
 .checkout-empty p {
+  font-family: 'DM Sans', sans-serif;
   color: var(--color-text-muted);
   margin-bottom: var(--space-lg);
+  font-size: 16px; /* từ 14px -> 16px */
 }
 
 .checkout-login-actions {
@@ -433,6 +544,7 @@
 
   .checkout-step-line {
     width: 30px;
+    margin: 0 8px;
   }
 
   .checkout-actions {
