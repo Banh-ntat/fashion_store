@@ -7,7 +7,7 @@ from .models import Category, Promotion, Product, ProductImage, ProductVariant, 
 
 class CategorySerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Category
         fields = ("id", "name", "description", "image")
@@ -73,9 +73,19 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
         fields = ("id", "image")
+
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -100,7 +110,7 @@ class ProductSerializer(serializers.ModelSerializer):
     # Danh sách variants (màu sắc, kích thước, tồn kho)
     variants = serializers.SerializerMethodField()
     # Danh sách ảnh (cho admin)
-    images = ProductImageSerializer(many=True, read_only=True)
+    images = serializers.SerializerMethodField()
     # Cho phép upload ảnh khi tạo/sửa sản phẩm
     upload_images = serializers.ListField(
         child=serializers.ImageField(),
@@ -161,6 +171,10 @@ class ProductSerializer(serializers.ModelSerializer):
             return img_url
         # Trả về placeholder nếu không có ảnh
         return f'https://via.placeholder.com/400x500?text={obj.name.replace(" ", "+")}'
+    
+    def get_images(self, obj):
+        images = ProductImage.objects.filter(product=obj)
+        return ProductImageSerializer(images, many=True, context=self.context).data
 
     def get_stock(self, obj: Product) -> int:
         """Tính tổng tồn kho từ các variant"""

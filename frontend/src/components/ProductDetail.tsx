@@ -26,6 +26,7 @@ interface Product {
   old_price?: string | null;
   stock?: number;
   image?: string;
+  images?: { id: number; image: string }[];
   category: { id: number; name: string };
   promotion: { id: number; name: string; discount_percent: number } | null;
   variants?: ProductVariant[];
@@ -53,6 +54,7 @@ function ProductDetail() {
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
+  const [selectedImage, setSelectedImage] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -113,6 +115,12 @@ function ProductDetail() {
       : [];
     setSelectedColor((prev) => (colorNames.includes(prev) ? prev : colorNames[0] || ''));
     setSelectedSize((prev) => (sizeNames.includes(prev) ? prev : sizeNames[0] || ''));
+  }, [product]);
+
+  useEffect(() => {
+    if (product) {
+      setSelectedImage(product.image || PLACEHOLDER_IMAGE);
+    }
   }, [product]);
 
   const handleAddToCart = async () => {
@@ -245,7 +253,7 @@ function ProductDetail() {
         {/* Image Section */}
         <div className="product-image-section">
           <div className="product-image-main">
-            <img src={productImage} alt={product.name} />
+            <img src={selectedImage || productImage} alt={product.name} />
             {product.promotion && (
               <span className="discount-badge">
                 -{product.promotion.discount_percent}%
@@ -253,14 +261,29 @@ function ProductDetail() {
             )}
             <button
               type="button"
-              className={`image-wishlist-btn ${product ? isInWishlist(product.id) ? 'active' : '' : ''}`}
-              title={product && isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-              aria-label={product && isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-              onClick={() => product && toggleWishlist(product.id)}
+              className={`image-wishlist-btn ${isInWishlist(product.id) ? 'active' : ''}`}
+              title={isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+              aria-label={isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+              onClick={() => toggleWishlist(product.id)}
             >
-              {product && isInWishlist(product.id) ? '♥' : '♡'}
+              {isInWishlist(product.id) ? '♥' : '♡'}
             </button>
           </div>
+
+          {/* Thumbnails */}
+          {product.images && product.images.length > 1 && (
+            <div className="product-thumbnails">
+              {product.images.map((img) => (
+                <button
+                  key={img.id}
+                  className={`thumbnail-btn ${selectedImage === img.image ? 'active' : ''}`}
+                  onClick={() => setSelectedImage(img.image)}
+                >
+                  <img src={img.image} alt={`${product.name} - ${img.id}`} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info Section */}
@@ -283,19 +306,10 @@ function ProductDetail() {
             <span className="rating-count">({reviewsList.length} đánh giá)</span>
           </div>
 
-          <div className="product-price">
-            {product.promotion ? (
-              <>
-                <span className="current-price">
-                  {calculateDiscountedPrice(product.price, product.promotion.discount_percent)}đ
-                </span>
-                <span className="original-price">{product.price}đ</span>
-                <span className="discount-tag">-{product.promotion.discount_percent}%</span>
-              </>
-            ) : (
-              <span className="current-price">{product.price}đ</span>
-            )}
-          </div>
+          <span className="current-price">
+            {Number(calculateDiscountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
+          </span>
+          <span className="original-price">{Number(product.price).toLocaleString('vi-VN')}đ</span>
 
           <div className="product-description">
             <p>{product.description}</p>

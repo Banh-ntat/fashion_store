@@ -1118,3 +1118,36 @@
     padding: var(--space-lg);
   }
 }
+
+.product-thumbnails {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.thumbnail-btn {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: none;
+  transition: border-color 0.2s;
+}
+
+.thumbnail-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-btn:hover {
+  border-color: #aaa;
+}
+
+.thumbnail-btn.active {
+  border-color: #000;
+}
