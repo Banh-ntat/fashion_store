@@ -8,9 +8,9 @@ import '../styles/pages/MyFeedback.css';
 const FEEDBACK_TYPES = [
   { value: 'quality', label: 'Chất lượng sản phẩm' },
   { value: 'price', label: 'Giá cả' },
-  { value: 'shipping', label: 'Vấn đề giao hàng' },
-  { value: 'size', label: 'Kích thước/Size' },
-  { value: 'service', label: 'Chăm sóc khách hàng' },
+  { value: 'shipping', label: 'Giao hàng' },
+  { value: 'size', label: 'Size' },
+  { value: 'service', label: 'Dịch vụ' },
   { value: 'other', label: 'Khác' },
 ];
 
@@ -47,7 +47,7 @@ export default function MyFeedback() {
       setPurchasableProducts(purchRes?.data ?? []);
       setMyReviews(reviewsRes?.data ?? []);
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -62,172 +62,152 @@ export default function MyFeedback() {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
-    try {
-      await reviewsApi.create({
-        product: selectedProduct.variant_id,
-        rating: reviewForm.rating,
-        feedback_type: reviewForm.feedback_type,
-        content: reviewForm.content,
-      });
-      alert('Cảm ơn bạn đã feedback!');
-      setShowReviewModal(false);
-      loadData();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Không thể gửi feedback.';
-      alert(msg);
-    }
+
+    await reviewsApi.create({
+      product: selectedProduct.variant_id,
+      rating: reviewForm.rating,
+      feedback_type: reviewForm.feedback_type,
+      content: reviewForm.content,
+    });
+
+    setShowReviewModal(false);
+    loadData();
   };
 
   if (!user) {
     return (
       <div className="my-feedback-page">
         <div className="empty-state">
-          <h2>Vui lòng đăng nhập để xem đánh giá của bạn</h2>
+          <h2>Vui lòng đăng nhập</h2>
           <Link to="/login" className="btn-primary">Đăng nhập</Link>
         </div>
       </div>
     );
   }
 
-  if (loading) {
-    return <div className="my-feedback-page"><div className="loading">Đang tải...</div></div>;
-  }
+  if (loading) return <div className="my-feedback-page">Đang tải...</div>;
 
   return (
     <div className="my-feedback-page">
+      <div className="page-header">
+        <h1>Đánh giá sản phẩm</h1>
+        <p className="page-desc">Xem và quản lý đánh giá của bạn</p>
+      </div>
 
-      {/* BỎ ICON, chỉ còn chữ */}
-      <h1>Đánh giá sản phẩm đã mua</h1>
-      <p className="page-desc">Đánh giá các sản phẩm bạn đã nhận được để giúp chúng tôi cải thiện dịch vụ.</p>
-
-      {/* Sản phẩm có thể đánh giá */}
+      {/* CHỜ ĐÁNH GIÁ */}
       {purchasableProducts.length > 0 && (
-        <section className="orders-section">
-          <h2>Sản phẩm có thể đánh giá ({purchasableProducts.length})</h2>
-          <p className="section-hint">Các sản phẩm bạn đã mua và nhận hàng thành công (trong vòng 14 ngày)</p>
-          <div className="orders-list">
-            {purchasableProducts.map((item) => (
-              <div key={`${item.order_id}-${item.variant_id}`} className="order-card purchasable">
-                <div className="order-header">
-                  <span className="order-id">Đơn hàng #{item.order_id}</span>
-                  <span className="order-date">{new Date(item.purchased_at).toLocaleDateString('vi-VN')}</span>
-                </div>
-                <div className="order-items">
-                  <div className="order-item">
-                    <div className="item-info">
-                      <h4>{item.product_name}</h4>
-                      <p className="item-variant">Màu: {item.variant_info.color.name} | Size: {item.variant_info.size.name}</p>
-                      <p className="item-price">{parseFloat(item.price).toLocaleString('vi-VN')}đ</p>
-                    </div>
-                    <div className="item-actions">
-                      <span className="days-remaining">Còn {item.days_remaining} ngày để đánh giá</span>
-                      <button className="btn-review" onClick={() => handleOpenReview(item)}>
-                        Viết đánh giá
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        <section className="feedback-section">
+          <h2 className="section-title">Chờ đánh giá ({purchasableProducts.length})</h2>
+          {purchasableProducts.map((item) => (
+            <div key={item.variant_id} className="purchasable-card">
+              <div>
+                <strong>{item.product_name}</strong>
+                <p>{item.variant_info.color.name} - {item.variant_info.size.name}</p>
               </div>
-            ))}
-          </div>
+              <button onClick={() => handleOpenReview(item)} className="btn-review-now">
+                Đánh giá
+              </button>
+            </div>
+          ))}
         </section>
       )}
 
-      {/* NÚT ĐỔI SANG btn-primary ĐỂ ĐỎ */}
-      {purchasableProducts.length === 0 && (
+      {/* EMPTY */}
+      {purchasableProducts.length === 0 && myReviews.length === 0 && (
         <div className="empty-state">
-          <p>Không có sản phẩm nào có thể đánh giá.</p>
-          <Link to="/products" className="btn-primary">Tiếp tục mua sắm</Link>
+          <p>Chưa có sản phẩm nào</p>
+          <Link to="/products" className="btn-primary">Mua ngay</Link>
         </div>
       )}
 
-      {/* ĐÁNH GIÁ ĐÃ GỬI - layout Shopee, không box */}
-      {myReviews.length > 0 && (
-        <section className="orders-section">
-          <h2>Đánh giá của bạn ({myReviews.length})</h2>
-          <div className="review-done-list">
-            {myReviews.map((review) => (
-              <div key={review.id} className="review-done-item">
-                <div className="review-avatar">
-                  {user?.username?.charAt(0).toUpperCase() ?? 'U'}
-                </div>
-                <div className="review-body">
-                  <div className="review-meta">
-                    <span className="review-username">{user?.username}</span>
-                    <span className="review-time">{new Date(review.created_at).toLocaleDateString('vi-VN')}</span>
-                  </div>
-                  <div className="review-stars">
-                    {[1,2,3,4,5].map((s) => (
-                      <span key={s} className={s <= review.rating ? 'filled' : ''}>★</span>
-                    ))}
-                  </div>
-                  {review.content && <p className="review-text">{review.content}</p>}
-                  <div className="review-product-snippet">
-                    <div className="snippet-info">
-                      <span className="snippet-name">{review.product_name}</span>
-                      <span className="snippet-variant">
-                        {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* REVIEW */}
+      {myReviews.map((review) => (
+        <div key={review.id} className="review-card-compact">
+          <div className="review-avatar">
+            {user.username.charAt(0).toUpperCase()}
           </div>
-        </section>
-      )}
 
-      {/* Modal */}
-      {showReviewModal && selectedProduct && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>Viết đánh giá</h3>
-            <div className="modal-product-info">
-              <strong>{selectedProduct.product_name}</strong>
-              <p>Màu: {selectedProduct.variant_info.color.name} | Size: {selectedProduct.variant_info.size.name}</p>
+          <div className="review-main">
+            <div className="review-top">
+              <span className="username">{user.username}</span>
+              <span className="date">
+                {new Date(review.created_at).toLocaleDateString('vi-VN')}
+              </span>
             </div>
+
+            <div className="stars-row">
+              {[1,2,3,4,5].map(s => (
+                <span key={s} className={s <= review.rating ? 'star filled' : 'star'}>★</span>
+              ))}
+            </div>
+
+            {review.content && (
+              <p className="review-text">{review.content}</p>
+            )}
+
+            <div className="product-attached">
+              <div className="product-name-mini">🛍 {review.product_name}</div>
+              <span className="feedback-badge">
+                {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {/* MODAL */}
+      {showReviewModal && selectedProduct && (
+        <div className="modal-overlay" onClick={() => setShowReviewModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Viết đánh giá</h3>
+
+            <div className="modal-product">
+              <strong>{selectedProduct.product_name}</strong>
+              <p>{selectedProduct.variant_info.color.name} - {selectedProduct.variant_info.size.name}</p>
+            </div>
+
             <form onSubmit={handleSubmitReview}>
               <div className="form-group">
-                <label>Đánh giá của bạn:</label>
+                <label>Số sao</label>
                 <div className="star-picker">
-                  {[1,2,3,4,5].map((s) => (
+                  {[1,2,3,4,5].map(s => (
                     <span
                       key={s}
-                      className={s <= reviewForm.rating ? 'selected' : ''}
-                      onClick={() => setReviewForm({ ...reviewForm, rating: s })}
+                      className={s <= reviewForm.rating ? 'active' : ''}
+                      onClick={() => setReviewForm({...reviewForm, rating: s})}
                     >★</span>
                   ))}
                 </div>
               </div>
+
               <div className="form-group">
-                <label>Loại feedback:</label>
+                <label>Loại</label>
                 <select
                   value={reviewForm.feedback_type}
-                  onChange={(e) => setReviewForm({ ...reviewForm, feedback_type: e.target.value })}
+                  onChange={e => setReviewForm({...reviewForm, feedback_type: e.target.value})}
                 >
-                  {FEEDBACK_TYPES.map((t) => (
+                  {FEEDBACK_TYPES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
               </div>
+
               <div className="form-group">
-                <label>Nội dung (tùy chọn):</label>
+                <label>Nội dung</label>
                 <textarea
                   value={reviewForm.content}
-                  onChange={(e) => setReviewForm({ ...reviewForm, content: e.target.value })}
-                  placeholder="Chia sẻ trải nghiệm của bạn..."
-                  rows={4}
+                  onChange={e => setReviewForm({...reviewForm, content: e.target.value})}
                 />
               </div>
-              <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowReviewModal(false)}>Hủy</button>
-                <button type="submit" className="btn-primary">Gửi đánh giá</button>
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowReviewModal(false)} className="btn-cancel">Hủy</button>
+                <button type="submit" className="btn-submit">Gửi</button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }
