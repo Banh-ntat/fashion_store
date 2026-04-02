@@ -60,7 +60,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related("category", "promotion").all()
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]  # Chỉ cần đăng nhập
     pagination_class = ProductPagination
     filterset_fields = ["category", "promotion"]
     search_fields = ["name", "description"]

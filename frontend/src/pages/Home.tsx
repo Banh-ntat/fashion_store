@@ -1,7 +1,9 @@
 import { Link, useSearchParams, Navigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import CategoryCard from '../components/CategoryCard';
-import { mockCategories, mockHotDeals, mockNewArrivals } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { fetchCategories, fetchHotDeals, fetchNewArrivals } from '../api/api';
+import type { Category } from '../types';
 import type { Product } from '../types';
 import '../styles/pages/Home.css';
 
@@ -11,6 +13,18 @@ const ArrowRight = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+const normalize = (p: import('../types').ApiProduct): import('../types').Product => ({
+  id: p.id,
+  name: p.name,
+  description: p.description,
+  price: String(p.price),
+  old_price: p.old_price ?? null,
+  stock: p.stock ?? 0,
+  image: p.image ?? 'https://placehold.co/400x400?text=No+Image',
+  category: p.category,
+  promotion: p.promotion,
+});
+
 export default function Home() {
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('category');
@@ -18,6 +32,31 @@ export default function Home() {
   if (categoryId) {
     return <Navigate to={`/products?category=${categoryId}`} replace />;
   }
+
+  // ── 1. STATE ──
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [hotDeals, setHotDeals]     = useState<Product[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── 2. FETCH ──
+  useEffect(() => {
+    Promise.all([
+      fetchCategories(),
+      fetchHotDeals(),
+      fetchNewArrivals(),
+    ])
+      .then(([cats, deals, arrivals]) => {
+        setCategories(cats);
+        setHotDeals(deals.map(normalize));
+        setNewArrivals(arrivals.map(normalize));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ── 3. LOADING ──
+  if (loading) return <div style={{ padding: '4rem', textAlign: 'center' }}>Đang tải...</div>;
 
   const handleAddToCart = (product: Product) => {
     console.log('Added to cart:', product.name);
@@ -47,7 +86,7 @@ export default function Home() {
               </p>
 
               <div className="heroActions">
-                <Link to="/" className="heroPrimaryBtn">
+                <Link to="/products" className="heroPrimaryBtn">
                   Mua Sắm Ngay <ArrowRight size={13} />
                 </Link>
                 <Link to="/about" className="heroSecondaryBtn">
@@ -99,13 +138,13 @@ export default function Home() {
               <h2 className="sectionTitle">Danh Mục Sản Phẩm</h2>
               <p className="sectionSubtitle">Tìm chính xác những gì bạn đang tìm kiếm</p>
             </div>
-            <Link to="/" className="viewAll">
+            <Link to="/products" className="viewAll">
               Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
           <div className="categoriesGrid">
-            {mockCategories.map((category) => (
+            {categories.map((category) => (
               <CategoryCard key={category.id} category={category} />
             ))}
           </div>
@@ -150,13 +189,13 @@ export default function Home() {
                 Đừng bỏ lỡ những ưu đãi có thời hạn cực kỳ hấp dẫn
               </p>
             </div>
-            <Link to="/" className="viewAll">
+            <Link to="/products?has_promotion=true" className="viewAll">
               Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
           <div className="productGrid">
-            {mockHotDeals.map((product) => (
+            {hotDeals.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -178,13 +217,13 @@ export default function Home() {
                 Những sản phẩm mới nhất vừa được thêm vào bộ sưu tập
               </p>
             </div>
-            <Link to="/" className="viewAll">
+            <Link to="/products?ordering=-id" className="viewAll">
               Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
 
           <div className="productGrid">
-            {mockNewArrivals.map((product) => (
+            {newArrivals.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}

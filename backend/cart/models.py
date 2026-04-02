@@ -18,4 +18,4 @@ class CartItem(models.Model):
     quantity = models.IntegerField(default=1)
 
     def __str__(self):
-        return f"{self.product.name} ({self.quantity})"
+        return f"{self.product.product.name} - {self.product.color.name} - {self.product.size.name} ({self.quantity})"
