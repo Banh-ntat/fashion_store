@@ -51,18 +51,15 @@ export default function Wishlist() {
     <section className="pageSection wishlist-page">
       <div className="sectionContainer">
         <h1 className="wishlistTitle">Sản phẩm yêu thích</h1>
-        <p className="wishlistSubtitle">
-          {ids.length === 0
-            ? 'Chưa có sản phẩm nào trong danh sách yêu thích.'
-            : `${ids.length} sản phẩm`}
-        </p>
 
         {loading ? (
           <div className="loading">Đang tải...</div>
         ) : productList.length === 0 ? (
-          <p className="wishlistEmpty">
-            Danh sách trống. <Link to="/products">Khám phá sản phẩm</Link>
-          </p>
+          <div className="wishlistEmpty">
+              <div className="wishlistEmptyIcon">🛒</div>
+              <p>Danh sách trống.</p>
+              <Link to="/products" className="wishlistEmptyBtn">Khám phá sản phẩm</Link>
+          </div> 
         ) : (
           <div className="wishlistGrid">
             {productList.map((product) => (

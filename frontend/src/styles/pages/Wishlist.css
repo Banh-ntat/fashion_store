@@ -1,7 +1,3 @@
-/* ============================================
-   WISHLIST PAGE
-   ============================================ */
-
 .wishlist-page .sectionContainer {
   max-width: 1280px;
   margin: 0 auto;
@@ -9,7 +5,6 @@
   width: 100%;
 }
 
-/* ── Tiêu đề (gạch dưới đỏ như Giỏ hàng) ── */
 .wishlistTitle {
   font-family: var(--font-display, Georgia, serif);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
@@ -28,7 +23,6 @@
   margin-top: 8px;
 }
 
-/* ── Empty state ── */
 .wishlistEmpty {
   font-size: 1rem;
   color: var(--color-text-muted, #666);
@@ -36,29 +30,47 @@
   text-align: center;
 }
 
-.wishlistEmpty a {
-  color: var(--color-primary, #F55554);
-  font-weight: 500;
+.wishlistEmpty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.wishlistEmptyIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.wishlistEmpty p {
+  font-size: 1rem;
+  color: var(--color-text-muted, #666);
+  margin-bottom: 16px;
+}
+
+.wishlistEmptyBtn {
+  display: inline-block;
+  padding: 10px 24px;
+  background: var(--color-primary, #F55554);
+  color: #fff;
+  border-radius: 6px;
   text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
 }
 
-.wishlistEmpty a:hover {
-  text-decoration: underline;
+.wishlistEmptyBtn:hover {
+  opacity: 0.85;
 }
 
-/* ── Grid ── */
 .wishlistGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 24px;
 }
 
-/* ── Card wrap ── */
 .wishlistCardWrap {
   position: relative;
 }
 
-/* ── Ảnh đồng đều kích thước ── */
 .wishlist-page .productCardImageWrapper {
   display: flex;
   align-items: center;
@@ -75,7 +87,6 @@
   object-fit: cover;
 }
 
-/* ── Remove button ── */
 .wishlistRemove {
   position: absolute;
   top: 8px;
@@ -102,7 +113,6 @@
   color: #fff;
 }
 
-/* ── Loading ── */
 .loading {
   text-align: center;
   padding: 60px 20px;
@@ -110,7 +120,6 @@
   font-size: 0.95rem;
 }
 
-/* ── Responsive ── */
 @media (max-width: 768px) {
   .wishlist-page .sectionContainer {
     padding: 0 16px;
