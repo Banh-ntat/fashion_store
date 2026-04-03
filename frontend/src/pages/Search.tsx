@@ -39,20 +39,6 @@ export default function Search() {
           </div>
         </div>
 
-        <form className="searchForm" onSubmit={handleSubmit}>
-          <input
-            type="search"
-            className="searchInput"
-            placeholder="Tên sản phẩm..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            aria-label="Tìm kiếm"
-          />
-          <button type="submit" className="searchSubmit">
-            Tìm kiếm
-          </button>
-        </form>
-
         {error && <p className="searchFallbackNote">{error}</p>}
 
         {loading ? (
