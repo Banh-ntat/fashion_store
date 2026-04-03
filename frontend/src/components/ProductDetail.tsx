@@ -6,7 +6,6 @@ import { useWishlist } from '../hooks/useWishlist';
 import '../styles/components/ProductDetail.css';
 import type { ProductVariant, Review } from '../types';
 
-/** Ảnh placeholder khi API không trả về image */
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x500?text=San+pham';
 
 const FEEDBACK_TYPES = [
@@ -40,6 +39,15 @@ interface Promotion {
   end_date: string;
 }
 
+type NotifType = 'success' | 'error' | 'info' | 'warning';
+interface Notification {
+  id: number;
+  type: NotifType;
+  message: string;
+}
+
+let _notifId = 0;
+
 function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -56,9 +64,23 @@ function ProductDetail() {
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
+  const [reviewSelectedVariantId, setReviewSelectedVariantId] = useState<number | ''>('');
+  const [purchasableVariants, setPurchasableVariants] = useState<{ variant_id: number }[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // ref cho hàng thumbnail ngang
   const thumbListRef = useRef<HTMLDivElement>(null);
+
+  const notify = (message: string, type: NotifType = 'info', duration = 4000) => {
+    const notif: Notification = { id: ++_notifId, type, message };
+    setNotifications((prev) => [...prev, notif]);
+    if (duration > 0) {
+      setTimeout(() => removeNotif(notif.id), duration);
+    }
+  };
+
+  const removeNotif = (notifId: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,7 +114,6 @@ function ProductDetail() {
     fetchData();
   }, [id]);
 
-  // Set default color/size when product loads
   useEffect(() => {
     if (!product) { setSelectedColor(''); setSelectedSize(''); return; }
     const colorNames = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
@@ -101,7 +122,6 @@ function ProductDetail() {
     setSelectedSize ((prev) => (sizeNames.includes(prev)  ? prev : sizeNames[0]  || ''));
   }, [product]);
 
-  // Set default selected image when product loads
   useEffect(() => {
     if (!product) return;
     const firstImg = product.images?.[0]?.image || product.image || PLACEHOLDER_IMAGE;
@@ -110,23 +130,27 @@ function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
-    if (!user) { alert('Vui lòng đăng nhập để thêm vào giỏ hàng'); return; }
+    if (!user) {
+      notify('Vui lòng đăng nhập để thêm vào giỏ hàng', 'warning');
+      return;
+    }
     const selectedVariant = product.variants?.find(
       (v) => v.size.name === selectedSize && v.color.name === selectedColor
     );
     if (product.variants?.length && !selectedVariant) {
-      alert('Vui lòng chọn size và màu sắc.'); return;
+      notify('Vui lòng chọn size và màu sắc.', 'warning');
+      return;
     }
     try {
       await cart.addItem({
         quantity,
         ...(selectedVariant ? { product_variant_id: selectedVariant.id } : { product_id: product.id }),
       });
-      alert('Đã thêm vào giỏ hàng!');
+      notify('Đã thêm vào giỏ hàng!', 'success');
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) alert('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
-      else alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+      if (status === 401) notify('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.', 'error');
+      else notify('Không thể thêm vào giỏ hàng. Vui lòng thử lại.', 'error');
     }
   };
 
@@ -135,37 +159,46 @@ function ProductDetail() {
     return (priceNum - (priceNum * discountPercent) / 100).toFixed(2);
   };
 
-  const handleOpenReview = async (variantId: number) => {
-    if (!user) { alert('Vui lòng đăng nhập để đánh giá sản phẩm'); return; }
+  const handleOpenReview = async () => {
+    if (!user) {
+      notify('Vui lòng đăng nhập để đánh giá sản phẩm', 'warning');
+      return;
+    }
     try {
       const res = await reviewsApi.getPurchasable();
       const purchasable = (res?.data ?? []) as { variant_id: number }[];
-      const canReview = purchasable.some((p) => p.variant_id === variantId);
-      if (canReview) {
-        setShowReviewModal(true);
-        setReviewForm({ rating: 5, feedback_type: 'quality', content: '' });
-      } else {
-        alert('Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công.');
+      setPurchasableVariants(purchasable);
+
+      const productVariantIds = new Set(product?.variants?.map((v) => v.id) ?? []);
+      const eligible = purchasable.filter((p) => productVariantIds.has(p.variant_id));
+
+      if (eligible.length === 0) {
+        notify('Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công.', 'warning');
+        return;
       }
+
+      setReviewSelectedVariantId(eligible[0].variant_id);
+      setShowReviewModal(true);
+      setReviewForm({ rating: 5, feedback_type: 'quality', content: '' });
     } catch {
-      alert('Không thể tải thông tin. Vui lòng thử lại.');
+      notify('Không thể tải thông tin. Vui lòng thử lại.', 'error');
     }
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedVariant = product?.variants?.find(
-      (v) => v.size.name === selectedSize && v.color.name === selectedColor
-    );
-    if (!selectedVariant) { alert('Vui lòng chọn size và màu sắc trước khi đánh giá.'); return; }
+    if (!reviewSelectedVariantId) {
+      notify('Vui lòng chọn phân loại sản phẩm muốn đánh giá.', 'warning');
+      return;
+    }
     try {
       await reviewsApi.create({
-        product: selectedVariant.id,
+        product: reviewSelectedVariantId,
         rating: reviewForm.rating,
         feedback_type: reviewForm.feedback_type,
         content: reviewForm.content,
       });
-      alert('Cảm ơn bạn đã đánh giá!');
+      notify('Cảm ơn bạn đã đánh giá!', 'success');
       setShowReviewModal(false);
       const reviewsRes = await reviewsApi.getByProduct(Number(id));
       setReviewsList((reviewsRes?.data ?? []) as Review[]);
@@ -173,11 +206,10 @@ function ProductDetail() {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
         'Không thể gửi đánh giá.';
-      alert(msg);
+      notify(msg, 'error');
     }
   };
 
-  // ── Scroll thumbnail ngang ──────────────────────────────────────
   const scrollThumbs = (dir: 'left' | 'right') => {
     if (!thumbListRef.current) return;
     thumbListRef.current.scrollBy({ left: dir === 'right' ? 200 : -200, behavior: 'smooth' });
@@ -201,7 +233,6 @@ function ProductDetail() {
   const sizes  = product.variants ? [...new Set(product.variants.map((v) => v.size.name))]  : ['M'];
   const colors = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
 
-  // Danh sách ảnh: ưu tiên product.images (array object), fallback về product.image đơn
   const allImages: { id: number | string; image: string }[] =
     product.images && product.images.length > 0
       ? product.images
@@ -216,12 +247,47 @@ function ProductDetail() {
   );
   const variantStock = selectedVariant?.stock ?? product.stock ?? 0;
 
+  const totalStock = product.variants
+    ? product.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
+    : (product.stock ?? 0);
+
+  const productVariantIds = new Set(product.variants?.map((v) => v.id) ?? []);
+  const eligiblePurchasableVariants = purchasableVariants.filter((p) =>
+    productVariantIds.has(p.variant_id)
+  );
+  const reviewVariantOptions = product.variants?.filter((v) =>
+    eligiblePurchasableVariants.some((p) => p.variant_id === v.id)
+  ) ?? [];
+
   const showLoginNotice = !user;
 
   return (
     <div className="product-detail">
 
-      {/* Active Promotions Banner */}
+      {notifications.length > 0 && (
+        <div className="notification-stack">
+          {notifications.map((n) => (
+            <div key={n.id} className={`notification notification--${n.type}`}>
+              <span className="notification__icon">
+                {n.type === 'success' && '✓'}
+                {n.type === 'error'   && '✕'}
+                {n.type === 'warning' && '!'}
+                {n.type === 'info'    && 'i'}
+              </span>
+              <span className="notification__message">{n.message}</span>
+              <button
+                type="button"
+                className="notification__close"
+                onClick={() => removeNotif(n.id)}
+                aria-label="Đóng thông báo"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {activePromotions.length > 0 && (
         <div className="promotions-banner">
           <span className="promotions-banner__label">Khuyến mãi đang diễn ra</span>
@@ -237,10 +303,7 @@ function ProductDetail() {
 
       <div className="product-main">
 
-        {/* ── Gallery: ảnh chính trên + thumbnail ngang bên dưới ── */}
         <div className="product-gallery">
-
-          {/* Ảnh chính */}
           <div className="product-image-main">
             <img
               src={selectedImage || allImages[0]?.image || PLACEHOLDER_IMAGE}
@@ -260,7 +323,6 @@ function ProductDetail() {
             </button>
           </div>
 
-          {/* Hàng thumbnail ngang bên dưới — chỉ hiện khi có nhiều hơn 1 ảnh */}
           {hasThumbnails && (
             <div className="thumb-row-wrapper">
               <button
@@ -271,7 +333,6 @@ function ProductDetail() {
               >
                 &#8249;
               </button>
-
               <div className="thumb-list" ref={thumbListRef}>
                 {allImages.map((img) => (
                   <div
@@ -285,7 +346,6 @@ function ProductDetail() {
                   </div>
                 ))}
               </div>
-
               <button
                 className="thumb-arrow thumb-arrow--right"
                 type="button"
@@ -298,7 +358,6 @@ function ProductDetail() {
           )}
         </div>
 
-        {/* ── Info Section ── */}
         <div className="product-info-section">
 
           <nav className="breadcrumb" aria-label="breadcrumb">
@@ -311,7 +370,6 @@ function ProductDetail() {
 
           <h1>{product.name}</h1>
 
-          {/* Rating */}
           <div className="product-rating">
             <div className="rating-stars">
               {[1,2,3,4,5].map((star) => (
@@ -325,7 +383,6 @@ function ProductDetail() {
             </span>
           </div>
 
-          {/* Price */}
           <div className="product-price">
             {product.promotion ? (
               <>
@@ -344,12 +401,71 @@ function ProductDetail() {
             )}
           </div>
 
-          {/* Description */}
           <div className="product-description">
             <p>{product.description}</p>
           </div>
 
-          {/* Options */}
+          <div className="variant-summary-card">
+            {product.variants && product.variants.length > 0 ? (
+              <>
+                <div className="variant-summary-stats">
+                  <div className="variant-summary-stat">
+                    <span className="variant-summary-value">{colors.length}</span>
+                    <span className="variant-summary-label">màu sắc</span>
+                  </div>
+                  <div className="variant-summary-divider" />
+                  <div className="variant-summary-stat">
+                    <span className="variant-summary-value">{sizes.length}</span>
+                    <span className="variant-summary-label">kích thước</span>
+                  </div>
+                  <div className="variant-summary-divider" />
+                  <div className="variant-summary-stat">
+                    <span className={`variant-summary-value${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
+                      {totalStock === 0 ? 'Hết hàng' : totalStock}
+                    </span>
+                    <span className="variant-summary-label">
+                      {totalStock > 0 ? 'sản phẩm' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedVariant && (
+                  <div className="variant-selected-detail">
+                    <span className="variant-selected-label">Đang chọn:</span>
+                    <span className="variant-selected-info">
+                      <span
+                        className="variant-color-dot"
+                        style={{ backgroundColor: selectedVariant.color.code || '#888' }}
+                      />
+                      {selectedVariant.color.name} / {selectedVariant.size.name}
+                    </span>
+                    <span className={`variant-selected-stock${variantStock === 0 ? ' out' : variantStock <= 5 ? ' low' : ''}`}>
+                      {variantStock === 0
+                        ? '· Hết hàng'
+                        : variantStock <= 5
+                          ? `· Còn ${variantStock}`
+                          : `· ${variantStock} cái`}
+                    </span>
+                    {selectedVariant.sku && (
+                      <span className="variant-selected-sku">SKU: {selectedVariant.sku}</span>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="variant-summary-stats">
+                <div className="variant-summary-stat">
+                  <span className={`variant-summary-value${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
+                    {totalStock === 0 ? 'Hết hàng' : totalStock}
+                  </span>
+                  <span className="variant-summary-label">
+                    {totalStock > 0 ? 'sản phẩm có sẵn' : ''}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="product-options">
 
             {colors.length > 0 && (
@@ -362,14 +478,17 @@ function ProductDetail() {
                     const variant = product.variants?.find((v) => v.color.name === color);
                     const code = variant?.color.code || '#888';
                     const isWhite = ['#ffffff','#fff','white'].includes(code.toLowerCase());
+                    const hasStock = product.variants?.some(
+                      (v) => v.color.name === color && (v.stock ?? 0) > 0
+                    );
                     return (
                       <button
                         key={color}
                         type="button"
-                        className={`color-btn${selectedColor === color ? ' selected' : ''}${isWhite ? ' white' : ''}`}
+                        className={`color-btn${selectedColor === color ? ' selected' : ''}${isWhite ? ' white' : ''}${!hasStock ? ' out-of-stock' : ''}`}
                         onClick={() => setSelectedColor(color)}
                         style={{ backgroundColor: code }}
-                        title={color}
+                        title={`${color}${!hasStock ? ' (Hết hàng)' : ''}`}
                         aria-label={color}
                       />
                     );
@@ -381,16 +500,23 @@ function ProductDetail() {
             <div className="option-group size-selection">
               <label>Kích thước:</label>
               <div className="size-buttons">
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={`size-btn${selectedSize === size ? ' selected' : ''}`}
-                    onClick={() => setSelectedSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {sizes.map((size) => {
+                  const variantForSize = product.variants?.find(
+                    (v) => v.size.name === size && v.color.name === selectedColor
+                  );
+                  const sizeHasStock = variantForSize ? (variantForSize.stock ?? 0) > 0 : true;
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      className={`size-btn${selectedSize === size ? ' selected' : ''}${!sizeHasStock ? ' out-of-stock' : ''}`}
+                      onClick={() => setSelectedSize(size)}
+                      title={!sizeHasStock ? `${size} (Hết hàng)` : size}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -400,14 +526,23 @@ function ProductDetail() {
                 <div className="quantity-controls">
                   <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
                   <span>{quantity}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min(variantStock, quantity + 1))}>+</button>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.min(variantStock, quantity + 1))}
+                    disabled={variantStock === 0}
+                  >+</button>
                 </div>
-                <span className="stock-info">{variantStock} sản phẩm có sẵn</span>
+                <span className={`stock-info${variantStock === 0 ? ' out' : variantStock <= 5 ? ' low' : ''}`}>
+                  {variantStock === 0
+                    ? 'Hết hàng'
+                    : variantStock <= 5
+                      ? `Chỉ còn ${variantStock} sản phẩm`
+                      : `${variantStock} sản phẩm có sẵn`}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="product-actions">
             <button
               className="add-to-cart-btn"
@@ -426,7 +561,6 @@ function ProductDetail() {
             </button>
           </div>
 
-          {/* Trust Badges */}
           <div className="product-trust-badges">
             <div className="trust-badge">
               <div className="trust-badge-text">
@@ -447,30 +581,14 @@ function ProductDetail() {
               </div>
             </div>
           </div>
-
-          {/* Meta */}
-          <div className="product-meta">
-            <div className="meta-item">
-              <span className="meta-label">Danh mục:</span>
-              <Link to={`/?category=${product.category.id}`}>{product.category.name}</Link>
-            </div>
-            {product.promotion && (
-              <div className="meta-item">
-                <span className="meta-label">Khuyến mãi:</span>
-                <span>{product.promotion.name}</span>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* ── Reviews Section ── */}
       <section className="product-reviews">
         <div className="reviews-header">
           <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>
         </div>
 
-        {/* Rating summary */}
         {reviewsList.length > 0 && (
           <div className="reviews-summary">
             <span className="avg-score">{averageRating}</span>
@@ -485,7 +603,6 @@ function ProductDetail() {
           </div>
         )}
 
-        {/* Review list */}
         {reviewsList.length > 0 ? (
           <div className="reviews-list">
             {reviewsList.map((review) => (
@@ -522,13 +639,12 @@ function ProductDetail() {
           <p className="no-reviews">Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!</p>
         )}
 
-        {/* Review action area */}
         <div className="review-action-area">
-          {user && selectedVariant && (
+          {user && (
             <button
               className="btn-review-product"
               type="button"
-              onClick={() => handleOpenReview(selectedVariant.id)}
+              onClick={handleOpenReview}
             >
               Viết đánh giá
             </button>
@@ -542,7 +658,6 @@ function ProductDetail() {
         </div>
       </section>
 
-      {/* ── Related Products ── */}
       {relatedProducts.length > 0 && (
         <section className="related-products">
           <h2>Sản phẩm liên quan</h2>
@@ -574,7 +689,6 @@ function ProductDetail() {
         </section>
       )}
 
-      {/* ── Review Modal ── */}
       {showReviewModal && (
         <div
           className="modal-overlay"
@@ -593,14 +707,39 @@ function ProductDetail() {
               </button>
             </div>
 
-            {selectedVariant && (
-              <div className="modal-product-info">
-                <strong>{product?.name}</strong>
-                <p>Màu: {selectedVariant.color.name} &nbsp;&middot;&nbsp; Size: {selectedVariant.size.name}</p>
-              </div>
-            )}
+            <div className="modal-product-info">
+              <strong>{product?.name}</strong>
+            </div>
 
             <form onSubmit={handleSubmitReview}>
+
+              {reviewVariantOptions.length > 1 && (
+                <div className="form-group">
+                  <label>Phân loại đã mua</label>
+                  <select
+                    value={reviewSelectedVariantId}
+                    onChange={(e) => setReviewSelectedVariantId(Number(e.target.value))}
+                  >
+                    {reviewVariantOptions.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.color.name} / {v.size.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {reviewVariantOptions.length === 1 && (
+                <div className="modal-variant-single">
+                  <span className="modal-variant-label">Phân loại:</span>
+                  <span
+                    className="variant-color-dot"
+                    style={{ backgroundColor: reviewVariantOptions[0].color.code || '#888' }}
+                  />
+                  <span>{reviewVariantOptions[0].color.name} / {reviewVariantOptions[0].size.name}</span>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Đánh giá của bạn</label>
                 <div className="star-picker">
