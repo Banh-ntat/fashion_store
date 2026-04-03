@@ -404,68 +404,6 @@ function ProductDetail() {
           <div className="product-description">
             <p>{product.description}</p>
           </div>
-
-          <div className="variant-summary-card">
-            {product.variants && product.variants.length > 0 ? (
-              <>
-                <div className="variant-summary-stats">
-                  <div className="variant-summary-stat">
-                    <span className="variant-summary-value">{colors.length}</span>
-                    <span className="variant-summary-label">màu sắc</span>
-                  </div>
-                  <div className="variant-summary-divider" />
-                  <div className="variant-summary-stat">
-                    <span className="variant-summary-value">{sizes.length}</span>
-                    <span className="variant-summary-label">kích thước</span>
-                  </div>
-                  <div className="variant-summary-divider" />
-                  <div className="variant-summary-stat">
-                    <span className={`variant-summary-value${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
-                      {totalStock === 0 ? 'Hết hàng' : totalStock}
-                    </span>
-                    <span className="variant-summary-label">
-                      {totalStock > 0 ? 'sản phẩm' : ''}
-                    </span>
-                  </div>
-                </div>
-
-                {selectedVariant && (
-                  <div className="variant-selected-detail">
-                    <span className="variant-selected-label">Đang chọn:</span>
-                    <span className="variant-selected-info">
-                      <span
-                        className="variant-color-dot"
-                        style={{ backgroundColor: selectedVariant.color.code || '#888' }}
-                      />
-                      {selectedVariant.color.name} / {selectedVariant.size.name}
-                    </span>
-                    <span className={`variant-selected-stock${variantStock === 0 ? ' out' : variantStock <= 5 ? ' low' : ''}`}>
-                      {variantStock === 0
-                        ? '· Hết hàng'
-                        : variantStock <= 5
-                          ? `· Còn ${variantStock}`
-                          : `· ${variantStock} cái`}
-                    </span>
-                    {selectedVariant.sku && (
-                      <span className="variant-selected-sku">SKU: {selectedVariant.sku}</span>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="variant-summary-stats">
-                <div className="variant-summary-stat">
-                  <span className={`variant-summary-value${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
-                    {totalStock === 0 ? 'Hết hàng' : totalStock}
-                  </span>
-                  <span className="variant-summary-label">
-                    {totalStock > 0 ? 'sản phẩm có sẵn' : ''}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="product-options">
 
             {colors.length > 0 && (
@@ -583,6 +521,106 @@ function ProductDetail() {
           </div>
         </div>
       </div>
+
+      <section className="product-detail-info">
+        <div className="pdi-header">
+          <h2>Chi tiết sản phẩm</h2>
+        </div>
+        <div className="pdi-body">
+          <div className="pdi-table">
+            <div className="pdi-row">
+              <span className="pdi-label">Danh mục</span>
+              <span className="pdi-value">
+                <Link to="/products" className="pdi-category-link">{product.category.name}</Link>
+              </span>
+            </div>
+            {product.variants && product.variants.length > 0 && (
+              <>
+                <div className="pdi-row">
+                  <span className="pdi-label">Màu sắc có sẵn</span>
+                  <span className="pdi-value pdi-colors">
+                    {[...new Set(product.variants.map((v) => v.color.name))].map((colorName) => {
+                      const variant = product.variants?.find((v) => v.color.name === colorName);
+                      return (
+                        <span key={colorName} className="pdi-color-chip">
+                          <span
+                            className="pdi-color-dot"
+                            style={{ backgroundColor: variant?.color.code || '#888' }}
+                          />
+                          {colorName}
+                        </span>
+                      );
+                    })}
+                  </span>
+                </div>
+                <div className="pdi-row">
+                  <span className="pdi-label">Kích thước</span>
+                  <span className="pdi-value pdi-sizes">
+                    {[...new Set(product.variants.map((v) => v.size.name))].map((sizeName) => (
+                      <span key={sizeName} className="pdi-size-chip">{sizeName}</span>
+                    ))}
+                  </span>
+                </div>
+                <div className="pdi-row">
+                  <span className="pdi-label">Tổng tồn kho</span>
+                  <span className={`pdi-value pdi-stock${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
+                    {totalStock === 0 ? 'Hết hàng' : `${totalStock} sản phẩm`}
+                  </span>
+                </div>
+              </>
+            )}
+            {product.promotion && (
+              <>
+                <div className="pdi-row">
+                  <span className="pdi-label">Khuyến mãi</span>
+                  <span className="pdi-value">
+                    <span className="pdi-promo-badge">{product.promotion.name}</span>
+                  </span>
+                </div>
+                <div className="pdi-row">
+                  <span className="pdi-label">Giảm giá</span>
+                  <span className="pdi-value pdi-discount">−{product.promotion.discount_percent}%</span>
+                </div>
+                <div className="pdi-row">
+                  <span className="pdi-label">Giá gốc</span>
+                  <span className="pdi-value pdi-original-price">{Number(product.price).toLocaleString('vi-VN')}đ</span>
+                </div>
+                <div className="pdi-row">
+                  <span className="pdi-label">Giá sau giảm</span>
+                  <span className="pdi-value pdi-final-price">
+                    {Number(calculateDiscountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
+                  </span>
+                </div>
+              </>
+            )}
+            {!product.promotion && (
+              <div className="pdi-row">
+                <span className="pdi-label">Giá bán</span>
+                <span className="pdi-value pdi-final-price">{Number(product.price).toLocaleString('vi-VN')}đ</span>
+              </div>
+            )}
+            {reviewsList.length > 0 && (
+              <div className="pdi-row">
+                <span className="pdi-label">Đánh giá trung bình</span>
+                <span className="pdi-value pdi-rating-inline">
+                  <span className="pdi-stars">
+                    {[1,2,3,4,5].map((s) => (
+                      <span key={s} className={s <= Math.round(Number(averageRating)) ? 'filled' : ''}>★</span>
+                    ))}
+                  </span>
+                  <span className="pdi-rating-text">{averageRating} / 5 ({reviewsList.length} đánh giá)</span>
+                </span>
+              </div>
+            )}
+            {product.description && (
+              <div className="pdi-row pdi-row--description">
+                <span className="pdi-label">Mô tả</span>
+                <span className="pdi-value pdi-desc-text">{product.description}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="product-reviews">
         <div className="reviews-header">

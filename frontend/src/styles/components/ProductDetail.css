@@ -727,6 +727,242 @@
   color: var(--pd-text-light);
 }
 
+/* ─── Product Detail Info Section ─── */
+
+.product-detail-info {
+  border-top: 1px solid var(--pd-border);
+  padding-top: 48px;
+  margin-bottom: 48px;
+}
+
+.pdi-header {
+  margin-bottom: 20px;
+}
+
+.pdi-header h2 {
+  font-size: 1.1rem;
+  color: var(--pd-text);
+  font-weight: 700;
+  margin: 0;
+  display: inline-block;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--pd-accent);
+}
+
+.pdi-body {
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius-sm);
+  overflow: hidden;
+}
+
+.pdi-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.pdi-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  border-bottom: 1px solid var(--pd-border);
+  min-height: 46px;
+  transition: background var(--pd-transition);
+}
+
+.pdi-row:last-child {
+  border-bottom: none;
+}
+
+.pdi-row:hover {
+  background: var(--pd-bg-surface);
+}
+
+.pdi-row--description {
+  align-items: flex-start;
+}
+
+.pdi-label {
+  padding: 12px 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pd-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--pd-bg-surface);
+  border-right: 1px solid var(--pd-border);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.pdi-value {
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  color: var(--pd-text);
+  line-height: 1.5;
+}
+
+.pdi-category-link {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity var(--pd-transition);
+}
+
+.pdi-category-link:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+.pdi-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pdi-color-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 6px;
+  background: var(--pd-bg-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  color: var(--pd-text);
+  font-weight: 500;
+}
+
+.pdi-color-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.pdi-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pdi-size-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 3px 9px;
+  background: var(--pd-bg-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--pd-text);
+}
+
+.pdi-stock {
+  font-weight: 600;
+  color: #000;
+}
+
+.pdi-stock.low {
+  color: #000;
+}
+
+.pdi-stock.out {
+  color: #000;
+}
+
+.pdi-promo-badge {
+  display: inline-block;
+  background: var(--pd-accent);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pdi-discount {
+  font-weight: 700;
+  color: var(--pd-accent);
+  font-size: 0.95rem;
+}
+
+.pdi-original-price {
+  color: #aaa;
+  text-decoration: line-through;
+  font-size: 0.875rem;
+}
+
+.pdi-final-price {
+  font-weight: 700;
+  color: var(--pd-accent);
+  font-size: 1rem;
+}
+
+.pdi-rating-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdi-stars {
+  display: flex;
+  gap: 1px;
+  font-size: 0.85rem;
+  color: #ddd;
+}
+
+.pdi-stars .filled {
+  color: #e8a020;
+}
+
+.pdi-rating-text {
+  font-size: 0.82rem;
+  color: var(--pd-text-secondary);
+}
+
+.pdi-desc-text {
+  color: var(--pd-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 600px) {
+  .pdi-row {
+    grid-template-columns: 130px 1fr;
+  }
+
+  .pdi-label {
+    font-size: 0.72rem;
+    padding: 10px 12px;
+  }
+
+  .pdi-value {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .pdi-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pdi-label {
+    border-right: none;
+    border-bottom: 1px solid var(--pd-border);
+    align-self: auto;
+  }
+}
+
+/* ─── Reviews ─── */
+
 .product-reviews {
   border-top: 1px solid var(--pd-border);
   padding-top: 48px;
