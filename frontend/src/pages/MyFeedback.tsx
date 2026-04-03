@@ -115,7 +115,8 @@ export default function MyFeedback() {
       {/* EMPTY */}
       {purchasableProducts.length === 0 && myReviews.length === 0 && (
         <div className="empty-state">
-          <p>Chưa có sản phẩm nào</p>
+        <div className="empty-icon">🛒</div>
+          <p>Bạn chưa có sản phẩm nào để đánh giá</p>
           <Link to="/products" className="btn-primary">Mua ngay</Link>
         </div>
       )}

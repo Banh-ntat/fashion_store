@@ -19,7 +19,6 @@
   margin-bottom: 20px;
 }
 
-/* SECTION */
 .feedback-section {
   margin-bottom: 24px;
 }
@@ -30,23 +29,42 @@
   margin-bottom: 10px;
 }
 
-/* EMPTY */
 .empty-state {
   text-align: center;
-  padding: 30px 0;
+  padding: 60px 20px;
 }
 
-.btn-primary {
+.empty-state p {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.empty-state .btn-primary {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 10px 22px;
+  border-radius: 8px;
   background: #F55554;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 6px;
-  text-decoration: none;
+  color: #fff;
+  font-weight: 600;
+  transition: all 0.2s;
 }
 
-/* =========================
-   REVIEW CARD (GỌN + RÕ)
-========================= */
+.empty-state .btn-primary:hover {
+  opacity: 0.85;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.empty-icon:hover {
+  transform: scale(1.1);
+}
 .review-card-compact {
   display: flex;
   gap: 12px;
@@ -63,7 +81,6 @@
   border-color: #ddd;
 }
 
-/* AVATAR */
 .review-avatar {
   width: 32px;
   height: 32px;
@@ -77,7 +94,6 @@
   font-weight: bold;
 }
 
-/* MAIN */
 .review-main {
   flex: 1;
 }
@@ -96,7 +112,6 @@
   color: #999;
 }
 
-/* STARS */
 .stars-row {
   font-size: 0.85rem;
   color: #ffc107;
@@ -111,7 +126,6 @@
   color: #ffc107;
 }
 
-/* TEXT */
 .review-text {
   font-size: 0.85rem;
   color: #444;
@@ -119,7 +133,6 @@
   line-height: 1.4;
 }
 
-/* PRODUCT ATTACHED */
 .product-attached {
   margin-top: 6px;
   padding: 6px 10px;
@@ -134,7 +147,6 @@
   color: #222;
 }
 
-/* BADGE */
 .feedback-badge {
   display: inline-block;
   font-size: 0.7rem;
@@ -145,9 +157,6 @@
   margin-top: 2px;
 }
 
-/* =========================
-   PURCHASABLE
-========================= */
 .purchasable-card {
   display: flex;
   justify-content: space-between;
@@ -167,9 +176,6 @@
   cursor: pointer;
 }
 
-/* =========================
-   MODAL
-========================= */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -204,7 +210,6 @@ textarea, select {
   border: 1px solid #ddd;
 }
 
-/* STAR PICKER */
 .star-picker span {
   font-size: 1.6rem;
   cursor: pointer;
@@ -215,7 +220,6 @@ textarea, select {
   color: #ffc107;
 }
 
-/* ACTIONS */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
