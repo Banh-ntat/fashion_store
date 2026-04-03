@@ -35,8 +35,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     setIsAdding(true);
     try {
       await cart.addItem({ product_id: product.id, quantity: 1 });
-    } catch {
-      // silent — user may not be logged in
+      alert('Đã thêm vào giỏ hàng!');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) alert('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
+      else alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
     } finally {
       setIsAdding(false);
     }

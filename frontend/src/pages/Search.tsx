@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
-import type { Product } from '../types';
 import '../styles/pages/Search.css';
 
 export default function Search() {
@@ -26,10 +25,6 @@ export default function Search() {
     } else {
       setSearchParams({});
     }
-  };
-
-  const handleAddToCart = (product: Product) => {
-    console.log('Đã thêm vào giỏ:', product.name);
   };
 
   return (
@@ -71,7 +66,6 @@ export default function Search() {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>

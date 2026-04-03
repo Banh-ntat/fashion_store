@@ -2,7 +2,6 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import type { Product } from '../types';
 import '../styles/pages/Products.css';
 
 export default function Products() {
@@ -19,10 +18,6 @@ export default function Products() {
   // Split title: if category selected, show italic category name; else plain
   const titleMain = currentCategory ? 'Danh mục' : 'Tất cả';
   const titleItalic = currentCategory ? currentCategory.name : 'sản phẩm';
-
-  const handleAddToCart = (product: Product) => {
-    console.log('Đã thêm vào giỏ:', product.name);
-  };
 
   return (
     <section className="products-page">
@@ -96,7 +91,6 @@ export default function Products() {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      onAddToCart={handleAddToCart}
                     />
                   ))}
                 </div>

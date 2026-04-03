@@ -51,10 +51,6 @@ export default function Home() {
   // ── 3. LOADING ──
   if (loading) return <div style={{ padding: '4rem', textAlign: 'center' }}>Đang tải...</div>;
 
-  const handleAddToCart = (product: Product) => {
-    console.log('Added to cart:', product.name);
-  };
-
   return (
     <>
       {/* ── HERO ── */}
@@ -192,7 +188,6 @@ export default function Home() {
               <ProductCard
                 key={product.id}
                 product={product}
-                onAddToCart={handleAddToCart}
               />
             ))}
           </div>
@@ -220,7 +215,6 @@ export default function Home() {
               <ProductCard
                 key={product.id}
                 product={product}
-                onAddToCart={handleAddToCart}
               />
             ))}
           </div>

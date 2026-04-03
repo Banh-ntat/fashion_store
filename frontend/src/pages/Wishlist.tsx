@@ -43,10 +43,6 @@ export default function Wishlist() {
     fetchProducts();
   }, [fetchProducts]);
 
-  const handleAddToCart = (product: Product) => {
-    console.log('Đã thêm vào giỏ:', product.name);
-  };
-
   return (
     <section className="pageSection wishlist-page">
       <div className="sectionContainer">
@@ -75,7 +71,7 @@ export default function Wishlist() {
                 >
                   ✕
                 </button>
-                <ProductCard product={product} onAddToCart={handleAddToCart} />
+                <ProductCard product={product} />
               </div>
             ))}
           </div>
