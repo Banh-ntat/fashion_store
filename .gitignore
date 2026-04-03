@@ -1,46 +1,48 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
 env/
-.venv/
 venv/
+.venv/
 ENV/
+
 *.egg-info/
 dist/
 build/
 
-# Django
 *.log
-ecommerce_db
-local_settings.py
 db.sqlite3
 db.sqlite3-journal
+local_settings.py
+
 /media
 /staticfiles
 
-# IDE
+.env
+.env.*
+!.env.example
+
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+build/
+dist/
+
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# OS
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
 .DS_Store
 Thumbs.db
-
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Environment
-.env
-.env.local
-.venv/
-backend/.venv/
-frontend/.venv/
-node_modules/

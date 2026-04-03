@@ -1,17 +1,4 @@
-/* ============================================
-   PRODUCT DETAIL
-   Sử dụng design tokens từ globals.css
-   ============================================ */
-
-/* Local aliases chỉ cho các giá trị KHÔNG có trong globals */
 .product-detail {
-  --pd-accent:        #c9a962;
-  --pd-accent-hover:  #b8963f;
-  --pd-success:       #43a047;
-  --pd-radius:        16px;
-  --pd-radius-sm:     8px;
-
-  /* Ánh xạ sang globals */
   --pd-primary:       var(--color-dark);        /* #1E1E1E */
   --pd-danger:        var(--color-primary);     /* #F55554 */
   --pd-gray-light:    var(--color-bg);          /* #F8F8F8 */
