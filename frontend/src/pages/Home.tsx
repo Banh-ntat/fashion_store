@@ -1,4 +1,4 @@
-import { Link, useSearchParams, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import CategoryCard from '../components/CategoryCard';
 import { useState, useEffect } from 'react';
@@ -26,14 +26,7 @@ const normalize = (p: import('../types').ApiProduct): import('../types').Product
 });
 
 export default function Home() {
-  const [searchParams] = useSearchParams();
-  const categoryId = searchParams.get('category');
-
-  if (categoryId) {
-    return <Navigate to={`/products?category=${categoryId}`} replace />;
-  }
-
-  // ── 1. STATE ──
+    // ── 1. STATE ──
   const [categories, setCategories] = useState<Category[]>([]);
   const [hotDeals, setHotDeals]     = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);

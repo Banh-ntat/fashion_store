@@ -8,7 +8,7 @@ interface CategoryCardProps {
 
 export default function CategoryCard({ category }: CategoryCardProps) {
   return (
-    <Link to={`/?category=${category.id}`} className="categoryCard">
+    <Link to={`/products?category=${category.id}`} className="categoryCard">
       <div className="categoryCardImageWrapper">
         <img src={category.image} alt={category.name} className="categoryCardImage" />
         <div className="categoryCardOverlay">

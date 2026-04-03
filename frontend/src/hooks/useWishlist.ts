@@ -1,29 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const STORAGE_KEY = 'fashion_store_wishlist';
+const getKey = (userId: number | string) => `fashion_store_wishlist_${userId}`;
 
-function getStoredIds(): number[] {
+function getStoredIds(userId: number | string): number[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getKey(userId));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((x): x is number => typeof x === 'number') : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is number => typeof x === 'number')
+      : [];
   } catch {
     return [];
   }
 }
 
-function setStoredIds(ids: number[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-}
-
-/** Hook quản lý wishlist (localStorage). Có thể thay bằng API sau. */
 export function useWishlist() {
-  const [ids, setIds] = useState<number[]>(() => getStoredIds());
+  const { user } = useAuth();
 
+  const [ids, setIds] = useState<number[]>(() =>
+    user?.id != null ? getStoredIds(user.id) : []
+  );
+
+  // Khi đổi tài khoản → load đúng wishlist của user đó
   useEffect(() => {
-    setStoredIds(ids);
-  }, [ids]);
+    setIds(user?.id != null ? getStoredIds(user.id) : []);
+  }, [user?.id]);
+
+  // Lưu vào localStorage mỗi khi ids thay đổi
+  useEffect(() => {
+    if (user?.id == null) return;
+    localStorage.setItem(getKey(user.id), JSON.stringify(ids));
+  }, [ids, user?.id]);
 
   const add = useCallback((productId: number) => {
     setIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
@@ -35,7 +44,9 @@ export function useWishlist() {
 
   const toggle = useCallback((productId: number) => {
     setIds((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
     );
   }, []);
 

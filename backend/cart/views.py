@@ -1,5 +1,5 @@
-from rest_framework import permissions, viewsets
-
+from rest_framework import permissions, viewsets, status
+from rest_framework.response import Response
 from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
 
@@ -22,6 +22,27 @@ class CartItemViewSet(viewsets.ModelViewSet):
             "cart", "product", "product__product", "product__product__category", "product__color", "product__size"
         )
 
-    def perform_create(self, serializer):
-        cart, _ = Cart.objects.get_or_create(user=self.request.user)
-        serializer.save(cart=cart)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        variant = serializer.validated_data.get("product")
+        quantity = serializer.validated_data.get("quantity", 1)
+
+        if variant:
+            item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                product=variant,
+                defaults={"quantity": quantity},
+            )
+            if not created:
+                item.quantity += quantity
+                item.save()
+        else:
+            item = serializer.save(cart=cart)
+
+        return Response(
+            CartItemSerializer(item, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
