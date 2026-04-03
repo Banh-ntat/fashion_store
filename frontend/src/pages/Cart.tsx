@@ -106,22 +106,42 @@ export default function Cart() {
   const total = subtotal + shipping - discount;
 
   if (!user) {
-    return <div className="cart-empty">Vui lòng đăng nhập</div>;
+    return (
+      <div className="cart-empty">
+        <span className="cart-empty-icon">🔐</span>
+        <h2>Chưa đăng nhập</h2>
+        <p>Vui lòng đăng nhập để xem giỏ hàng của bạn</p>
+        <div className="cart-empty-actions">
+          <Link to="/login" className="cart-btn-primary">Đăng nhập</Link>
+          <Link to="/products" className="cart-btn-secondary">Mua sắm</Link>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {
     return <div className="cart-loading">Đang tải...</div>;
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="cart-empty">
-        <div className="cart-empty-icon">🛒</div>
-        <p>Giỏ hàng trống</p>
-        <Link to="/products" className="cart-btn-primary">Mua ngay</Link>
+if (items.length === 0) {
+  return (
+    <section className="pageSection">
+      <div className="sectionContainer">
+        <h1 className="cart-title">Giỏ hàng</h1>
+
+        <div className="cart-empty">
+          <span className="cart-empty-icon">🛒</span>
+          <h2>Giỏ hàng trống</h2>
+          <p>Bạn chưa thêm sản phẩm nào vào giỏ hàng</p>
+
+          <Link to="/products" className="cart-btn-primary">
+            Mua ngay
+          </Link>
+        </div>
       </div>
-    );
-  }
+    </section>
+  );
+}
 
   return (
     <section className="cart-container">

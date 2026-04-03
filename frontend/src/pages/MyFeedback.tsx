@@ -91,10 +91,8 @@ export default function MyFeedback() {
     <div className="my-feedback-page">
       <div className="page-header">
         <h1>Đánh giá sản phẩm</h1>
-        <p className="page-desc">Xem và quản lý đánh giá của bạn</p>
       </div>
 
-      {/* CHỜ ĐÁNH GIÁ */}
       {purchasableProducts.length > 0 && (
         <section className="feedback-section">
           <h2 className="section-title">Chờ đánh giá ({purchasableProducts.length})</h2>
@@ -112,7 +110,6 @@ export default function MyFeedback() {
         </section>
       )}
 
-      {/* EMPTY */}
       {purchasableProducts.length === 0 && myReviews.length === 0 && (
         <div className="empty-state">
         <div className="empty-icon">🛒</div>
@@ -121,7 +118,6 @@ export default function MyFeedback() {
         </div>
       )}
 
-      {/* REVIEW */}
       {myReviews.map((review) => (
         <div key={review.id} className="review-card-compact">
           <div className="review-avatar">
@@ -156,7 +152,6 @@ export default function MyFeedback() {
         </div>
       ))}
 
-      {/* MODAL */}
       {showReviewModal && selectedProduct && (
         <div className="modal-overlay" onClick={() => setShowReviewModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
