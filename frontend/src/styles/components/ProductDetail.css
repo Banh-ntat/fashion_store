@@ -358,10 +358,35 @@
 .product-description {
   margin-bottom: 18px;
   color: var(--pd-text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   line-height: 1.75;
+  background: var(--pd-bg-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius-sm);
+  padding: 14px 18px;
 }
-.product-description p {
+
+.product-description__title {
+  font-weight: 700;
+  color: var(--pd-text);
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+}
+
+.product-description__list {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-description__list li {
+  color: var(--pd-text-secondary);
+}
+
+.product-description p:last-child {
   margin: 0;
 }
 
@@ -1055,7 +1080,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #F55554;
+  background: #f55554;
   color: #fff;
   display: flex;
   align-items: center;
@@ -1580,8 +1605,14 @@
 }
 
 @keyframes notif-slide-in {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .notification--success {
@@ -1617,10 +1648,22 @@
   font-weight: 700;
 }
 
-.notification--success .notification__icon { background: #22a84b; color: #fff; }
-.notification--error   .notification__icon { background: #d83030; color: #fff; }
-.notification--warning .notification__icon { background: #f0a500; color: #fff; }
-.notification--info    .notification__icon { background: #2c7de0; color: #fff; }
+.notification--success .notification__icon {
+  background: #22a84b;
+  color: #fff;
+}
+.notification--error .notification__icon {
+  background: #d83030;
+  color: #fff;
+}
+.notification--warning .notification__icon {
+  background: #f0a500;
+  color: #fff;
+}
+.notification--info .notification__icon {
+  background: #2c7de0;
+  color: #fff;
+}
 
 .notification__message {
   flex: 1;
@@ -1638,7 +1681,9 @@
   color: inherit;
   transition: opacity 0.15s;
 }
-.notification__close:hover { opacity: 0.9; }
+.notification__close:hover {
+  opacity: 0.9;
+}
 
 .color-btn.out-of-stock {
   opacity: 0.4;
@@ -1646,7 +1691,7 @@
   position: relative;
 }
 .color-btn.out-of-stock::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -1654,8 +1699,8 @@
     45deg,
     transparent,
     transparent 3px,
-    rgba(0,0,0,0.25) 3px,
-    rgba(0,0,0,0.25) 4px
+    rgba(0, 0, 0, 0.25) 3px,
+    rgba(0, 0, 0, 0.25) 4px
   );
 }
 

@@ -1,20 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { products, cart, promotions, reviews as reviewsApi } from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import { useWishlist } from '../hooks/useWishlist';
-import '../styles/components/ProductDetail.css';
-import type { ProductVariant, Review } from '../types';
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+  products,
+  cart,
+  promotions,
+  reviews as reviewsApi,
+} from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../hooks/useWishlist";
+import "../styles/components/ProductDetail.css";
+import type { ProductVariant, Review } from "../types";
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x500?text=San+pham';
+const PLACEHOLDER_IMAGE = "https://via.placeholder.com/400x500?text=San+pham";
 
 const FEEDBACK_TYPES = [
-  { value: 'quality',  label: 'Chất lượng sản phẩm' },
-  { value: 'price',    label: 'Giá cả' },
-  { value: 'shipping', label: 'Vấn đề giao hàng' },
-  { value: 'size',     label: 'Kích thước/Size' },
-  { value: 'service',  label: 'Chăm sóc khách hàng' },
-  { value: 'other',    label: 'Khác' },
+  { value: "quality", label: "Chất lượng sản phẩm" },
+  { value: "price", label: "Giá cả" },
+  { value: "shipping", label: "Vấn đề giao hàng" },
+  { value: "size", label: "Kích thước/Size" },
+  { value: "service", label: "Chăm sóc khách hàng" },
+  { value: "other", label: "Khác" },
 ];
 
 interface Product {
@@ -39,7 +44,7 @@ interface Promotion {
   end_date: string;
 }
 
-type NotifType = 'success' | 'error' | 'info' | 'warning';
+type NotifType = "success" | "error" | "info" | "warning";
 interface Notification {
   id: number;
   type: NotifType;
@@ -58,19 +63,31 @@ function ProductDetail() {
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<string>("");
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
-  const [reviewSelectedVariantId, setReviewSelectedVariantId] = useState<number | ''>('');
-  const [purchasableVariants, setPurchasableVariants] = useState<{ variant_id: number }[]>([]);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    feedback_type: "quality",
+    content: "",
+  });
+  const [reviewSelectedVariantId, setReviewSelectedVariantId] = useState<
+    number | ""
+  >("");
+  const [purchasableVariants, setPurchasableVariants] = useState<
+    { variant_id: number }[]
+  >([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const thumbListRef = useRef<HTMLDivElement>(null);
 
-  const notify = (message: string, type: NotifType = 'info', duration = 4000) => {
+  const notify = (
+    message: string,
+    type: NotifType = "info",
+    duration = 4000,
+  ) => {
     const notif: Notification = { id: ++_notifId, type, message };
     setNotifications((prev) => [...prev, notif]);
     if (duration > 0) {
@@ -84,14 +101,24 @@ function ProductDetail() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!id) { setLoading(false); return; }
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       const productId = Number(id);
-      if (Number.isNaN(productId)) { setProduct(null); setLoading(false); return; }
+      if (Number.isNaN(productId)) {
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
       try {
         const productRes = await products.get(productId);
         const data = productRes?.data ?? null;
         setProduct(data as Product | null);
-        if (!data) { setLoading(false); return; }
+        if (!data) {
+          setLoading(false);
+          return;
+        }
         const [relatedRes, promotionsRes, reviewsRes] = await Promise.all([
           products.related(productId),
           promotions.active(),
@@ -101,7 +128,7 @@ function ProductDetail() {
         setActivePromotions((promotionsRes?.data ?? []) as Promotion[]);
         setReviewsList((reviewsRes?.data ?? []) as Review[]);
       } catch (error) {
-        console.error('Error fetching product:', error);
+        console.error("Error fetching product:", error);
         setProduct(null);
         setRelatedProducts([]);
         setActivePromotions([]);
@@ -115,42 +142,59 @@ function ProductDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!product) { setSelectedColor(''); setSelectedSize(''); return; }
-    const colorNames = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
-    const sizeNames  = product.variants ? [...new Set(product.variants.map((v) => v.size.name))]  : [];
-    setSelectedColor((prev) => (colorNames.includes(prev) ? prev : colorNames[0] || ''));
-    setSelectedSize ((prev) => (sizeNames.includes(prev)  ? prev : sizeNames[0]  || ''));
+    if (!product) {
+      setSelectedColor("");
+      setSelectedSize("");
+      return;
+    }
+    const colorNames = product.variants
+      ? [...new Set(product.variants.map((v) => v.color.name))]
+      : [];
+    const sizeNames = product.variants
+      ? [...new Set(product.variants.map((v) => v.size.name))]
+      : [];
+    setSelectedColor((prev) =>
+      colorNames.includes(prev) ? prev : colorNames[0] || "",
+    );
+    setSelectedSize((prev) =>
+      sizeNames.includes(prev) ? prev : sizeNames[0] || "",
+    );
   }, [product]);
 
   useEffect(() => {
     if (!product) return;
-    const firstImg = product.images?.[0]?.image || product.image || PLACEHOLDER_IMAGE;
+    const firstImg =
+      product.images?.[0]?.image || product.image || PLACEHOLDER_IMAGE;
     setSelectedImage(firstImg);
   }, [product]);
 
   const handleAddToCart = async () => {
     if (!product) return;
     if (!user) {
-      notify('Vui lòng đăng nhập để thêm vào giỏ hàng', 'warning');
+      notify("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
       return;
     }
     const selectedVariant = product.variants?.find(
-      (v) => v.size.name === selectedSize && v.color.name === selectedColor
+      (v) => v.size.name === selectedSize && v.color.name === selectedColor,
     );
     if (product.variants?.length && !selectedVariant) {
-      notify('Vui lòng chọn size và màu sắc.', 'warning');
+      notify("Vui lòng chọn size và màu sắc.", "warning");
       return;
     }
     try {
       await cart.addItem({
         quantity,
-        ...(selectedVariant ? { product_variant_id: selectedVariant.id } : { product_id: product.id }),
+        ...(selectedVariant
+          ? { product_variant_id: selectedVariant.id }
+          : { product_id: product.id }),
       });
-      notify('Đã thêm vào giỏ hàng!', 'success');
+      notify("Đã thêm vào giỏ hàng!", "success");
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) notify('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.', 'error');
-      else notify('Không thể thêm vào giỏ hàng. Vui lòng thử lại.', 'error');
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401)
+        notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
+      else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
     }
   };
 
@@ -161,7 +205,7 @@ function ProductDetail() {
 
   const handleOpenReview = async () => {
     if (!user) {
-      notify('Vui lòng đăng nhập để đánh giá sản phẩm', 'warning');
+      notify("Vui lòng đăng nhập để đánh giá sản phẩm", "warning");
       return;
     }
     try {
@@ -169,26 +213,33 @@ function ProductDetail() {
       const purchasable = (res?.data ?? []) as { variant_id: number }[];
       setPurchasableVariants(purchasable);
 
-      const productVariantIds = new Set(product?.variants?.map((v) => v.id) ?? []);
-      const eligible = purchasable.filter((p) => productVariantIds.has(p.variant_id));
+      const productVariantIds = new Set(
+        product?.variants?.map((v) => v.id) ?? [],
+      );
+      const eligible = purchasable.filter((p) =>
+        productVariantIds.has(p.variant_id),
+      );
 
       if (eligible.length === 0) {
-        notify('Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công.', 'warning');
+        notify(
+          "Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công.",
+          "warning",
+        );
         return;
       }
 
       setReviewSelectedVariantId(eligible[0].variant_id);
       setShowReviewModal(true);
-      setReviewForm({ rating: 5, feedback_type: 'quality', content: '' });
+      setReviewForm({ rating: 5, feedback_type: "quality", content: "" });
     } catch {
-      notify('Không thể tải thông tin. Vui lòng thử lại.', 'error');
+      notify("Không thể tải thông tin. Vui lòng thử lại.", "error");
     }
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewSelectedVariantId) {
-      notify('Vui lòng chọn phân loại sản phẩm muốn đánh giá.', 'warning');
+      notify("Vui lòng chọn phân loại sản phẩm muốn đánh giá.", "warning");
       return;
     }
     try {
@@ -198,26 +249,31 @@ function ProductDetail() {
         feedback_type: reviewForm.feedback_type,
         content: reviewForm.content,
       });
-      notify('Cảm ơn bạn đã đánh giá!', 'success');
+      notify("Cảm ơn bạn đã đánh giá!", "success");
       setShowReviewModal(false);
       const reviewsRes = await reviewsApi.getByProduct(Number(id));
       setReviewsList((reviewsRes?.data ?? []) as Review[]);
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        'Không thể gửi đánh giá.';
-      notify(msg, 'error');
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || "Không thể gửi đánh giá.";
+      notify(msg, "error");
     }
   };
 
-  const scrollThumbs = (dir: 'left' | 'right') => {
+  const scrollThumbs = (dir: "left" | "right") => {
     if (!thumbListRef.current) return;
-    thumbListRef.current.scrollBy({ left: dir === 'right' ? 200 : -200, behavior: 'smooth' });
+    thumbListRef.current.scrollBy({
+      left: dir === "right" ? 200 : -200,
+      behavior: "smooth",
+    });
   };
 
   const averageRating =
     reviewsList.length > 0
-      ? (reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length).toFixed(1)
+      ? (
+          reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length
+        ).toFixed(1)
       : 0;
 
   if (loading) return <div className="loading">Đang tải...</div>;
@@ -225,25 +281,31 @@ function ProductDetail() {
     return (
       <div className="product-detail product-detail--not-found">
         <p className="error">Không tìm thấy sản phẩm.</p>
-        <Link to="/products" className="back-link">Quay lại danh sách sản phẩm</Link>
+        <Link to="/products" className="back-link">
+          Quay lại danh sách sản phẩm
+        </Link>
       </div>
     );
   }
 
-  const sizes  = product.variants ? [...new Set(product.variants.map((v) => v.size.name))]  : ['M'];
-  const colors = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
+  const sizes = product.variants
+    ? [...new Set(product.variants.map((v) => v.size.name))]
+    : ["M"];
+  const colors = product.variants
+    ? [...new Set(product.variants.map((v) => v.color.name))]
+    : [];
 
   const allImages: { id: number | string; image: string }[] =
     product.images && product.images.length > 0
       ? product.images
       : product.image
-        ? [{ id: 'main', image: product.image }]
-        : [{ id: 'placeholder', image: PLACEHOLDER_IMAGE }];
+        ? [{ id: "main", image: product.image }]
+        : [{ id: "placeholder", image: PLACEHOLDER_IMAGE }];
 
   const hasThumbnails = allImages.length > 1;
 
   const selectedVariant = product.variants?.find(
-    (v) => v.size.name === selectedSize && v.color.name === selectedColor
+    (v) => v.size.name === selectedSize && v.color.name === selectedColor,
   );
   const variantStock = selectedVariant?.stock ?? product.stock ?? 0;
 
@@ -253,26 +315,26 @@ function ProductDetail() {
 
   const productVariantIds = new Set(product.variants?.map((v) => v.id) ?? []);
   const eligiblePurchasableVariants = purchasableVariants.filter((p) =>
-    productVariantIds.has(p.variant_id)
+    productVariantIds.has(p.variant_id),
   );
-  const reviewVariantOptions = product.variants?.filter((v) =>
-    eligiblePurchasableVariants.some((p) => p.variant_id === v.id)
-  ) ?? [];
+  const reviewVariantOptions =
+    product.variants?.filter((v) =>
+      eligiblePurchasableVariants.some((p) => p.variant_id === v.id),
+    ) ?? [];
 
   const showLoginNotice = !user;
 
   return (
     <div className="product-detail">
-
       {notifications.length > 0 && (
         <div className="notification-stack">
           {notifications.map((n) => (
             <div key={n.id} className={`notification notification--${n.type}`}>
               <span className="notification__icon">
-                {n.type === 'success' && '✓'}
-                {n.type === 'error'   && '✕'}
-                {n.type === 'warning' && '!'}
-                {n.type === 'info'    && 'i'}
+                {n.type === "success" && "✓"}
+                {n.type === "error" && "✕"}
+                {n.type === "warning" && "!"}
+                {n.type === "info" && "i"}
               </span>
               <span className="notification__message">{n.message}</span>
               <button
@@ -290,7 +352,9 @@ function ProductDetail() {
 
       {activePromotions.length > 0 && (
         <div className="promotions-banner">
-          <span className="promotions-banner__label">Khuyến mãi đang diễn ra</span>
+          <span className="promotions-banner__label">
+            Khuyến mãi đang diễn ra
+          </span>
           <div className="promotions-list">
             {activePromotions.map((promo) => (
               <span key={promo.id} className="promo-tag">
@@ -302,7 +366,6 @@ function ProductDetail() {
       )}
 
       <div className="product-main">
-
         <div className="product-gallery">
           <div className="product-image-main">
             <img
@@ -310,16 +373,22 @@ function ProductDetail() {
               alt={product.name}
             />
             {product.promotion && (
-              <span className="discount-badge">-{product.promotion.discount_percent}%</span>
+              <span className="discount-badge">
+                -{product.promotion.discount_percent}%
+              </span>
             )}
             <button
               type="button"
-              className={`image-wishlist-btn${isInWishlist(product.id) ? ' active' : ''}`}
-              title={isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-              aria-label={isInWishlist(product.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+              className={`image-wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
+              title={
+                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
+              }
+              aria-label={
+                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
+              }
               onClick={() => toggleWishlist(product.id)}
             >
-              {isInWishlist(product.id) ? '♥' : '♡'}
+              {isInWishlist(product.id) ? "♥" : "♡"}
             </button>
           </div>
 
@@ -328,7 +397,7 @@ function ProductDetail() {
               <button
                 className="thumb-arrow thumb-arrow--left"
                 type="button"
-                onClick={() => scrollThumbs('left')}
+                onClick={() => scrollThumbs("left")}
                 aria-label="Ảnh trước"
               >
                 &#8249;
@@ -337,7 +406,7 @@ function ProductDetail() {
                 {allImages.map((img) => (
                   <div
                     key={img.id}
-                    className={`thumb-item${selectedImage === img.image ? ' active' : ''}`}
+                    className={`thumb-item${selectedImage === img.image ? " active" : ""}`}
                     onClick={() => setSelectedImage(img.image)}
                     role="button"
                     aria-label="Xem ảnh"
@@ -349,7 +418,7 @@ function ProductDetail() {
               <button
                 className="thumb-arrow thumb-arrow--right"
                 type="button"
-                onClick={() => scrollThumbs('right')}
+                onClick={() => scrollThumbs("right")}
                 aria-label="Ảnh tiếp"
               >
                 &#8250;
@@ -359,7 +428,6 @@ function ProductDetail() {
         </div>
 
         <div className="product-info-section">
-
           <nav className="breadcrumb" aria-label="breadcrumb">
             <Link to="/">Trang chủ</Link>
             <span className="sep">/</span>
@@ -372,14 +440,19 @@ function ProductDetail() {
 
           <div className="product-rating">
             <div className="rating-stars">
-              {[1,2,3,4,5].map((star) => (
-                <span key={star} className={star <= Number(averageRating) ? 'filled' : ''}>★</span>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={star <= Number(averageRating) ? "filled" : ""}
+                >
+                  ★
+                </span>
               ))}
             </div>
             <span className="rating-count">
               {reviewsList.length > 0
                 ? `${averageRating} (${reviewsList.length} đánh giá)`
-                : 'Chưa có đánh giá'}
+                : "Chưa có đánh giá"}
             </span>
           </div>
 
@@ -387,46 +460,54 @@ function ProductDetail() {
             {product.promotion ? (
               <>
                 <span className="current-price">
-                  {Number(calculateDiscountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
+                  {Number(
+                    calculateDiscountedPrice(
+                      product.price,
+                      product.promotion.discount_percent,
+                    ),
+                  ).toLocaleString("vi-VN")}
+                  đ
                 </span>
                 <span className="original-price">
-                  {Number(product.price).toLocaleString('vi-VN')}đ
+                  {Number(product.price).toLocaleString("vi-VN")}đ
                 </span>
-                <span className="discount-tag">-{product.promotion.discount_percent}%</span>
+                <span className="discount-tag">
+                  -{product.promotion.discount_percent}%
+                </span>
               </>
             ) : (
               <span className="current-price">
-                {Number(product.price).toLocaleString('vi-VN')}đ
+                {Number(product.price).toLocaleString("vi-VN")}đ
               </span>
             )}
           </div>
-
-          <div className="product-description">
-            <p>{product.description}</p>
-          </div>
           <div className="product-options">
-
             {colors.length > 0 && (
               <div className="option-group color-selection">
                 <label>
-                  Màu sắc: <span className="color-name-label">{selectedColor}</span>
+                  Màu sắc:{" "}
+                  <span className="color-name-label">{selectedColor}</span>
                 </label>
                 <div className="color-buttons">
                   {colors.map((color) => {
-                    const variant = product.variants?.find((v) => v.color.name === color);
-                    const code = variant?.color.code || '#888';
-                    const isWhite = ['#ffffff','#fff','white'].includes(code.toLowerCase());
+                    const variant = product.variants?.find(
+                      (v) => v.color.name === color,
+                    );
+                    const code = variant?.color.code || "#888";
+                    const isWhite = ["#ffffff", "#fff", "white"].includes(
+                      code.toLowerCase(),
+                    );
                     const hasStock = product.variants?.some(
-                      (v) => v.color.name === color && (v.stock ?? 0) > 0
+                      (v) => v.color.name === color && (v.stock ?? 0) > 0,
                     );
                     return (
                       <button
                         key={color}
                         type="button"
-                        className={`color-btn${selectedColor === color ? ' selected' : ''}${isWhite ? ' white' : ''}${!hasStock ? ' out-of-stock' : ''}`}
+                        className={`color-btn${selectedColor === color ? " selected" : ""}${isWhite ? " white" : ""}${!hasStock ? " out-of-stock" : ""}`}
                         onClick={() => setSelectedColor(color)}
                         style={{ backgroundColor: code }}
-                        title={`${color}${!hasStock ? ' (Hết hàng)' : ''}`}
+                        title={`${color}${!hasStock ? " (Hết hàng)" : ""}`}
                         aria-label={color}
                       />
                     );
@@ -440,14 +521,17 @@ function ProductDetail() {
               <div className="size-buttons">
                 {sizes.map((size) => {
                   const variantForSize = product.variants?.find(
-                    (v) => v.size.name === size && v.color.name === selectedColor
+                    (v) =>
+                      v.size.name === size && v.color.name === selectedColor,
                   );
-                  const sizeHasStock = variantForSize ? (variantForSize.stock ?? 0) > 0 : true;
+                  const sizeHasStock = variantForSize
+                    ? (variantForSize.stock ?? 0) > 0
+                    : true;
                   return (
                     <button
                       key={size}
                       type="button"
-                      className={`size-btn${selectedSize === size ? ' selected' : ''}${!sizeHasStock ? ' out-of-stock' : ''}`}
+                      className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
                       onClick={() => setSelectedSize(size)}
                       title={!sizeHasStock ? `${size} (Hết hàng)` : size}
                     >
@@ -462,17 +546,28 @@ function ProductDetail() {
               <label>Số lượng:</label>
               <div className="qty-row">
                 <div className="quantity-controls">
-                  <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  >
+                    −
+                  </button>
                   <span>{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.min(variantStock, quantity + 1))}
+                    onClick={() =>
+                      setQuantity(Math.min(variantStock, quantity + 1))
+                    }
                     disabled={variantStock === 0}
-                  >+</button>
+                  >
+                    +
+                  </button>
                 </div>
-                <span className={`stock-info${variantStock === 0 ? ' out' : variantStock <= 5 ? ' low' : ''}`}>
+                <span
+                  className={`stock-info${variantStock === 0 ? " out" : variantStock <= 5 ? " low" : ""}`}
+                >
                   {variantStock === 0
-                    ? 'Hết hàng'
+                    ? "Hết hàng"
                     : variantStock <= 5
                       ? `Chỉ còn ${variantStock} sản phẩm`
                       : `${variantStock} sản phẩm có sẵn`}
@@ -488,14 +583,14 @@ function ProductDetail() {
               disabled={variantStock === 0}
               type="button"
             >
-              {variantStock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
+              {variantStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
             </button>
             <button
               type="button"
-              className={`wishlist-btn${isInWishlist(product.id) ? ' active' : ''}`}
+              className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
               onClick={() => toggleWishlist(product.id)}
             >
-              {isInWishlist(product.id) ? '♥' : '♡'} Yêu thích
+              {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
             </button>
           </div>
 
@@ -519,109 +614,27 @@ function ProductDetail() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <section className="product-detail-info">
-        <div className="pdi-header">
-          <h2>Chi tiết sản phẩm</h2>
-        </div>
-        <div className="pdi-body">
-          <div className="pdi-table">
-            <div className="pdi-row">
-              <span className="pdi-label">Danh mục</span>
-              <span className="pdi-value">
-                <Link to="/products" className="pdi-category-link">{product.category.name}</Link>
-              </span>
-            </div>
-            {product.variants && product.variants.length > 0 && (
-              <>
-                <div className="pdi-row">
-                  <span className="pdi-label">Màu sắc có sẵn</span>
-                  <span className="pdi-value pdi-colors">
-                    {[...new Set(product.variants.map((v) => v.color.name))].map((colorName) => {
-                      const variant = product.variants?.find((v) => v.color.name === colorName);
-                      return (
-                        <span key={colorName} className="pdi-color-chip">
-                          <span
-                            className="pdi-color-dot"
-                            style={{ backgroundColor: variant?.color.code || '#888' }}
-                          />
-                          {colorName}
-                        </span>
-                      );
-                    })}
-                  </span>
-                </div>
-                <div className="pdi-row">
-                  <span className="pdi-label">Kích thước</span>
-                  <span className="pdi-value pdi-sizes">
-                    {[...new Set(product.variants.map((v) => v.size.name))].map((sizeName) => (
-                      <span key={sizeName} className="pdi-size-chip">{sizeName}</span>
-                    ))}
-                  </span>
-                </div>
-                <div className="pdi-row">
-                  <span className="pdi-label">Tổng tồn kho</span>
-                  <span className={`pdi-value pdi-stock${totalStock === 0 ? ' out' : totalStock <= 10 ? ' low' : ''}`}>
-                    {totalStock === 0 ? 'Hết hàng' : `${totalStock} sản phẩm`}
-                  </span>
-                </div>
-              </>
-            )}
-            {product.promotion && (
-              <>
-                <div className="pdi-row">
-                  <span className="pdi-label">Khuyến mãi</span>
-                  <span className="pdi-value">
-                    <span className="pdi-promo-badge">{product.promotion.name}</span>
-                  </span>
-                </div>
-                <div className="pdi-row">
-                  <span className="pdi-label">Giảm giá</span>
-                  <span className="pdi-value pdi-discount">−{product.promotion.discount_percent}%</span>
-                </div>
-                <div className="pdi-row">
-                  <span className="pdi-label">Giá gốc</span>
-                  <span className="pdi-value pdi-original-price">{Number(product.price).toLocaleString('vi-VN')}đ</span>
-                </div>
-                <div className="pdi-row">
-                  <span className="pdi-label">Giá sau giảm</span>
-                  <span className="pdi-value pdi-final-price">
-                    {Number(calculateDiscountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
-                  </span>
-                </div>
-              </>
-            )}
-            {!product.promotion && (
-              <div className="pdi-row">
-                <span className="pdi-label">Giá bán</span>
-                <span className="pdi-value pdi-final-price">{Number(product.price).toLocaleString('vi-VN')}đ</span>
-              </div>
-            )}
-            {reviewsList.length > 0 && (
-              <div className="pdi-row">
-                <span className="pdi-label">Đánh giá trung bình</span>
-                <span className="pdi-value pdi-rating-inline">
-                  <span className="pdi-stars">
-                    {[1,2,3,4,5].map((s) => (
-                      <span key={s} className={s <= Math.round(Number(averageRating)) ? 'filled' : ''}>★</span>
-                    ))}
-                  </span>
-                  <span className="pdi-rating-text">{averageRating} / 5 ({reviewsList.length} đánh giá)</span>
-                </span>
-              </div>
-            )}
-            {product.description && (
-              <div className="pdi-row pdi-row--description">
-                <span className="pdi-label">Mô tả</span>
-                <span className="pdi-value pdi-desc-text">{product.description}</span>
-              </div>
+          <div className="product-description">
+            <p className="product-description__title">Chi tiết sản phẩm:</p>
+            {product.description
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0).length > 1 ? (
+              <ul className="product-description__list">
+                {product.description
+                  .split("\n")
+                  .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+                  .filter((line) => line.length > 0)
+                  .map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+              </ul>
+            ) : (
+              <p>{product.description}</p>
             )}
           </div>
         </div>
-      </section>
-
+      </div>
       <section className="product-reviews">
         <div className="reviews-header">
           <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>
@@ -632,8 +645,15 @@ function ProductDetail() {
             <span className="avg-score">{averageRating}</span>
             <div>
               <div className="avg-stars">
-                {[1,2,3,4,5].map((s) => (
-                  <span key={s} className={s <= Math.round(Number(averageRating)) ? 'filled' : ''}>★</span>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <span
+                    key={s}
+                    className={
+                      s <= Math.round(Number(averageRating)) ? "filled" : ""
+                    }
+                  >
+                    ★
+                  </span>
                 ))}
               </div>
               <div className="avg-count">{reviewsList.length} đánh giá</div>
@@ -647,34 +667,50 @@ function ProductDetail() {
               <div key={review.id} className="review-item">
                 <div className="review-header">
                   <div className="review-user">
-                    <span className="user-avatar">{review.user.username.charAt(0).toUpperCase()}</span>
+                    <span className="user-avatar">
+                      {review.user.username.charAt(0).toUpperCase()}
+                    </span>
                     <span className="user-name">{review.user.username}</span>
                   </div>
                   <div className="review-meta">
                     <span className="review-date">
-                      {new Date(review.created_at).toLocaleDateString('vi-VN')}
+                      {new Date(review.created_at).toLocaleDateString("vi-VN")}
                     </span>
                     <span className="feedback-type-badge">
-                      {FEEDBACK_TYPES.find((t) => t.value === review.feedback_type)?.label}
+                      {
+                        FEEDBACK_TYPES.find(
+                          (t) => t.value === review.feedback_type,
+                        )?.label
+                      }
                     </span>
                   </div>
                 </div>
                 <div className="review-stars">
-                  {[1,2,3,4,5].map((s) => (
-                    <span key={s} className={s <= review.rating ? 'filled' : ''}>★</span>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span
+                      key={s}
+                      className={s <= review.rating ? "filled" : ""}
+                    >
+                      ★
+                    </span>
                   ))}
                 </div>
-                {review.content && <p className="review-text">{review.content}</p>}
+                {review.content && (
+                  <p className="review-text">{review.content}</p>
+                )}
                 {review.variant_info && (
                   <p className="review-variant">
-                    Phân loại: {review.variant_info.color.name} / {review.variant_info.size.name}
+                    Phân loại: {review.variant_info.color.name} /{" "}
+                    {review.variant_info.size.name}
                   </p>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="no-reviews">Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!</p>
+          <p className="no-reviews">
+            Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!
+          </p>
         )}
 
         <div className="review-action-area">
@@ -690,7 +726,10 @@ function ProductDetail() {
           {showLoginNotice && (
             <div className="review-notice">
               <strong>Đăng nhập để đánh giá sản phẩm</strong>
-              <p>Chỉ khách hàng đã mua và nhận hàng thành công mới có thể gửi đánh giá.</p>
+              <p>
+                Chỉ khách hàng đã mua và nhận hàng thành công mới có thể gửi
+                đánh giá.
+              </p>
             </div>
           )}
         </div>
@@ -701,22 +740,31 @@ function ProductDetail() {
           <h2>Sản phẩm liên quan</h2>
           <div className="related-products-grid">
             {relatedProducts.map((related) => (
-              <Link to={`/product/${related.id}`} key={related.id} className="related-product-card">
+              <Link
+                to={`/product/${related.id}`}
+                key={related.id}
+                className="related-product-card"
+              >
                 <div className="related-product-image">
-                  <img src={related.image || PLACEHOLDER_IMAGE} alt={related.name} />
+                  <img
+                    src={related.image || PLACEHOLDER_IMAGE}
+                    alt={related.name}
+                  />
                   {related.promotion && (
-                    <span className="related-discount">-{related.promotion.discount_percent}%</span>
+                    <span className="related-discount">
+                      -{related.promotion.discount_percent}%
+                    </span>
                   )}
                 </div>
                 <div className="related-product-info">
                   <h4>{related.name}</h4>
                   <p className="price">
                     {related.promotion
-                      ? `${Number(calculateDiscountedPrice(related.price, related.promotion.discount_percent)).toLocaleString('vi-VN')}đ`
-                      : `${Number(related.price).toLocaleString('vi-VN')}đ`}
+                      ? `${Number(calculateDiscountedPrice(related.price, related.promotion.discount_percent)).toLocaleString("vi-VN")}đ`
+                      : `${Number(related.price).toLocaleString("vi-VN")}đ`}
                     {related.old_price && (
                       <span className="old-price">
-                        {Number(related.old_price).toLocaleString('vi-VN')}đ
+                        {Number(related.old_price).toLocaleString("vi-VN")}đ
                       </span>
                     )}
                   </p>
@@ -730,7 +778,9 @@ function ProductDetail() {
       {showReviewModal && (
         <div
           className="modal-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowReviewModal(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowReviewModal(false);
+          }}
         >
           <div className="modal">
             <div className="modal-header">
@@ -750,13 +800,14 @@ function ProductDetail() {
             </div>
 
             <form onSubmit={handleSubmitReview}>
-
               {reviewVariantOptions.length > 1 && (
                 <div className="form-group">
                   <label>Phân loại đã mua</label>
                   <select
                     value={reviewSelectedVariantId}
-                    onChange={(e) => setReviewSelectedVariantId(Number(e.target.value))}
+                    onChange={(e) =>
+                      setReviewSelectedVariantId(Number(e.target.value))
+                    }
                   >
                     {reviewVariantOptions.map((v) => (
                       <option key={v.id} value={v.id}>
@@ -772,23 +823,33 @@ function ProductDetail() {
                   <span className="modal-variant-label">Phân loại:</span>
                   <span
                     className="variant-color-dot"
-                    style={{ backgroundColor: reviewVariantOptions[0].color.code || '#888' }}
+                    style={{
+                      backgroundColor:
+                        reviewVariantOptions[0].color.code || "#888",
+                    }}
                   />
-                  <span>{reviewVariantOptions[0].color.name} / {reviewVariantOptions[0].size.name}</span>
+                  <span>
+                    {reviewVariantOptions[0].color.name} /{" "}
+                    {reviewVariantOptions[0].size.name}
+                  </span>
                 </div>
               )}
 
               <div className="form-group">
                 <label>Đánh giá của bạn</label>
                 <div className="star-picker">
-                  {[1,2,3,4,5].map((s) => (
+                  {[1, 2, 3, 4, 5].map((s) => (
                     <span
                       key={s}
-                      className={s <= reviewForm.rating ? 'selected' : ''}
-                      onClick={() => setReviewForm({ ...reviewForm, rating: s })}
+                      className={s <= reviewForm.rating ? "selected" : ""}
+                      onClick={() =>
+                        setReviewForm({ ...reviewForm, rating: s })
+                      }
                       role="button"
                       aria-label={`${s} sao`}
-                    >★</span>
+                    >
+                      ★
+                    </span>
                   ))}
                 </div>
               </div>
@@ -797,10 +858,17 @@ function ProductDetail() {
                 <label>Loại phản hồi</label>
                 <select
                   value={reviewForm.feedback_type}
-                  onChange={(e) => setReviewForm({ ...reviewForm, feedback_type: e.target.value })}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      feedback_type: e.target.value,
+                    })
+                  }
                 >
                   {FEEDBACK_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -811,14 +879,20 @@ function ProductDetail() {
                 </label>
                 <textarea
                   value={reviewForm.content}
-                  onChange={(e) => setReviewForm({ ...reviewForm, content: e.target.value })}
+                  onChange={(e) =>
+                    setReviewForm({ ...reviewForm, content: e.target.value })
+                  }
                   placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
                   rows={4}
                 />
               </div>
 
               <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowReviewModal(false)}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowReviewModal(false)}
+                >
                   Huỷ
                 </button>
                 <button type="submit" className="btn-primary">
