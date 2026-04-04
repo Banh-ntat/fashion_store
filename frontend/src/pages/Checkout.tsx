@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cart, orders } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { notifyCartUpdated } from '../utils/cartEvents';
 import '../styles/pages/Checkout.css';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/80x100?text=SP';
@@ -76,17 +77,19 @@ export default function Checkout() {
     setSubmitting(true);
     try {
       await orders.checkout({
-        total_price: total.toFixed(0),
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
+        note: form.note.trim() || undefined,
       });
       setForm({ name: '', phone: '', address: '', note: '' });
-      navigate('/orders');
+      notifyCartUpdated();
+      navigate('/orders', { state: { orderPlaced: true } });
     } catch (err) {
       console.error(err);
-      const res = (err as { response?: { data?: { detail?: string } } })?.response;
-      const msg = res?.data?.detail ?? 'Đặt hàng thất bại. Vui lòng thử lại.';
+      const res = (err as { response?: { data?: { detail?: string | string[] } } })?.response;
+      const d = res?.data?.detail;
+      const msg = Array.isArray(d) ? d[0] : (d ?? 'Đặt hàng thất bại. Vui lòng thử lại.');
       alert(msg);
     } finally {
       setSubmitting(false);

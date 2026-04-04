@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from rest_framework import permissions, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -101,7 +101,18 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(price__gte=min_price)
         if max_price:
             queryset = queryset.filter(price__lte=max_price)
-        
+
+        low_stock = self.request.query_params.get("low_stock")
+        if low_stock == "true":
+            threshold = int(self.request.query_params.get("stock_threshold", 5))
+            queryset = queryset.filter(
+                Exists(
+                    ProductVariant.objects.filter(
+                        product_id=OuterRef("pk"), stock__lte=threshold
+                    )
+                )
+            )
+
         return queryset
 
     @action(detail=False, methods=['get'], url_path='featured')

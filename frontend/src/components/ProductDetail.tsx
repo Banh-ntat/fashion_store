@@ -8,6 +8,7 @@ import {
 } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../hooks/useWishlist";
+import { notifyCartUpdated } from "../utils/cartEvents";
 import "../styles/components/ProductDetail.css";
 import type { ProductVariant, Review } from "../types";
 
@@ -168,6 +169,18 @@ function ProductDetail() {
     setSelectedImage(firstImg);
   }, [product]);
 
+  /** Khi đổi màu/size, không để số lượng vượt tồn kho variant */
+  useEffect(() => {
+    if (!product) return;
+    const v = product.variants?.find(
+      (x) => x.size.name === selectedSize && x.color.name === selectedColor,
+    );
+    const max = v?.stock ?? product.stock ?? 0;
+    if (max > 0) {
+      setQuantity((q) => Math.min(q, max));
+    }
+  }, [product, selectedSize, selectedColor]);
+
   const handleAddToCart = async () => {
     if (!product) return;
     if (!user) {
@@ -188,12 +201,23 @@ function ProductDetail() {
           ? { product_variant_id: selectedVariant.id }
           : { product_id: product.id }),
       });
+      notifyCartUpdated();
       notify("Đã thêm vào giỏ hàng!", "success");
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { quantity?: string[]; detail?: string };
+        };
+      };
+      const status = ax.response?.status;
+      const data = ax.response?.data;
+      const q = data?.quantity;
+      const apiMsg = Array.isArray(q) ? q[0] : data?.detail;
       if (status === 401)
         notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
+      else if (typeof apiMsg === "string")
+        notify(apiMsg, "error");
       else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
     }
   };
@@ -386,7 +410,13 @@ function ProductDetail() {
               aria-label={
                 isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
               }
-              onClick={() => toggleWishlist(product.id)}
+              onClick={() => {
+                if (!user) {
+                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
+                  return;
+                }
+                void toggleWishlist(product.id);
+              }}
             >
               {isInWishlist(product.id) ? "♥" : "♡"}
             </button>
@@ -588,7 +618,13 @@ function ProductDetail() {
             <button
               type="button"
               className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
-              onClick={() => toggleWishlist(product.id)}
+              onClick={() => {
+                if (!user) {
+                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
+                  return;
+                }
+                void toggleWishlist(product.id);
+              }}
             >
               {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
             </button>

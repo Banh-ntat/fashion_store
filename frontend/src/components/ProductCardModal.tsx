@@ -46,8 +46,8 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
     }
   }, [isOpen, product]);
 
-  const sizes = product.variants ? [...new Set(product.variants.map((v) => v.size.name))] : ["M"];
-  const colors = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
+  const sizes = product.variants && product.variants.length > 0 ? [...new Set(product.variants.map((v) => v.size.name))] : [];
+  const colors = product.variants && product.variants.length > 0 ? [...new Set(product.variants.map((v) => v.color.name))] : [];
 
   const selectedVariant = product.variants?.find(
     (v) => v.size.name === selectedSize && v.color.name === selectedColor,
@@ -87,9 +87,25 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
       notify("Đã thêm vào giỏ hàng!", "success");
       setTimeout(() => onClose(), 1500);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 401) notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
-      else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { quantity?: string[]; detail?: string };
+        };
+      };
+
+      const status = ax.response?.status;
+      const data = ax.response?.data;
+      const q = data?.quantity;
+      const apiMsg = Array.isArray(q) ? q[0] : data?.detail;
+
+      if (status === 401) {
+        notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
+      } else if (typeof apiMsg === "string") {
+        notify(apiMsg, "error");
+      } else {
+        notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
+      }
     } finally {
       setIsAdding(false);
     }
@@ -129,21 +145,21 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
               &#215;
             </button>
           </div>
-          
+
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', gap: '15px' }}>
               <img src={productImage} alt={product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
               <div>
                 <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--pd-text)' }}>{product.name}</div>
                 <div className="productCardPrice" style={{ marginTop: '5px' }}>
-                    {product.promotion ? (
-                      <>
-                        <span className="productCardCurrentPrice">{discountedPrice(product.price, product.promotion.discount_percent)}đ</span>
-                        <span className="productCardOldPrice" style={{marginLeft: '8px'}}>{product.price}đ</span>
-                      </>
-                    ) : (
-                      <span className="productCardCurrentPrice">{product.price}đ</span>
-                    )}
+                  {product.promotion ? (
+                    <>
+                      <span className="productCardCurrentPrice">{discountedPrice(product.price, product.promotion.discount_percent)}đ</span>
+                      <span className="productCardOldPrice" style={{ marginLeft: '8px' }}>{product.price}đ</span>
+                    </>
+                  ) : (
+                    <span className="productCardCurrentPrice">{product.price}đ</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -183,31 +199,33 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
                 </div>
               )}
 
-              <div className="option-group size-selection">
-                <label>Kích thước:</label>
-                <div className="size-buttons">
-                  {sizes.map((size) => {
-                    const variantForSize = product.variants?.find(
-                      (v) =>
-                        v.size.name === size && v.color.name === selectedColor,
-                    );
-                    const sizeHasStock = variantForSize
-                      ? (variantForSize.stock ?? 0) > 0
-                      : true;
-                    return (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedSize(size); }}
-                        title={!sizeHasStock ? `${size} (Hết hàng)` : size}
-                      >
-                        {size}
-                      </button>
-                    );
-                  })}
+              {sizes.length > 0 && (
+                <div className="option-group size-selection">
+                  <label>Kích thước:</label>
+                  <div className="size-buttons">
+                    {sizes.map((size) => {
+                      const variantForSize = product.variants?.find(
+                        (v) =>
+                          v.size.name === size && v.color.name === selectedColor,
+                      );
+                      const sizeHasStock = variantForSize
+                        ? (variantForSize.stock ?? 0) > 0
+                        : true;
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedSize(size); }}
+                          title={!sizeHasStock ? `${size} (Hết hàng)` : size}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="option-group quantity-selection">
                 <label>Số lượng:</label>

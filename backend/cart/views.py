@@ -23,10 +23,12 @@ class CartItemViewSet(viewsets.ModelViewSet):
         )
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
         cart, _ = Cart.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(
+            data=request.data,
+            context={**self.get_serializer_context(), "cart": cart},
+        )
+        serializer.is_valid(raise_exception=True)
         variant = serializer.validated_data.get("product")
         quantity = serializer.validated_data.get("quantity", 1)
 

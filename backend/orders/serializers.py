@@ -1,8 +1,14 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from products.models import ProductVariant
 from products.serializers import ProductSerializer
 from .models import Order, OrderItem, Shipping
+
+
+class OrderUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username")
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -24,16 +30,41 @@ class OrderItemSerializer(serializers.ModelSerializer):
         }
 
 
+class ShippingNestedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shipping
+        fields = ("name", "phone", "address", "note")
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
+    user = OrderUserSerializer(read_only=True)
+    shipping = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ("id", "user", "total_price", "status", "created_at", "items")
-        read_only_fields = ("user", "created_at", "items")
+        fields = (
+            "id",
+            "user",
+            "subtotal",
+            "shipping_fee",
+            "total_price",
+            "status",
+            "created_at",
+            "items",
+            "shipping",
+        )
+        read_only_fields = ("user", "created_at", "items", "shipping")
 
     def get_items(self, obj):
         qs = OrderItem.objects.filter(order=obj).select_related(
             "product", "product__product", "product__product__category", "product__color", "product__size"
         )
         return OrderItemSerializer(qs, many=True, context=self.context).data
+
+    def get_shipping(self, obj):
+        try:
+            ship = obj.shipping
+        except Shipping.DoesNotExist:
+            return None
+        return ShippingNestedSerializer(ship).data

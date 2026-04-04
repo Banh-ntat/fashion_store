@@ -3,6 +3,9 @@ import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import About from './pages/About';
 import Policy from './pages/Policy';
+import Contact from './pages/Contact';
+import Feedback from './pages/Feedback';
+import Careers from './pages/Careers';
 import Products from './pages/Products';
 import Search from './pages/Search';
 import Cart from './pages/Cart';
@@ -21,6 +24,9 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminContacts from './pages/admin/AdminContacts';
+import AdminFeedbacks from './pages/admin/AdminFeedbacks';
+import AdminPolicies from './pages/admin/AdminPolicies';
+import AdminRoute from './components/admin/AdminRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -49,16 +55,24 @@ function App() {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/careers" element={<Careers />} />
             <Route path="/policy" element={<Policy />} />
+            <Route path="/policy/:slug" element={<Policy />} />
           </Route>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/products" element={<AdminProducts />} />
-          <Route path="/admin/categories" element={<AdminCategories />} />
-          <Route path="/admin/promotions" element={<AdminPromotions />} />
-          <Route path="/admin/orders" element={<AdminOrders />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/reviews" element={<AdminReviews />} />
-          <Route path="/admin/contacts" element={<AdminContacts />} />
+          <Route path="/admin" element={<AdminRoute />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="categories" element={<AdminCategories />} />
+            <Route path="promotions" element={<AdminPromotions />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="reviews" element={<AdminReviews />} />
+            <Route path="contacts" element={<AdminContacts />} />
+            <Route path="feedbacks" element={<AdminFeedbacks />} />
+            <Route path="policies" element={<AdminPolicies />} />
+          </Route>
         </Routes>
       </div>
     </AuthProvider>

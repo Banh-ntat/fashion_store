@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cart } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { notifyCartUpdated } from '../utils/cartEvents';
 import '../styles/pages/Cart.css';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/120x160?text=SP';
@@ -24,6 +25,8 @@ interface CartItemType {
   product?: CartProduct;
   variant_info?: VariantInfo | null;
   quantity: number;
+  /** Tồn kho variant (từ API) */
+  stock?: number;
 }
 
 function getUnitPrice(item: CartItemType): number {
@@ -44,10 +47,6 @@ export default function Cart() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  // 🔥 COUPON
-  const [coupon, setCoupon] = useState('');
-  const [discount, setDiscount] = useState(0);
-
   const fetchCart = () => {
     if (!user) {
       setItems([]);
@@ -64,7 +63,10 @@ export default function Cart() {
         setItems(list);
       })
       .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        notifyCartUpdated();
+      });
   };
 
   useEffect(() => {
@@ -73,12 +75,24 @@ export default function Cart() {
 
   const handleUpdateQty = async (id: number, newQty: number) => {
     if (newQty < 1) return;
+    const item = items.find((i) => i.id === id);
+    if (item?.stock != null && newQty > item.stock) {
+      alert(`Chỉ còn ${item.stock} sản phẩm trong kho.`);
+      return;
+    }
     setUpdatingId(id);
     try {
       await cart.updateItem(id, newQty);
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, quantity: newQty } : i))
       );
+      notifyCartUpdated();
+    } catch (err) {
+      const res = (err as { response?: { data?: { quantity?: string[]; detail?: string } } })?.response;
+      const q = res?.data?.quantity;
+      const msg = Array.isArray(q) ? q[0] : (res?.data as { detail?: string })?.detail ?? 'Không thể cập nhật số lượng.';
+      alert(typeof msg === 'string' ? msg : 'Không thể cập nhật số lượng.');
+      fetchCart();
     } finally {
       setUpdatingId(null);
     }
@@ -87,23 +101,12 @@ export default function Cart() {
   const handleRemove = async (id: number) => {
     await cart.removeItem(id);
     setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  // 🔥 APPLY COUPON
-  const handleApplyCoupon = () => {
-    if (coupon === 'SALE10') {
-      setDiscount(subtotal * 0.1);
-    } else if (coupon === 'SALE50K') {
-      setDiscount(50000);
-    } else {
-      alert('Mã không hợp lệ');
-      setDiscount(0);
-    }
+    notifyCartUpdated();
   };
 
   const subtotal = items.reduce((sum, it) => sum + getUnitPrice(it) * it.quantity, 0);
   const shipping = subtotal >= 500000 ? 0 : 30000;
-  const total = subtotal + shipping - discount;
+  const total = subtotal + shipping;
 
   if (!user) {
     return (
@@ -179,7 +182,14 @@ if (items.length === 0) {
                 <div className="qty">
                   <button onClick={() => handleUpdateQty(item.id, item.quantity - 1)}>-</button>
                   <span>{item.quantity}</span>
-                  <button onClick={() => handleUpdateQty(item.id, item.quantity + 1)}>+</button>
+                  <button
+                    type="button"
+                    disabled={item.stock != null && item.quantity >= item.stock}
+                    title={item.stock != null ? `Tối đa ${item.stock}` : undefined}
+                    onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
+                  >
+                    +
+                  </button>
                 </div>
 
                 <div className="total">{totalItem.toLocaleString()}₫</div>
@@ -196,21 +206,6 @@ if (items.length === 0) {
         <div className="cart-summary">
           <h3>Tóm tắt đơn hàng</h3>
 
-          {/* 🔥 COUPON UI */}
-          <div className="cart-coupon">
-            <label>Mã giảm giá</label>
-
-            <div className="coupon-box">
-              <input
-                type="text"
-                placeholder="Nhập mã"
-                value={coupon}
-                onChange={(e) => setCoupon(e.target.value)}
-              />
-              <button onClick={handleApplyCoupon}>Áp dụng</button>
-            </div>
-          </div>
-
           {shipping === 0 && (
             <div className="free-ship"> Miễn phí vận chuyển</div>
           )}
@@ -219,14 +214,6 @@ if (items.length === 0) {
             <span>Tạm tính</span>
             <span>{subtotal.toLocaleString()}₫</span>
           </div>
-
-          {/* 🔥 HIỂN THỊ GIẢM GIÁ */}
-          {discount > 0 && (
-            <div className="row discount">
-              <span>Giảm giá</span>
-              <span>-{discount.toLocaleString()}₫</span>
-            </div>
-          )}
 
           <div className="row">
             <span>Phí vận chuyển</span>

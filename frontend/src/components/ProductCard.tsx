@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Product } from '../types';
 import { useWishlist } from '../hooks/useWishlist';
 import ProductCardModal from './ProductCardModal';
@@ -15,6 +15,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { ids, toggle: toggleWishlist } = useWishlist();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const isWishlisted = ids.includes(product.id);
   const productImage = product.image || PLACEHOLDER_IMAGE;
@@ -43,7 +44,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
   return (
     <>
-      <Link to={`/product/${product.id}`} className="productCard">
+      <div onClick={() => navigate(`/product/${product.id}`)} className="productCard" style={{ cursor: 'pointer' }}>
         {/* ── Image ── */}
         <div className="productCardImageWrapper">
           <img
@@ -105,7 +106,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             {outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
           </button>
         </div>
-      </Link>
+      </div>
 
       <ProductCardModal
         isOpen={isModalOpen}

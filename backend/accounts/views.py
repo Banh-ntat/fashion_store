@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.permissions import is_admin, RoleChoices
+from core.permissions import is_admin, is_staff, RoleChoices
 from .models import Profile
 from .serializers import (
     ProfileSerializer,
@@ -18,6 +18,21 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+def _facebook_profile_picture_url(userinfo: dict) -> str:
+    """
+    Graph API có thể trả picture: null hoặc cấu trúc khác — không dùng chuỗi .get lồng trực tiếp
+    (ví dụ userinfo.get('picture', {}) trả None nếu key tồn tại với giá trị null).
+    """
+    raw = userinfo.get("picture")
+    if not isinstance(raw, dict):
+        return ""
+    data = raw.get("data")
+    if not isinstance(data, dict):
+        return ""
+    url = (data.get("url") or "").strip()
+    return url[:500]
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -82,6 +97,7 @@ class CurrentUserView(APIView):
             "phone": profile.phone,
             "address": profile.address,
             "role": profile.role,
+            "can_access_admin": is_staff(request.user),
         })
 
 
@@ -425,26 +441,40 @@ class FacebookCallbackView(APIView):
             userinfo = userinfo_response.json()
 
             if 'error' in userinfo:
-                return Response({
-                    "error": userinfo.get('error', {}).get('message', 'Lỗi lấy thông tin Facebook')
-                }, status=status.HTTP_400_BAD_REQUEST)
+                err = userinfo.get('error')
+                if isinstance(err, dict):
+                    msg = err.get('message', 'Lỗi lấy thông tin Facebook')
+                else:
+                    msg = str(err) if err else 'Lỗi lấy thông tin Facebook'
+                return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
 
             # Extract user info (email có thể None nếu chỉ request public_profile)
             facebook_id = userinfo.get('id')
+            if not facebook_id:
+                return Response({
+                    "error": "Facebook không trả id người dùng."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             email = userinfo.get('email') or f"fb_{facebook_id}@placeholder.local"
-            first_name = userinfo.get('first_name', '')
-            last_name = userinfo.get('last_name', '')
-            picture = userinfo.get('picture', {}).get('data', {}).get('url', '')
+            first_name = userinfo.get('first_name') or ''
+            last_name = userinfo.get('last_name') or ''
+            picture = _facebook_profile_picture_url(userinfo)
 
             # Find or create user (ưu tiên tìm theo facebook_id, rồi email)
-            user = Profile.objects.filter(facebook_id=facebook_id).first()
-            if user:
-                user = user.user
+            profile_row = Profile.objects.filter(facebook_id=facebook_id).first()
+            user = profile_row.user if profile_row else None
             if not user and email:
                 user = User.objects.filter(email=email).first()
 
             if user:
-                profile = Profile.objects.get(user=user)
+                profile, _ = Profile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        "phone": "",
+                        "address": "",
+                        "role": RoleChoices.CUSTOMER,
+                    },
+                )
                 profile.facebook_id = facebook_id
                 if picture:
                     profile.avatar = picture
@@ -538,17 +568,29 @@ class FacebookLoginView(APIView):
             userinfo = userinfo_response.json()
 
             facebook_id = userinfo.get('id')
+            if not facebook_id:
+                return Response({
+                    "error": "Facebook không trả id người dùng."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             email = userinfo.get('email') or f"fb_{facebook_id}@placeholder.local"
-            first_name = userinfo.get('first_name', '')
-            last_name = userinfo.get('last_name', '')
-            picture = userinfo.get('picture', {}).get('data', {}).get('url', '')
+            first_name = userinfo.get('first_name') or ''
+            last_name = userinfo.get('last_name') or ''
+            picture = _facebook_profile_picture_url(userinfo)
 
             # Find or create user (ưu tiên facebook_id, rồi email)
             profile_obj = Profile.objects.filter(facebook_id=facebook_id).first()
             user = profile_obj.user if profile_obj else (User.objects.filter(email=email).first() if email else None)
 
             if user:
-                profile = Profile.objects.get(user=user)
+                profile, _ = Profile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        "phone": "",
+                        "address": "",
+                        "role": RoleChoices.CUSTOMER,
+                    },
+                )
                 profile.facebook_id = facebook_id
                 if picture:
                     profile.avatar = picture

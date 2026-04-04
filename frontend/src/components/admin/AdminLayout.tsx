@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import '../../pages/admin/Admin.css';
 
 interface AdminLayoutProps {
@@ -22,19 +23,20 @@ const menuItems: MenuItem[] = [
   { path: '/admin/users', label: 'Người dùng', icon: '👥' },
   { path: '/admin/reviews', label: 'Đánh giá', icon: '⭐' },
   { path: '/admin/contacts', label: 'Liên hệ', icon: '📧' },
+  { path: '/admin/feedbacks', label: 'Góp ý', icon: '💬' },
+  { path: '/admin/policies', label: 'Chính sách', icon: '📜' },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       navigate('/login');
     }
-    setUserRole(localStorage.getItem('user_role'));
   }, [navigate]);
 
   const handleLogout = () => {
@@ -78,7 +80,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {menuItems.find((item) => item.path === location.pathname)?.label || 'Dashboard'}
           </h1>
           <div className="admin-header-user">
-            <span>👤 Admin</span>
+            <span>
+              👤 {user?.username ?? 'Admin'}
+              {user?.role ? ` · ${user.role}` : ''}
+            </span>
           </div>
         </header>
         <div className="admin-content">{children}</div>

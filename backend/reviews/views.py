@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q
 
-from core.permissions import is_admin, IsOwnerOrAdmin
+from core.permissions import IsAdminOrStaff, is_admin, is_staff
 from orders.models import Order, OrderItem
 from .models import Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
@@ -16,8 +16,25 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["product", "rating", "feedback_type"]
 
+    def get_permissions(self):
+        if self.action in ("update", "partial_update"):
+            return [permissions.IsAuthenticated(), IsAdminOrStaff()]
+        return [permissions.IsAuthenticatedOrReadOnly()]
+
     def get_queryset(self):
-        return Review.objects.select_related("user", "product", "product__product", "product__color", "product__size").all().order_by("-created_at")
+        qs = (
+            Review.objects.select_related(
+                "user", "product", "product__product", "product__color", "product__size"
+            )
+            .all()
+            .order_by("-created_at")
+        )
+        user = self.request.user
+        if user.is_authenticated and is_staff(user):
+            return qs
+        if user.is_authenticated:
+            return qs.filter(Q(is_visible=True) | Q(user=user))
+        return qs.filter(is_visible=True)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -82,11 +99,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="by_product/(?P<product_id>[^/.]+)")
     def by_product(self, request, product_id=None):
         """Get reviews for a specific product"""
-        reviews = Review.objects.filter(
-            product__product_id=product_id
-        ).select_related(
-            "user", "product", "product__color", "product__size"
-        ).order_by("-created_at")
+        reviews = (
+            self.get_queryset()
+            .filter(product__product_id=product_id)
+            .select_related("user", "product", "product__color", "product__size")
+        )
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)
 
