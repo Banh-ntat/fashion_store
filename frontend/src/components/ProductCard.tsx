@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import { cart } from '../api/client';
+import { notifyCartUpdated } from '../utils/cartEvents';
+import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../hooks/useWishlist';
 import '../styles/components/ProductCard.css';
 
@@ -13,6 +15,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const { user } = useAuth();
   const { ids, toggle: toggleWishlist } = useWishlist();
   const [isAdding, setIsAdding] = useState(false);
   const isWishlisted = ids.includes(product.id);
@@ -35,10 +38,21 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     setIsAdding(true);
     try {
       await cart.addItem({ product_id: product.id, quantity: 1 });
+      notifyCartUpdated();
       alert('Đã thêm vào giỏ hàng!');
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { quantity?: string[]; detail?: string };
+        };
+      };
+      const status = ax.response?.status;
+      const data = ax.response?.data;
+      const q = data?.quantity;
+      const apiMsg = Array.isArray(q) ? q[0] : data?.detail;
       if (status === 401) alert('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
+      else if (typeof apiMsg === 'string') alert(apiMsg);
       else alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
     } finally {
       setIsAdding(false);
@@ -48,7 +62,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleWishlist(product.id);
+    if (!user) {
+      alert('Vui lòng đăng nhập để thêm sản phẩm yêu thích.');
+      return;
+    }
+    void toggleWishlist(product.id);
   };
 
   const outOfStock = productStock === 0;

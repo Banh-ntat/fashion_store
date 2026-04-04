@@ -49,7 +49,20 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     try {
       await auth.login(username, password);
       const userData = await auth.getCurrentUser();
-      setUser({ username: userData.username, email: userData.email, first_name: userData.first_name, last_name: userData.last_name, id: userData.id });
+      if (userData.role) {
+        localStorage.setItem('user_role', userData.role);
+      } else {
+        localStorage.removeItem('user_role');
+      }
+      setUser({
+        username: userData.username,
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        id: userData.id,
+        role: userData.role,
+        can_access_admin: userData.can_access_admin,
+      });
       if (onLoginSuccess) {
         onLoginSuccess();
       } else {
@@ -78,8 +91,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const handleGoogleCallback = async (code: string) => {
     setGoogleLoading(true);
     try {
-      const data = await auth.googleCallback(code);
-      if (data?.user) setUser(data.user);
+      await auth.googleCallback(code);
+      const userData = await auth.getCurrentUser();
+      if (userData.role) localStorage.setItem('user_role', userData.role);
+      else localStorage.removeItem('user_role');
+      setUser({
+        username: userData.username,
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        id: userData.id,
+        role: userData.role,
+        can_access_admin: userData.can_access_admin,
+      });
       window.history.replaceState({}, '', '/login');
       if (onLoginSuccess) {
         onLoginSuccess();
@@ -106,8 +130,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const handleFacebookCallback = async (code: string) => {
     setFacebookLoading(true);
     try {
-      const data = await auth.facebookCallback(code);
-      if (data?.user) setUser(data.user);
+      await auth.facebookCallback(code);
+      const userData = await auth.getCurrentUser();
+      if (userData.role) localStorage.setItem('user_role', userData.role);
+      else localStorage.removeItem('user_role');
+      setUser({
+        username: userData.username,
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        id: userData.id,
+        role: userData.role,
+        can_access_admin: userData.can_access_admin,
+      });
       window.history.replaceState({}, '', '/login');
       if (onLoginSuccess) {
         onLoginSuccess();

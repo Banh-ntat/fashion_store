@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'reviews',
     'contact',
     'core',
+    'wishlist',
 ]
 
 MIDDLEWARE = [
@@ -73,7 +74,7 @@ ROOT_URLCONF = 'api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -188,6 +189,13 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@fashionstore.com')
 
 # Email templates
 EMAIL_TEMPLATE_DIR = BASE_DIR / 'templates' / 'emails'
+
+# Gửi email xác nhận đơn sau checkout (cần cấu hình SMTP trong .env)
+ORDER_CONFIRMATION_EMAIL_ENABLED = os.getenv('ORDER_CONFIRMATION_EMAIL_ENABLED', '1').lower() in (
+    '1',
+    'true',
+    'yes',
+)
 
 # Google OAuth2 Configuration
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com')

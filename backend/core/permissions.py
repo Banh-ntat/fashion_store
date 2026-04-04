@@ -19,12 +19,18 @@ class RoleChoices:
 
 
 def get_user_role(user):
-    """Get the role of a user"""
+    """Get the role of a user (from Profile)."""
     if not user.is_authenticated:
         return None
     try:
-        return user.profile.role
-    except:
+        # Truy vấn trực tiếp tránh lỗi RelatedObjectDoesNotExist / truy cập profile lạ
+        from accounts.models import Profile
+
+        role = Profile.objects.filter(user_id=user.pk).values_list("role", flat=True).first()
+        if role is None:
+            return RoleChoices.CUSTOMER
+        return role
+    except Exception:
         return RoleChoices.CUSTOMER
 
 
@@ -34,9 +40,14 @@ def is_admin(user):
 
 
 def is_staff(user):
-    """Check if user is any kind of staff (admin, product manager, order manager, customer support)"""
+    """Quyền nhân viên: superuser Django, cờ is_staff Django, hoặc Profile.role khách hàng."""
     if not user.is_authenticated:
         return False
+    if getattr(user, "is_superuser", False):
+        return True
+    # Tài khoản được tick "Staff" trong Django Admin vẫn vào được API nội bộ
+    if getattr(user, "is_staff", False):
+        return True
     role = get_user_role(user)
     return role != RoleChoices.CUSTOMER and role is not None
 
@@ -63,6 +74,23 @@ def is_customer_support(user):
         return False
     role = get_user_role(user)
     return role in [RoleChoices.ADMIN, RoleChoices.CUSTOMER_SUPPORT]
+
+
+def is_order_staff(user):
+    """Admin, order_manager hoặc customer_support — được cập nhật trạng thái đơn."""
+    if not user.is_authenticated:
+        return False
+    role = get_user_role(user)
+    return role in (
+        RoleChoices.ADMIN,
+        RoleChoices.ORDER_MANAGER,
+        RoleChoices.CUSTOMER_SUPPORT,
+    )
+
+
+class IsOrderStaff(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return is_order_staff(request.user)
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):

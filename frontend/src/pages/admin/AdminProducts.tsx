@@ -58,6 +58,8 @@ export default function AdminProducts() {
   const [colorsList, setColorsList] = useState<Color[]>([]);
   const [sizesList, setSizesList] = useState<Size[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   
   // Product Modal
   const [showProductModal, setShowProductModal] = useState(false);
@@ -86,21 +88,36 @@ export default function AdminProducts() {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = (search?: string, lowStock?: boolean) => {
+    const q = search !== undefined ? search : searchQuery;
+    const low = lowStock !== undefined ? lowStock : lowStockOnly;
+    const params: Record<string, string> = {};
+    if (q.trim()) params.search = q.trim();
+    if (low) {
+      params.low_stock = 'true';
+      params.stock_threshold = '5';
+    }
+
     Promise.all([
-      admin.products.list(),
+      admin.products.list(Object.keys(params).length ? params : undefined),
       categories.list(),
       colorsApi.list(),
       sizesApi.list(),
     ])
       .then(([productsRes, categoriesRes, colorsRes, sizesRes]) => {
-        setProducts(productsRes.data.results || productsRes.data);
+        const pdata = productsRes.data as { results?: Product[] };
+        setProducts(pdata.results || (productsRes.data as Product[]) || []);
         setCategoriesList(categoriesRes.data.results || categoriesRes.data);
         setColorsList(colorsRes.data.results || colorsRes.data);
         setSizesList(sizesRes.data.results || sizesRes.data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  const applyProductFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadData(searchQuery, lowStockOnly);
   };
 
   // Product handlers
@@ -289,6 +306,27 @@ export default function AdminProducts() {
             + Thêm sản phẩm
           </button>
         </div>
+
+        <form className="admin-filters" onSubmit={applyProductFilters}>
+          <input
+            type="search"
+            placeholder="Tìm theo tên, mô tả, danh mục…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ minWidth: '240px', flex: 1 }}
+          />
+          <label className="admin-inlineCheck">
+            <input
+              type="checkbox"
+              checked={lowStockOnly}
+              onChange={(e) => setLowStockOnly(e.target.checked)}
+            />{' '}
+            Chỉ SP có biến thể tồn ≤ 5
+          </label>
+          <button type="submit" className="btn-primary">
+            Lọc
+          </button>
+        </form>
 
         <table className="data-table">
           <thead>

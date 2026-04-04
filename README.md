@@ -7,17 +7,35 @@ E-commerce web app: Django REST API + React frontend.
 - **backend/** – Django (API: products, cart, orders, accounts, reviews, contact)
 - **frontend/** – React + Vite + TypeScript
 
+## Yêu cầu
+
+- **Python** 3.11+ (đã kiểm tra với 3.11)
+- **Node.js** 20+ (cho Vite 7)
+- Mặc định backend dùng **SQLite** (`backend/db.sqlite3`) — không cần cài PostgreSQL để chạy local.
+
 ## Chạy dự án
 
-### Backend
+### 1. Cấu hình backend
+
 ```bash
 cd backend
+copy env.example .env
+```
+
+(Tạo file `.env`; có thể chỉnh `FRONTEND_ORIGIN`, OAuth, hoặc chuyển sang Postgres — xem `env.example`.)
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
 
-### Frontend
+### 2. Frontend
+
+Terminal khác:
+
 ```bash
 cd frontend
 npm install

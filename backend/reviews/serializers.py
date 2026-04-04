@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
+from core.permissions import is_staff
 from .models import Review, Comment
 
 
@@ -12,8 +13,25 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ("id", "user", "product", "product_name", "variant_info", "rating", "feedback_type", "content", "created_at")
+        fields = (
+            "id",
+            "user",
+            "product",
+            "product_name",
+            "variant_info",
+            "rating",
+            "feedback_type",
+            "content",
+            "is_visible",
+            "created_at",
+        )
         read_only_fields = ("user", "created_at")
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request and not is_staff(request.user):
+            attrs.pop("is_visible", None)
+        return attrs
 
     def get_product_name(self, obj):
         return obj.product.product.name if obj.product else ''

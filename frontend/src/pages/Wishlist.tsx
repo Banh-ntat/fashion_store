@@ -37,7 +37,7 @@ export default function Wishlist() {
     }
     setProductList(results);
     setLoading(false);
-  }, [ids.join(',')]);
+  }, [ids]);
 
   useEffect(() => {
     fetchProducts();
@@ -63,7 +63,7 @@ export default function Wishlist() {
                 <button
                   type="button"
                   className="wishlistRemove"
-                  onClick={() => remove(product.id)}
+                  onClick={() => void remove(product.id)}
                   aria-label="Xóa khỏi yêu thích"
                 >
                   ✕

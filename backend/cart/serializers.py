@@ -20,10 +20,21 @@ class CartItemSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    stock = serializers.IntegerField(source="product.stock", read_only=True)
 
     class Meta:
         model = CartItem
-        fields = ("id", "cart", "product", "variant_info", "product_variant_id", "product_id", "quantity")
+        fields = (
+            "id",
+            "cart",
+            "product",
+            "variant_info",
+            "stock",
+            "product_variant_id",
+            "product_id",
+            "quantity",
+        )
         read_only_fields = ("cart",)
 
     def get_variant_info(self, obj: CartItem):
@@ -36,25 +47,67 @@ class CartItemSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        # Nếu là partial update (PATCH) - chỉ cập nhật quantity - thì bỏ qua validation product
-        if self.instance is not None and len(attrs) == 1 and 'quantity' in attrs:
+        # Cập nhật dòng giỏ (thường là PATCH số lượng)
+        if self.instance is not None:
+            if "quantity" in attrs:
+                variant = self.instance.product
+                variant.refresh_from_db(fields=["stock"])
+                q = attrs["quantity"]
+                if q > variant.stock:
+                    raise serializers.ValidationError(
+                        {
+                            "quantity": (
+                                f"Không đủ hàng. Còn {variant.stock} sản phẩm "
+                                f"({variant.product.name}, {variant.color.name}/{variant.size.name})."
+                            )
+                        }
+                    )
             return attrs
-        
+
         if attrs.get("product"):
-            return attrs
-        product_id = attrs.pop("product_id", None)
-        if product_id:
-            variant = ProductVariant.objects.filter(product=product_id).first()
-            if variant:
-                attrs["product"] = variant
-            else:
+            pass
+        else:
+            product_id = attrs.pop("product_id", None)
+            if product_id:
+                variant = ProductVariant.objects.filter(product=product_id).first()
+                if variant:
+                    attrs["product"] = variant
+                else:
+                    raise serializers.ValidationError(
+                        {"product_id": "Sản phẩm này chưa có biến thể (variant)."}
+                    )
+            if not attrs.get("product"):
                 raise serializers.ValidationError(
-                    {"product_id": "Sản phẩm này chưa có biến thể (variant)."}
+                    "Cần gửi product_variant_id hoặc product_id."
                 )
-        if not attrs.get("product"):
-            raise serializers.ValidationError(
-                "Cần gửi product_variant_id hoặc product_id."
-            )
+
+        variant = attrs.get("product")
+        qty = attrs.get("quantity", 1)
+        if variant is not None:
+            variant.refresh_from_db(fields=["stock"])
+            cart = self.context.get("cart")
+            if self.instance is None:
+                existing = (
+                    CartItem.objects.filter(cart=cart, product=variant).first()
+                    if cart
+                    else None
+                )
+                need = existing.quantity + qty if existing else qty
+                if need > variant.stock:
+                    label = f"{variant.product.name} ({variant.color.name}/{variant.size.name})"
+                    extra = (
+                        f" Trong giỏ đã có {existing.quantity}."
+                        if existing
+                        else ""
+                    )
+                    raise serializers.ValidationError(
+                        {
+                            "quantity": (
+                                f"Không đủ hàng cho {label}. Còn {variant.stock}, "
+                                f"cần tổng {need}.{extra}"
+                            )
+                        }
+                    )
         return attrs
 
 

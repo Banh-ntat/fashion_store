@@ -12,7 +12,6 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-// Interceptor for requests khoakhoa
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -34,6 +33,9 @@ api.interceptors.response.use(
             refresh: refreshToken,
           });
           localStorage.setItem('access_token', data.access);
+          if (data.refresh) {
+            localStorage.setItem('refresh_token', data.refresh);
+          }
           originalRequest.headers.Authorization = `Bearer ${data.access}`;
           return api(originalRequest);
         } catch {
@@ -98,10 +100,27 @@ export const auth = {
     return data;
   },
   googleCallback: async (code: string) => {
-    const { data } = await api.post('/auth/google/callback/', { code });
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    return data;
+    try {
+      const { data } = await api.post<{ access?: string; refresh?: string; error?: string }>(
+        '/auth/google/callback/',
+        { code }
+      );
+      if (!data?.access) {
+        throw new Error(data?.error || 'Đăng nhập Google thất bại');
+      }
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh ?? '');
+      return data;
+    } catch (err) {
+      const ax = axios.isAxiosError(err) ? err : null;
+      const d = ax?.response?.data as { error?: string; detail?: unknown } | undefined;
+      const msg =
+        (typeof d?.error === 'string' && d.error) ||
+        (typeof d?.detail === 'string' ? d.detail : '') ||
+        (err instanceof Error ? err.message : '') ||
+        'Đăng nhập Google thất bại';
+      throw new Error(msg);
+    }
   },
   googleLogin: async (idToken: string) => {
     const { data } = await api.post('/auth/google/login/', { id_token: idToken });
@@ -116,10 +135,27 @@ export const auth = {
     return data;
   },
   facebookCallback: async (code: string) => {
-    const { data } = await api.post('/auth/facebook/callback/', { code });
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    return data;
+    try {
+      const { data } = await api.post<{ access?: string; refresh?: string; error?: string }>(
+        '/auth/facebook/callback/',
+        { code }
+      );
+      if (!data?.access) {
+        throw new Error(data?.error || 'Đăng nhập Facebook thất bại');
+      }
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh ?? '');
+      return data;
+    } catch (err) {
+      const ax = axios.isAxiosError(err) ? err : null;
+      const d = ax?.response?.data as { error?: string; detail?: unknown } | undefined;
+      const msg =
+        (typeof d?.error === 'string' && d.error) ||
+        (typeof d?.detail === 'string' ? d.detail : '') ||
+        (err instanceof Error ? err.message : '') ||
+        'Đăng nhập Facebook thất bại';
+      throw new Error(msg);
+    }
   },
   facebookLogin: async (accessToken: string) => {
     const { data } = await api.post('/auth/facebook/login/', { access_token: accessToken });
@@ -195,12 +231,12 @@ export const orders = {
   list: () => api.get('/orders/orders/'),
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post('/orders/orders/', data),
-  /** Tạo đơn từ giỏ: total_price, name, phone, address */
+  /** Tạo đơn từ giỏ — tổng tiền & phí ship do server tính */
   checkout: (data: {
-    total_price: string | number;
     name: string;
     phone: string;
     address: string;
+    note?: string;
   }) => api.post('/orders/orders/checkout/', data),
 };
 
@@ -221,7 +257,75 @@ export const profiles = {
     api.patch(`/accounts/profiles/${id}/`, data),
 };
 
+/** Meta trang liên hệ (hotline, giờ làm việc, chủ đề form) */
+export type ContactSubjectOption = { value: string; label: string };
+export type ContactMeta = {
+  brand: string;
+  hotline_display: string;
+  hotline_e164: string;
+  email: string;
+  address: string;
+  hours: string;
+  response_note: string;
+  stats: { label: string; value: string }[];
+  subject_options: ContactSubjectOption[];
+};
+
+/** Form liên hệ / góp ý công khai; chính sách đọc từ API */
+export const site = {
+  getContactMeta: () => api.get<ContactMeta>('/contact/meta/'),
+  sendContact: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    subject?: string;
+    message: string;
+  }) => api.post('/contact/contacts/', data),
+  sendFeedback: (message: string) => api.post('/contact/feedbacks/', { message }),
+  getPolicies: () => api.get('/contact/policies/'),
+};
+
+/** Yêu thích — lưu trên server (cần đăng nhập) */
+/** Thống kê dashboard admin (GET /api/core/dashboard/stats/) */
+export type AdminDashboardStats = {
+  revenue_today: string;
+  revenue_week: string;
+  revenue_month: string;
+  orders_today: number;
+  orders_total: number;
+  pending_orders: number;
+  stale_pending_order_ids: number[];
+  low_stock_threshold: number;
+  low_stock_variants: number;
+  low_stock_products: number;
+  unhandled_contacts: number;
+  unhandled_feedbacks: number;
+  catalog: { products: number; variants: number; categories: number };
+  revenue_series: { date: string; label: string; revenue: string; orders: number }[];
+  orders_by_status: Record<string, number>;
+  top_products: { id: number; name: string; revenue: string }[];
+};
+
+export const wishlistApi = {
+  getIds: () => api.get<{ product_ids: number[] }>('/wishlist/items/'),
+  toggle: (productId: number) =>
+    api.post<{ in_wishlist: boolean; product_ids: number[] }>('/wishlist/toggle/', {
+      product_id: productId,
+    }),
+  sync: (productIds: number[]) =>
+    api.post<{ product_ids: number[] }>('/wishlist/sync/', { product_ids: productIds }),
+};
+
 export const admin = {
+  dashboard: {
+    stats: () => api.get<AdminDashboardStats>('/core/dashboard/stats/'),
+  },
+  policies: {
+    list: () => api.get('/contact/policies/'),
+    create: (data: { title: string; content: string }) => api.post('/contact/policies/', data),
+    update: (id: number, data: Record<string, unknown>) => api.patch(`/contact/policies/${id}/`, data),
+    delete: (id: number) => api.delete(`/contact/policies/${id}/`),
+  },
   // Products - support FormData for image upload
   products: {
     list: (params?: Record<string, unknown>) => api.get('/products/', { params }),
@@ -276,7 +380,7 @@ export const admin = {
   },
   // Orders (backend: api/orders/ + router 'orders' => /orders/orders/)
   orders: {
-    list: () => api.get('/orders/orders/'),
+    list: (params?: Record<string, unknown>) => api.get('/orders/orders/', { params }),
     get: (id: number) => api.get(`/orders/orders/${id}/`),
     update: (id: number, data: Record<string, unknown>) => api.patch(`/orders/orders/${id}/`, data),
   },
@@ -289,16 +393,19 @@ export const admin = {
   // Reviews (backend: api/reviews/ + router 'reviews' => /reviews/reviews/)
   reviews: {
     list: (params?: Record<string, unknown>) => api.get('/reviews/reviews/', { params }),
+    update: (id: number, data: Record<string, unknown>) => api.patch(`/reviews/reviews/${id}/`, data),
     delete: (id: number) => api.delete(`/reviews/reviews/${id}/`),
   },
   // Contacts (backend: api/contact/ + router 'contacts' => /contact/contacts/)
   contacts: {
     list: () => api.get('/contact/contacts/'),
+    patch: (id: number, data: Record<string, unknown>) => api.patch(`/contact/contacts/${id}/`, data),
     delete: (id: number) => api.delete(`/contact/contacts/${id}/`),
   },
   // Feedbacks (backend: api/contact/ + router 'feedbacks' => /contact/feedbacks/)
   feedbacks: {
     list: () => api.get('/contact/feedbacks/'),
+    patch: (id: number, data: Record<string, unknown>) => api.patch(`/contact/feedbacks/${id}/`, data),
     delete: (id: number) => api.delete(`/contact/feedbacks/${id}/`),
   },
 };

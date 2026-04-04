@@ -7,6 +7,10 @@ export interface AuthUser {
   first_name?: string;
   last_name?: string;
   id?: number;
+  /** Role từ Profile (backend) — dùng cho /admin */
+  role?: string;
+  /** Khớp backend `is_staff` + superuser — ưu tiên dùng thay vì chỉ đoán từ role */
+  can_access_admin?: boolean;
 }
 
 interface AuthContextType {
@@ -28,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     auth.logout();
+    localStorage.removeItem('user_role');
     setUserState(null);
   }, []);
 
@@ -39,15 +44,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     auth
       .getCurrentUser()
-      .then((data) => {
-        setUserState({
-          username: data.username ?? 'User',
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          id: data.id,
-        });
-      })
+      .then(
+        (data: {
+          username?: string;
+          email?: string;
+          first_name?: string;
+          last_name?: string;
+          id?: number;
+          role?: string;
+          can_access_admin?: boolean;
+        }) => {
+          if (data.role) {
+            localStorage.setItem('user_role', data.role);
+          } else {
+            localStorage.removeItem('user_role');
+          }
+          setUserState({
+            username: data.username ?? 'User',
+            email: data.email,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            id: data.id,
+            role: data.role,
+            can_access_admin: data.can_access_admin,
+          });
+        }
+      )
       .catch(() => {
         auth.logout();
         setUserState(null);

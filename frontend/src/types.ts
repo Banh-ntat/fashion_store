@@ -59,6 +59,8 @@ export interface OrderItem {
 export interface Order {
   id: number;
   user: number;
+  subtotal?: string;
+  shipping_fee?: string;
   total_price: string;
   status: string;
   created_at: string;

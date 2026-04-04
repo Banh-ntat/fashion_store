@@ -19,6 +19,7 @@ class Review(models.Model):
     rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])
     feedback_type = models.CharField(max_length=20, choices=FEEDBACK_TYPES, default='quality')
     content = models.TextField(blank=True, default='')
+    is_visible = models.BooleanField(default=True, help_text='Hiển thị trên trang sản phẩm')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

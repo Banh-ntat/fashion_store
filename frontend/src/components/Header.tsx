@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { cart } from "../api/client";
 import SearchBar from "./SearchBar";
+import { CART_UPDATED_EVENT } from "../utils/cartEvents";
 import "../styles/components/Header.css";
 
 /* Icons */
@@ -39,19 +41,56 @@ const navLinks = [
   { to: "/", label: "Trang Chủ" },
   { to: "/products", label: "Sản Phẩm" },
   { to: "/about", label: "Giới Thiệu" },
-  { to: "/policy", label: "Chính Sách" }
+  { to: "/policy", label: "Chính Sách" },
+  { to: "/feedback", label: "Góp Ý" },
+  { to: "/contact", label: "Liên Hệ" },
 ];
+
+async function fetchCartItemCount(): Promise<number> {
+  try {
+    const res = await cart.get();
+    const items = (res.data as { items?: { quantity: number }[] })?.items ?? [];
+    return items.reduce((sum, it) => sum + (it.quantity ?? 0), 0);
+  } catch {
+    return 0;
+  }
+}
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const closeMenu = () => setMenuOpen(false);
 
+  const refreshCartCount = useCallback(async () => {
+    if (!user) {
+      setCartCount(0);
+      return;
+    }
+    const n = await fetchCartItemCount();
+    setCartCount(n);
+  }, [user]);
+
+  useEffect(() => {
+    void refreshCartCount();
+  }, [refreshCartCount]);
+
+  useEffect(() => {
+    const onCartUpdated = () => {
+      void refreshCartCount();
+    };
+    window.addEventListener(CART_UPDATED_EVENT, onCartUpdated);
+    return () => window.removeEventListener(CART_UPDATED_EVENT, onCartUpdated);
+  }, [refreshCartCount]);
+
   const displayName = user?.first_name || user?.last_name
     ? [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
     : user?.username || 'Bạn';
+
+  const cartBadgeLabel =
+    cartCount <= 0 ? "" : cartCount > 99 ? "99+" : String(cartCount);
 
   return (
     <>
@@ -90,11 +129,15 @@ export default function Header() {
           <div className="actions">
 
             <button
+              type="button"
               className="iconBtn"
               onClick={() => navigate("/cart")}
+              aria-label={`Giỏ hàng${cartCount > 0 ? `, ${cartCount} sản phẩm` : ""}`}
             >
               <CartIcon />
-              <span className="cartBadge">3</span>
+              {cartBadgeLabel ? (
+                <span className="cartBadge">{cartBadgeLabel}</span>
+              ) : null}
             </button>
 
             {user ? (
@@ -118,6 +161,7 @@ export default function Header() {
             ) : (
               <>
                 <button
+                  type="button"
                   className="iconBtn"
                   onClick={() => navigate("/login")}
                 >
@@ -130,8 +174,11 @@ export default function Header() {
             )}
 
             <button
+              type="button"
               className={`hamburger ${menuOpen ? "hamburgerOpen" : ""}`}
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-label="Mở menu"
             >
               <span className="hamburgerLine" />
               <span className="hamburgerLine" />
@@ -160,6 +207,13 @@ export default function Header() {
               {label}
             </Link>
           ))}
+          <Link
+            to="/cart"
+            className="mobileNavLink"
+            onClick={closeMenu}
+          >
+            Giỏ hàng{cartCount > 0 ? ` (${cartCount > 99 ? "99+" : cartCount})` : ""}
+          </Link>
         </nav>
 
         <div className="mobileActions">

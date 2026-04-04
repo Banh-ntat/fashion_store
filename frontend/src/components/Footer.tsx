@@ -67,10 +67,12 @@ export default function Footer() {
   const navLinks = [
     { to: "/search", label: "Tìm kiếm" },
     { to: "/about", label: "Giới thiệu" },
-    { to: "/policy/doi-tra", label: "Chính sách đổi trả" },
-    { to: "/policy/bao-mat", label: "Chính sách bảo mật" },
-    { to: "/careers", label: "Tuyển dụng" },
+    { to: "/policy", label: "Chính sách" },
+    { to: "/policy/doi-tra", label: "Đổi trả" },
+    { to: "/policy/bao-mat", label: "Bảo mật" },
+    { to: "/feedback", label: "Góp ý" },
     { to: "/contact", label: "Liên hệ" },
+    { to: "/careers", label: "Tuyển dụng" },
   ];
 
   return (
