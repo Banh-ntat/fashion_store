@@ -87,10 +87,24 @@ export default function Checkout() {
       navigate('/orders', { state: { orderPlaced: true } });
     } catch (err) {
       console.error(err);
-      const res = (err as { response?: { data?: { detail?: string | string[] } } })?.response;
-      const d = res?.data?.detail;
-      const msg = Array.isArray(d) ? d[0] : (d ?? 'Đặt hàng thất bại. Vui lòng thử lại.');
-      alert(msg);
+      let errorMessage = 'Đặt hàng thất bại. Vui lòng thử lại.';
+      const resData = (err as any)?.response?.data;
+      if (resData) {
+        if (resData.detail) {
+          errorMessage = Array.isArray(resData.detail) ? resData.detail[0] : resData.detail;
+        } else if (Array.isArray(resData) && typeof resData[0] === 'string') {
+          errorMessage = resData[0];
+        } else if (resData.non_field_errors) {
+          errorMessage = Array.isArray(resData.non_field_errors) ? resData.non_field_errors[0] : resData.non_field_errors;
+        } else if (typeof resData === 'string') {
+          errorMessage = resData;
+        } else if (typeof resData === 'object' && Object.keys(resData).length > 0) {
+          const firstVal = Object.values(resData)[0];
+          if (typeof firstVal === 'string') errorMessage = firstVal;
+          else if (Array.isArray(firstVal) && typeof firstVal[0] === 'string') errorMessage = firstVal[0];
+        }
+      }
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }

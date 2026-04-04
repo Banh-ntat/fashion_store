@@ -112,7 +112,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             locked_variants = list(
                 ProductVariant.objects.select_for_update()
                 .filter(id__in=variant_ids)
-                .select_related("product", "product__promotion", "color", "size")
+                .select_related("product", "color", "size")
                 .order_by("id")
             )
             variants_map = {v.id: v for v in locked_variants}
