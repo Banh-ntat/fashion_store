@@ -36,11 +36,11 @@ import './styles/index.css';
 import './App.css';
 
 function App() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname, search]);
   return (
     <AuthProvider>
       <div className="app">

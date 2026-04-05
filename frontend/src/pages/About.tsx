@@ -94,22 +94,6 @@ export default function About() {
                 Ngày nay, chúng tôi phục vụ hơn 50.000 khách hàng
                 trên khắp Việt Nam và vẫn đang không ngừng phát triển.
               </p>
-
-              <div className="storyStats">
-
-                {[
-                  { num: '2026', label: 'Năm thành lập' },
-                  { num: '1k', label: 'Khách hàng' },
-                  { num: '100+', label: 'Sản phẩm' },
-                ].map(({ num, label }) => (
-                  <div key={label} className="storyStat">
-                    <span className="storyStatNum">{num}</span>
-                    <span className="storyStatLabel">{label}</span>
-                  </div>
-                ))}
-
-              </div>
-
             </div>
           </div>
         </div>
