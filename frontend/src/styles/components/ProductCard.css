@@ -50,7 +50,7 @@
   color: #fff;
   padding: 4px 10px;
   border-radius: 4px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -116,7 +116,7 @@
 }
 
 .productCardCategory {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
   font-size: 0.62rem;
   color: #bbb;
   text-transform: uppercase;
@@ -149,7 +149,7 @@
 }
 
 .productCardCurrentPrice {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
   color: #e74c3c;
@@ -157,7 +157,7 @@
 }
 
 .productCardOldPrice {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
   font-size: 0.82rem;
   color: #ccc;
   text-decoration: line-through;
@@ -171,7 +171,7 @@
   color: #fff;
   border: none;
   border-radius: 9px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;

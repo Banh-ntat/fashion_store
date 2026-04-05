@@ -2,22 +2,53 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
+import { useMemo, useState } from 'react';
 import '../styles/pages/Products.css';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
+
   const categoryId = searchParams.get('category')
     ? Number(searchParams.get('category'))
     : undefined;
 
+  // Đọc từ khoá từ navbar search (URL param ?search=...)
+  const query = searchParams.get('search') ?? '';
+
   const { items: products, loading, error } = useProducts({ categoryId });
   const { items: categories } = useCategories();
 
+  const [sort, setSort] = useState('default');
+
   const currentCategory = categories.find(c => c.id === categoryId);
 
-  // Split title: if category selected, show italic category name; else plain
-  const titleMain = currentCategory ? 'Danh mục' : 'Tất cả';
-  const titleItalic = currentCategory ? currentCategory.name : 'sản phẩm';
+  const titleMain   = query ? 'Kết quả' : currentCategory ? 'Danh mục' : 'Tất cả';
+  const titleItalic = query ? `"${query}"` : currentCategory ? currentCategory.name : 'Sản Phẩm';
+
+  /* Filter + sort — client-side */
+  const displayed = useMemo(() => {
+    let list = [...products];
+
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    if (sort === 'price-asc')  list.sort((a, b) => Number(a.price) - Number(b.price));
+    if (sort === 'price-desc') list.sort((a, b) => Number(b.price) - Number(a.price));
+    if (sort === 'name-asc')   list.sort((a, b) => a.name.localeCompare(b.name));
+
+    return list;
+  }, [products, query, sort]);
+
+  // Khi chọn danh mục thì xoá search để tránh conflict
+  const handleCategoryClick = (id?: number) => {
+    setSearchParams(id ? { category: String(id) } : {});
+    setSort('default');
+  };
 
   return (
     <section className="products-page">
@@ -30,9 +61,7 @@ export default function Products() {
               {titleMain} <em>{titleItalic}</em>
             </h1>
             <p className="sectionSubtitle">
-              {loading
-                ? 'Đang tải sản phẩm…'
-                : `${products.length} sản phẩm có sẵn`}
+              {loading ? 'Đang tải sản phẩm…' : `${displayed.length} sản phẩm có sẵn`}
             </p>
           </div>
         </div>
@@ -40,14 +69,16 @@ export default function Products() {
         {/* ── Body ── */}
         <div className="productsLayout">
 
-          {/* Sidebar */}
+          {/* ── Sidebar ── */}
           <aside className="productsSidebar">
+
+            {/* Danh mục */}
             <h3 className="sidebarTitle">Danh mục</h3>
             <nav className="categoryNav">
               <button
                 type="button"
-                className={`categoryNavItem ${!categoryId ? 'active' : ''}`}
-                onClick={() => setSearchParams({})}
+                className={`categoryNavItem ${!categoryId && !query ? 'active' : ''}`}
+                onClick={() => handleCategoryClick()}
               >
                 Tất cả
               </button>
@@ -56,47 +87,69 @@ export default function Products() {
                   key={cat.id}
                   type="button"
                   className={`categoryNavItem ${categoryId === cat.id ? 'active' : ''}`}
-                  onClick={() => setSearchParams({ category: String(cat.id) })}
+                  onClick={() => handleCategoryClick(cat.id)}
                 >
                   {cat.name}
                 </button>
               ))}
             </nav>
+
+            {/* Sắp xếp */}
+            <h3 className="sidebarTitle" style={{ marginTop: '28px' }}>Sắp xếp</h3>
+            <div className="sortNav">
+              {([
+                { value: 'default',    label: 'Mặc định' },
+                { value: 'price-asc',  label: 'Giá tăng dần' },
+                { value: 'price-desc', label: 'Giá giảm dần' },
+                { value: 'name-asc',   label: 'Tên A → Z' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`sortNavItem ${sort === opt.value ? 'active' : ''}`}
+                  onClick={() => setSort(opt.value)}
+                >
+                  <span className="sortRadio" />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
           </aside>
 
-          {/* Main */}
+          {/* ── Main ── */}
           <div className="productsMain">
-            {error && (
-              <p className="productsFallbackNote">{error}</p>
-            )}
+
+            {error && <p className="productsFallbackNote">{error}</p>}
 
             {loading ? (
               <div className="productsLoading">
                 <div className="loading">Đang tải</div>
               </div>
-            ) : products.length === 0 ? (
+            ) : displayed.length === 0 ? (
               <p className="productsEmpty">
-                <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '12px' }}>📦</span>
-                Chưa có sản phẩm nào trong danh mục này.
+                {query
+                  ? `Không tìm thấy sản phẩm nào cho "${query}".`
+                  : 'Chưa có sản phẩm nào trong danh mục này.'}
               </p>
             ) : (
               <>
                 <div className="productsResults">
                   <span className="productsResultsCount">
-                    Hiển thị <strong>{products.length}</strong> sản phẩm
+                    Hiển thị <strong>{displayed.length}</strong> sản phẩm
+                    {query && <> cho <strong>"{query}"</strong></>}
                   </span>
                 </div>
+
                 <div className="productGrid">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                    />
+                  {displayed.map((product) => (
+                    <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
               </>
             )}
           </div>
+
         </div>
       </div>
     </section>

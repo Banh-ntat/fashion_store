@@ -374,21 +374,6 @@ function ProductDetail() {
         </div>
       )}
 
-      {activePromotions.length > 0 && (
-        <div className="promotions-banner">
-          <span className="promotions-banner__label">
-            Khuyến mãi đang diễn ra
-          </span>
-          <div className="promotions-list">
-            {activePromotions.map((promo) => (
-              <span key={promo.id} className="promo-tag">
-                {promo.name} &mdash; -{promo.discount_percent}%
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="product-main">
         <div className="product-gallery">
           <div className="product-image-main">
