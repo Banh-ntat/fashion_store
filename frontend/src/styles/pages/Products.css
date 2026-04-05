@@ -1,10 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap");
-
-/* ─── Page Shell ────────────────────────────────────────────────────────── */
 .products-page {
   min-height: 100vh;
-  font-family: "DM Sans", sans-serif;
-  background: #F5F4F1;
+  font-family: var(--font-display);
+  background: #f5f4f1;
 }
 
 .products-page .sectionContainer {
@@ -14,7 +11,6 @@
   width: 100%;
 }
 
-/* ─── Page Header ───────────────────────────────────────────────────────── */
 .products-page .sectionHeader {
   padding: 52px 0 36px;
   display: flex;
@@ -26,7 +22,6 @@
   position: relative;
 }
 
-/* Red accent underline */
 .products-page .sectionHeader::after {
   content: "";
   position: absolute;
@@ -34,23 +29,22 @@
   bottom: -1px;
   width: 48px;
   height: 2px;
-  background: #F55554;
+  background: #f55554;
 }
 
 .products-page .sectionTitle {
-  font-family: "Bebas Neue", "Barlow Condensed", Impact, sans-serif;
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
   color: #111;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   margin: 0 0 6px;
 }
 
 .products-page .sectionTitle em {
   font-style: normal;
-  color: #F55554;
+  color: #f55554;
 }
 
 .products-page .sectionSubtitle {
@@ -61,7 +55,6 @@
   margin: 0;
 }
 
-/* ─── Layout ─────────────────────────────────────────────────────────────── */
 .productsLayout {
   display: grid;
   grid-template-columns: 200px 1fr;
@@ -70,15 +63,14 @@
   padding-bottom: 80px;
 }
 
-/* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .productsSidebar {
   position: sticky;
   top: 88px;
 }
 
 .sidebarTitle {
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -99,19 +91,21 @@
   border: none;
   background: transparent;
   border-radius: 2px;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-display);
   font-size: 0.875rem;
   font-weight: 400;
   color: #666;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    padding-left 0.15s ease;
   display: flex;
   align-items: center;
   gap: 10px;
   position: relative;
 }
 
-/* Left bar on hover */
 .categoryNavItem::before {
   content: "";
   position: absolute;
@@ -119,7 +113,7 @@
   top: 18%;
   height: 64%;
   width: 2px;
-  background: #F55554;
+  background: #f55554;
   border-radius: 2px;
   transform: scaleY(0);
   transition: transform 0.18s ease;
@@ -147,7 +141,6 @@
   display: none;
 }
 
-/* ─── Sort Nav (in sidebar) ──────────────────────────────────────────────── */
 .sortNav {
   display: flex;
   flex-direction: column;
@@ -162,40 +155,45 @@
   background: transparent;
   border: none;
   border-radius: 2px;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-display);
   font-size: 0.875rem;
   font-weight: 400;
   color: #666;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   position: relative;
 }
 
-/* Radio dot */
 .sortRadio {
   width: 14px;
   height: 14px;
   border: 1.5px solid #ccc;
   border-radius: 50%;
   flex-shrink: 0;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
   position: relative;
 }
 
 .sortRadio::after {
-  content: '';
+  content: "";
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%) scale(0);
-  width: 6px; height: 6px;
-  background: #F55554;
+  width: 6px;
+  height: 6px;
+  background: #f55554;
   border-radius: 50%;
   transition: transform 0.15s ease;
 }
 
 .sortNavItem:hover {
-  background: rgba(0,0,0,0.04);
+  background: rgba(0, 0, 0, 0.04);
   color: #111;
 }
 
@@ -209,26 +207,23 @@
 }
 
 .sortNavItem.active .sortRadio {
-  border-color: #F55554;
+  border-color: #f55554;
 }
 
 .sortNavItem.active .sortRadio::after {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* Sidebar divider between sections */
 .sidebarDivider {
   height: 1px;
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
   margin: 24px 0;
 }
 
-/* ─── Main Content ───────────────────────────────────────────────────────── */
 .productsMain {
   min-height: 400px;
 }
 
-/* ─── Results Bar ────────────────────────────────────────────────────────── */
 .productsResults {
   display: flex;
   justify-content: space-between;
@@ -266,7 +261,7 @@
   padding: 7px 32px 7px 12px;
   border: 1.5px solid #ddd;
   border-radius: 2px;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   color: #333;
   background: #fff;
@@ -283,7 +278,6 @@
   border-color: #111;
 }
 
-/* ─── Search bar (optional, scoped inside .productsMain) ─────────────────── */
 .productsSearch {
   display: flex;
   align-items: center;
@@ -313,7 +307,7 @@
   padding: 11px 12px 11px 0;
   border: none;
   background: transparent;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-display);
   font-size: 0.875rem;
   color: #111;
   outline: none;
@@ -323,33 +317,54 @@
   color: #bbb;
 }
 
-/* ─── Product Grid ───────────────────────────────────────────────────────── */
 .productGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
 }
 
-/* Stagger fade-up animation */
 .productGrid > * {
   animation: fadeUp 0.32s ease both;
 }
-.productGrid > *:nth-child(1) { animation-delay: 0.04s; }
-.productGrid > *:nth-child(2) { animation-delay: 0.08s; }
-.productGrid > *:nth-child(3) { animation-delay: 0.12s; }
-.productGrid > *:nth-child(4) { animation-delay: 0.16s; }
-.productGrid > *:nth-child(5) { animation-delay: 0.20s; }
-.productGrid > *:nth-child(6) { animation-delay: 0.24s; }
-.productGrid > *:nth-child(7) { animation-delay: 0.28s; }
-.productGrid > *:nth-child(8) { animation-delay: 0.32s; }
-.productGrid > *:nth-child(n+9) { animation-delay: 0.36s; }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+.productGrid > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.productGrid > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.productGrid > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.productGrid > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+.productGrid > *:nth-child(5) {
+  animation-delay: 0.2s;
+}
+.productGrid > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+.productGrid > *:nth-child(7) {
+  animation-delay: 0.28s;
+}
+.productGrid > *:nth-child(8) {
+  animation-delay: 0.32s;
+}
+.productGrid > *:nth-child(n + 9) {
+  animation-delay: 0.36s;
 }
 
-/* ─── Empty & Error ──────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .productsFallbackNote {
   font-size: 0.85rem;
   color: #c0392b;
@@ -357,7 +372,7 @@
   padding: 12px 16px;
   background: #fff5f5;
   border-radius: 2px;
-  border-left: 3px solid #F55554;
+  border-left: 3px solid #f55554;
 }
 
 .productsEmpty {
@@ -371,7 +386,6 @@
   letter-spacing: 0.02em;
 }
 
-/* ─── Loading ────────────────────────────────────────────────────────────── */
 .productsLoading {
   display: flex;
   justify-content: center;
@@ -387,7 +401,7 @@
   gap: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-display);
 }
 
 .loading::before {
@@ -402,10 +416,11 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .productsLayout {
     grid-template-columns: 175px 1fr;

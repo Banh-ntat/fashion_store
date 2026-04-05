@@ -458,7 +458,7 @@
 }
 
 .variant-selected-sku {
-  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: 0.75rem;
   color: #888;
   background: #ebebeb;
@@ -715,8 +715,6 @@
   color: var(--pd-text-light);
 }
 
-/* ─── Product Detail Info Section ─── */
-
 .product-detail-info {
   border-top: 1px solid var(--pd-border);
   padding-top: 48px;
@@ -948,8 +946,6 @@
     align-self: auto;
   }
 }
-
-/* ─── Reviews ─── */
 
 .product-reviews {
   border-top: 1px solid var(--pd-border);

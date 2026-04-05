@@ -1,14 +1,10 @@
-/* ══════════════════════════════════════════
-   HEADER — Editorial Fashion
-   ══════════════════════════════════════════ */
-
 .header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255,255,255,0.97);
+  background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(0,0,0,0.07);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
   min-height: var(--header-height, 64px);
 }
 
@@ -24,8 +20,6 @@
   padding: 0 48px;
   flex-wrap: nowrap;
 }
-
-/* ── Logo ── */
 
 .logo {
   display: flex;
@@ -43,14 +37,14 @@
   align-items: center;
   justify-content: center;
   color: white;
-  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .logoText {
-  font-family: 'Bebas Neue', 'Barlow Condensed', Impact, sans-serif;
+  font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
   color: #111;
@@ -61,8 +55,6 @@
   color: var(--color-primary, #d32f2f);
 }
 
-/* ── Nav ── */
-
 .nav {
   display: flex;
   align-items: center;
@@ -71,7 +63,7 @@
 }
 
 .navLink {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 500;
   color: #777;
@@ -83,7 +75,7 @@
 }
 
 .navLink::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 14px;
@@ -110,15 +102,11 @@
   transform: scaleX(1);
 }
 
-/* ── Search ── */
-
 .searchWrapper {
   flex: 1;
   max-width: 280px;
   margin-left: 16px;
 }
-
-/* ── Actions ── */
 
 .actions {
   display: flex;
@@ -137,7 +125,9 @@
   background: transparent;
   color: #555;
   border-radius: 2px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .iconBtn:hover {
@@ -153,7 +143,7 @@
   height: 16px;
   background: var(--color-primary, #d32f2f);
   color: white;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.55rem;
   font-weight: 700;
   border-radius: 50%;
@@ -166,7 +156,7 @@
   padding: 8px 22px;
   background: #111;
   color: white;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -179,8 +169,6 @@
   background: var(--color-primary, #d32f2f);
 }
 
-/* ── User logged in ── */
-
 .headerUserMenu {
   display: flex;
   align-items: center;
@@ -191,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.78rem;
   font-weight: 500;
   color: #333;
@@ -207,7 +195,9 @@
   color: #666;
   text-decoration: none;
   border-radius: 2px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .headerIconLink:hover {
@@ -217,7 +207,7 @@
 
 .logoutBtn {
   padding: 6px 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.68rem;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -226,15 +216,15 @@
   background: transparent;
   border: 1px solid #ddd;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .logoutBtn:hover {
   color: #111;
   border-color: #999;
 }
-
-/* ── Hamburger ── */
 
 .hamburger {
   display: none;
@@ -253,10 +243,10 @@
   width: 22px;
   height: 1.5px;
   background: #111;
-  transition: transform 0.2s, opacity 0.2s;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
-
-/* ── Mobile Menu ── */
 
 .mobileMenu {
   display: none;
@@ -267,7 +257,7 @@
   background: white;
   padding: 24px 24px;
   border-bottom: 1px solid #eee;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   z-index: 999;
 }
 
@@ -283,7 +273,7 @@
 
 .mobileNavLink {
   padding: 12px 8px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.85rem;
   font-weight: 500;
   color: #333;
@@ -307,7 +297,7 @@
 .mobileUserName {
   display: block;
   padding: 12px 8px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   color: #111;
   border-bottom: 1px solid #f0f0f0;
@@ -318,7 +308,7 @@
   width: 100%;
   padding: 12px;
   margin-top: 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -336,7 +326,7 @@
   padding: 14px;
   background: #111;
   color: white;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -344,16 +334,27 @@
   text-decoration: none;
 }
 
-/* ── Responsive ── */
-
 @media (max-width: 1024px) {
-  .headerInner { padding: 0 32px; }
-  .searchWrapper { max-width: 200px; }
+  .headerInner {
+    padding: 0 32px;
+  }
+  .searchWrapper {
+    max-width: 200px;
+  }
 }
 
 @media (max-width: 768px) {
-  .headerInner { padding: 0 20px; }
-  .nav, .searchWrapper { display: none; }
-  .loginBtn { display: none; }
-  .hamburger { display: flex; }
+  .headerInner {
+    padding: 0 20px;
+  }
+  .nav,
+  .searchWrapper {
+    display: none;
+  }
+  .loginBtn {
+    display: none;
+  }
+  .hamburger {
+    display: flex;
+  }
 }

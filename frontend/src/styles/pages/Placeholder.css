@@ -1,5 +1,3 @@
-/* ─── Placeholder Page ───────────────────────────────────────────────────────── */
-
 .container {
   min-height: calc(100vh - var(--header-height) - 200px);
   display: flex;
@@ -46,7 +44,10 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .btn:hover {

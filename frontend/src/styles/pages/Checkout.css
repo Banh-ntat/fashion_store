@@ -1,15 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
-
-/* ─── Checkout Page ─────────────────────────────────────────────────────────── */
-
 .checkout-page .checkout-container {
   max-width: var(--container-max, 1280px);
   margin: 0 auto;
   padding: var(--space-lg) var(--space-md);
   width: 100%;
 }
-
-/* ─── Steps Indicator ───────────────────────────────────────────────────────── */
 
 .checkout-steps {
   display: flex;
@@ -42,9 +36,9 @@
   justify-content: center;
   border: 1.5px solid currentColor;
   border-radius: 50%;
-  font-family: 'Lora', serif;
+  font-family: var(--font-display);
   font-weight: 600;
-  font-size: 15px; /* tăng từ 13px -> 15px */
+  font-size: 15px;
   background: var(--color-bg-white);
   color: var(--color-text-muted);
 }
@@ -62,9 +56,9 @@
 }
 
 .checkout-step-label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   font-weight: 500;
-  font-size: 14px; /* tăng từ 12px -> 14px */
+  font-size: 14px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -81,16 +75,12 @@
   margin: 0 12px;
 }
 
-/* ─── Layout ─────────────────────────────────────────────────────────────── */
-
 .checkout-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: var(--space-xl);
   align-items: start;
 }
-
-/* ─── Cards ─────────────────────────────────────────────────────────────── */
 
 .checkout-card {
   background: var(--color-bg-white);
@@ -100,7 +90,7 @@
 }
 
 .checkout-card-title {
-  font-family: 'Lora', serif;
+  font-family: var(--font-display);
   font-size: 30px; 
   font-weight: 600;
   color: var(--color-text);
@@ -115,8 +105,6 @@
   text-align: center;
 }
 
-/* ─── Form Fields ───────────────────────────────────────────────────────── */
-
 .checkout-form {
   display: flex;
   flex-direction: column;
@@ -130,8 +118,8 @@
 }
 
 .checkout-field label {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px; /* từ 10px -> 12px */
+  font-family: var(--font-display);
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -139,11 +127,11 @@
 }
 
 .checkout-input {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   padding: 11px 14px;
   border: 0.5px solid var(--color-border);
   border-radius: var(--radius-sm);
-  font-size: 15px; /* từ 13px -> 15px */
+  font-size: 15px;
   color: var(--color-text);
   transition: border-color 0.15s, box-shadow 0.15s;
   background: var(--color-bg-white);
@@ -160,15 +148,13 @@
   min-height: 80px;
 }
 
-/* ─── Buttons ─────────────────────────────────────────────────────────────── */
-
 .checkout-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 11px 16px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px; /* từ 13px -> 15px */
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.02em;
   border-radius: var(--radius-sm);
@@ -210,8 +196,6 @@
   width: 100%;
 }
 
-/* ─── Confirm Step — Sections ────────────────────────────────────────────── */
-
 .checkout-summary-section {
   margin-bottom: 1.25rem;
   padding-bottom: 1.25rem;
@@ -224,16 +208,14 @@
 }
 
 .checkout-summary-section h3 {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px; /* từ 10px -> 12px */
+  font-family: var(--font-display);
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 10px;
 }
-
-/* ─── Info Grid ──────────────────────────────────────────────────────────── */
 
 .checkout-info-grid {
   display: flex;
@@ -246,18 +228,18 @@
   justify-content: space-between;
   align-items: baseline;
   padding: 5px 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
 }
 
 .checkout-info-label {
-  font-size: 14px; /* từ 12px -> 14px */
+  font-size: 14px;
   color: var(--color-text-muted);
   font-weight: 400;
   min-width: 90px;
 }
 
 .checkout-info-item span:last-child {
-  font-size: 15px; /* từ 13px -> 15px */
+  font-size: 15px;
   color: var(--color-text);
   font-weight: 400;
   text-align: right;
@@ -268,8 +250,8 @@
 .checkout-edit-btn {
   margin-top: 10px;
   padding: 3px 10px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; /* từ 11px -> 13px */
+  font-family: var(--font-display);
+  font-size: 13px;
   letter-spacing: 0.03em;
   color: var(--color-text-muted);
   background: transparent;
@@ -282,8 +264,6 @@
 .checkout-edit-btn:hover {
   background: var(--color-bg);
 }
-
-/* ─── Product List ─────────────────────────────────────────────────────── */
 
 .checkout-product-list {
   list-style: none;
@@ -321,8 +301,8 @@
 }
 
 .checkout-product-name {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px; /* từ 13px -> 15px */
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
@@ -334,8 +314,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; /* từ 11px -> 13px */
+  font-family: var(--font-display);
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
@@ -348,20 +328,18 @@
 }
 
 .checkout-product-qty {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; /* từ 11px -> 13px */
+  font-family: var(--font-display);
+  font-size: 13px;
   color: var(--color-text-muted);
 }
 
 .checkout-product-price {
-  font-family: 'Lora', serif;
-  font-size: 15px; /* từ 13px -> 15px */
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;
 }
-
-/* ─── Actions ───────────────────────────────────────────────────────────── */
 
 .checkout-actions {
   display: flex;
@@ -372,8 +350,6 @@
 .checkout-actions .checkout-btn {
   flex: 1;
 }
-
-/* ─── Sidebar Summary ─────────────────────────────────────────────────── */
 
 .checkout-sidebar {
   position: sticky;
@@ -388,8 +364,8 @@
 }
 
 .checkout-summary-title {
-  font-family: 'Lora', serif;
-  font-size: 25px; /* từ 15px -> 17px */
+  font-family: var(--font-display);
+  font-size: 25px;
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: -0.01em;
@@ -410,8 +386,8 @@
   justify-content: space-between;
   align-items: baseline;
   padding: 5px 0;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px; /* từ 13px -> 15px */
+  font-family: var(--font-display);
+  font-size: 15px;
   color: var(--color-text);
 }
 
@@ -421,7 +397,7 @@
 }
 
 .checkout-free-shipping-badge {
-  font-size: 13px; /* từ 11px -> 13px */
+  font-size: 13px;
   color: #16a34a;
   background: #dcfce7;
   padding: 2px 8px;
@@ -430,8 +406,8 @@
 }
 
 .checkout-free-shipping-hint {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; /* từ 11px -> 13px */
+  font-family: var(--font-display);
+  font-size: 13px;
   color: var(--color-text-muted);
   margin-top: 6px;
   line-height: 1.5;
@@ -448,8 +424,8 @@
 }
 
 .checkout-ship-note-text {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; /* từ 11px -> 13px */
+  font-family: var(--font-display);
+  font-size: 13px;
   color: var(--color-text-muted);
   line-height: 1.5;
 }
@@ -464,8 +440,8 @@
 }
 
 .checkout-summary-total span:first-child {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 14px; /* từ 12px -> 14px */
+  font-family: var(--font-display);
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -473,14 +449,12 @@
 }
 
 .checkout-summary-total span:last-child {
-  font-family: 'Lora', serif;
-  font-size: 22px; /* từ 20px -> 22px */
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 600;
   color: #de0101;
   letter-spacing: -0.02em;
 }
-
-/* ─── Empty / Login / Loading States ───────────────────────────────────── */
 
 .checkout-login-prompt,
 .checkout-empty,
@@ -500,18 +474,18 @@
 
 .checkout-login-prompt h2,
 .checkout-empty h2 {
-  font-family: 'Lora', serif;
-  font-size: 1.6rem; /* từ 1.4rem -> 1.6rem */
+  font-family: var(--font-display);
+  font-size: 1.6rem;
   font-weight: 600;
   margin-bottom: var(--space-sm);
 }
 
 .checkout-login-prompt p,
 .checkout-empty p {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-display);
   color: var(--color-text-muted);
   margin-bottom: var(--space-lg);
-  font-size: 16px; /* từ 14px -> 16px */
+  font-size: 16px;
 }
 
 .checkout-login-actions {
@@ -519,8 +493,6 @@
   gap: var(--space-md);
   justify-content: center;
 }
-
-/* ─── Responsive ───────────────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {
   .checkout-layout {

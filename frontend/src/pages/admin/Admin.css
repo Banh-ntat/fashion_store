@@ -1,4 +1,3 @@
-/* Admin Layout */
 .admin-layout {
   display: flex;
   min-height: 100vh;
@@ -113,7 +112,6 @@
   padding: 30px;
 }
 
-/* Dashboard */
 .dashboard {
   display: flex;
   flex-direction: column;
@@ -177,7 +175,6 @@
   color: #1a1a2e;
 }
 
-/* Data Table */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -205,7 +202,6 @@
   background: #fafafa;
 }
 
-/* Status Badges */
 .status-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -234,7 +230,6 @@
   color: #721c24;
 }
 
-/* Role Badges */
 .role-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -268,7 +263,6 @@
   color: #374151;
 }
 
-/* Buttons */
 .btn-primary {
   background: #6366f1;
   color: white;
@@ -328,7 +322,6 @@
   background: #dc2626;
 }
 
-/* Selects */
 .status-select,
 .role-select {
   padding: 6px 12px;
@@ -339,7 +332,6 @@
   font-size: 0.85rem;
 }
 
-/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -372,7 +364,6 @@
   color: #1a1a2e;
 }
 
-/* Variant Management */
 .btn-variant {
   background: #6366f1;
   color: white;
@@ -464,7 +455,6 @@
   font-size: 0.85rem;
 }
 
-/* Form */
 .form-group {
   margin-bottom: 20px;
 }
@@ -506,7 +496,6 @@
   margin-top: 20px;
 }
 
-/* Page Header */
 .page-header {
   display: flex;
   flex-wrap: wrap;
@@ -529,13 +518,11 @@
   width: 100%;
 }
 
-/* Stars */
 .stars {
   color: #fbbf24;
   letter-spacing: 2px;
 }
 
-/* Message Cell */
 .message-cell {
   max-width: 200px;
   overflow: hidden;
@@ -543,7 +530,6 @@
   white-space: nowrap;
 }
 
-/* Admin Page */
 .admin-page {
   background: white;
   border-radius: 12px;
@@ -551,7 +537,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* Loading */
 .loading {
   display: flex;
   align-items: center;
@@ -561,7 +546,6 @@
   color: #666;
 }
 
-/* Order Details */
 .order-details {
   margin: 20px 0;
 }
@@ -571,7 +555,6 @@
   color: #333;
 }
 
-/* Dashboard v2 */
 .dashboard-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

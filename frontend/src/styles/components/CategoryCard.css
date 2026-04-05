@@ -3,7 +3,9 @@
   text-decoration: none;
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .categoryCard:hover {
@@ -31,7 +33,7 @@
 .categoryCardOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, transparent 60%);
   display: flex;
   align-items: flex-end;
   justify-content: center;

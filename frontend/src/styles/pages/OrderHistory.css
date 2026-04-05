@@ -6,10 +6,10 @@
 }
 
 .orderHistoryTitle {
-  font-family: var(--font-display, Georgia, serif);
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 600;
-  color: var(--color-text, #1E1E1E);
+  color: var(--color-text, #1e1e1e);
   margin-bottom: 32px;
 }
 
@@ -32,7 +32,7 @@
 
 .orderLoginHint a,
 .orderEmpty a {
-  color: var(--color-primary, #F55554);
+  color: var(--color-primary, #f55554);
   font-weight: 500;
 }
 
@@ -48,7 +48,7 @@
 .orderCard {
   background: #fff;
   border-radius: var(--radius-md, 12px);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   padding: 20px;
   border: 1px solid #eee;
 }

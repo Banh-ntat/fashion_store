@@ -11,12 +11,12 @@
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.1;
-  color: #1E1E1E;
+  color: #1e1e1e;
 }
 
 .sectionSubtitle {
   font-size: 0.95rem;
-  color: #6B6B6B;
+  color: #6b6b6b;
   margin-top: 8px;
   font-weight: 300;
   letter-spacing: 0.02em;
@@ -167,7 +167,9 @@
   text-align: center;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border);
-  transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+  transition:
+    transform var(--transition-slow),
+    box-shadow var(--transition-slow);
 }
 
 .featureCard:hover {
