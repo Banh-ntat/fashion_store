@@ -32,6 +32,7 @@ import AdminRoute from './components/admin/AdminRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import ScrollToTop from './components/ScrollToTop';
 import './styles/index.css';
 import './App.css';
 
@@ -43,6 +44,7 @@ function App() {
   }, [pathname, search]);
   return (
     <AuthProvider>
+      <ScrollToTop />
       <div className="app">
         <Routes>
           <Route element={<Layout />}>
