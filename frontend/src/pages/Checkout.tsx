@@ -48,6 +48,36 @@ function normalizeDiscountCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
+function getApiErrorMessage(data: unknown, fallback: string): string {
+  if (!data) return fallback;
+  if (typeof data === 'string') {
+    return data.trim().startsWith('<!DOCTYPE html>') ? fallback : data;
+  }
+  if (Array.isArray(data)) {
+    return typeof data[0] === 'string' ? data[0] : fallback;
+  }
+  if (typeof data === 'object') {
+    if ('detail' in data) {
+      const detail = (data as { detail?: unknown }).detail;
+      if (typeof detail === 'string') return detail;
+      if (Array.isArray(detail) && typeof detail[0] === 'string') return detail[0];
+    }
+    if ('non_field_errors' in data) {
+      const nonFieldErrors = (data as { non_field_errors?: unknown }).non_field_errors;
+      if (Array.isArray(nonFieldErrors) && typeof nonFieldErrors[0] === 'string') return nonFieldErrors[0];
+    }
+    const firstValue = Object.values(data as Record<string, unknown>)[0];
+    if (typeof firstValue === 'string') return firstValue;
+    if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
+  }
+  return fallback;
+}
+
+function shouldResetDiscountInput(message: string): boolean {
+  const normalized = message.toLocaleLowerCase('vi-VN');
+  return normalized.includes('mã giảm giá') || normalized.includes('ma giam gia');
+}
+
 export default function Checkout() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -132,8 +162,12 @@ export default function Checkout() {
       setDiscountMessage('Áp dụng mã giảm giá thành công.');
     } catch (err) {
       setPricingPreview(null);
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setDiscountMessage(detail || 'Không thể áp dụng mã giảm giá.');
+      const responseData = (err as { response?: { data?: unknown } })?.response?.data;
+      const message = getApiErrorMessage(responseData, 'Không thể áp dụng mã giảm giá.');
+      if (shouldResetDiscountInput(message)) {
+        setDiscountCode('');
+      }
+      setDiscountMessage(message);
     } finally {
       setDiscountLoading(false);
     }
@@ -150,7 +184,10 @@ export default function Checkout() {
 
     const normalizedCode = normalizeDiscountCode(discountCode);
     if (normalizedCode && appliedDiscountCode !== normalizedCode) {
-      alert('Vui lòng áp dụng mã giảm giá trước khi đặt hàng.');
+      setDiscountCode('');
+      setPricingPreview(null);
+      setDiscountMessage('Mã giảm giá chưa được áp dụng. Vui lòng nhập lại nếu vẫn muốn sử dụng.');
+      alert('Mã giảm giá chưa được áp dụng. Mã đã được xóa khỏi ô nhập.');
       return;
     }
 

@@ -65,6 +65,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def _validation_error_message(self, exc: ValidationError) -> str:
+        detail = exc.detail
+        if isinstance(detail, list):
+            return str(detail[0]) if detail else "Du lieu khong hop le."
+        if isinstance(detail, dict):
+            first_value = next(iter(detail.values()), "Du lieu khong hop le.")
+            if isinstance(first_value, list):
+                return str(first_value[0]) if first_value else "Du lieu khong hop le."
+            return str(first_value)
+        return str(detail)
+
     def _load_cart_items(self, user, *, lock: bool = False):
         cart_qs = Cart.objects.filter(user=user)
         if lock:
@@ -111,7 +122,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         try:
             _cart, cart_items = self._load_cart_items(user, lock=False)
         except ValidationError as exc:
-            return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         discount_code = None
         if code:
@@ -122,7 +133,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         try:
             pricing = self._build_pricing_payload(cart_items, discount_code)
         except ValidationError as exc:
-            return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         serialized = {
             "subtotal": str(pricing["subtotal"]),
@@ -156,7 +167,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             try:
                 cart, cart_items = self._load_cart_items(user, lock=True)
             except ValidationError as exc:
-                return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
             variant_ids = sorted({cart_item.product_id for cart_item in cart_items})
             locked_variants = list(
@@ -198,7 +209,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             try:
                 shipping_fee, discount_amount, total_price = build_order_totals(subtotal, discount_code)
             except ValidationError as exc:
-                return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
             for cart_item, variant, _unit in line_build:
                 rows = ProductVariant.objects.filter(pk=variant.pk, stock__gte=cart_item.quantity).update(

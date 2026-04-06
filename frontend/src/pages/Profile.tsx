@@ -515,8 +515,8 @@ export default function ProfilePage() {
                 <Link to="/my-feedback" className="profileQuickCard">
                   <IconChat />
                   <span className="profileQuickCard-text">
-                    <span className="profileQuickCard-title">Góp ý của tôi</span>
-                    <span className="profileQuickCard-desc">Phản hồi đã gửi</span>
+                    <span className="profileQuickCard-title">Đánh giá sản phẩm</span>
+                    <span className="profileQuickCard-desc">Các món đã mua & đánh giá</span>
                   </span>
                   <span className="profileQuickCard-arrow" aria-hidden>
                     →
