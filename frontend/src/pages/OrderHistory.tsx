@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { orders } from '../api/client';
+import { orders, reviews } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import type { Order } from '../types';
+import type { Order, PurchasableProduct } from '../types';
 import '../styles/pages/OrderHistory.css';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -17,13 +17,14 @@ export default function OrderHistory() {
   const navigate = useNavigate();
   const clearedPlacedState = useRef(false);
   const [list, setList] = useState<Order[]>([]);
+  const [purchasableItems, setPurchasableItems] = useState<PurchasableProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
-    const st = location.state as { orderPlaced?: boolean } | null;
-    if (st?.orderPlaced) {
+    const state = location.state as { orderPlaced?: boolean } | null;
+    if (state?.orderPlaced) {
       clearedPlacedState.current = true;
       setShowOrderPlacedBanner(true);
       navigate(location.pathname, { replace: true, state: {} });
@@ -35,15 +36,20 @@ export default function OrderHistory() {
       setLoading(false);
       return;
     }
-    orders
-      .list()
-      .then((res) => {
-        const data = res.data as Order[] | { results?: Order[] };
-        setList(Array.isArray(data) ? data : (data.results ?? []));
+    Promise.all([orders.list(), reviews.getPurchasable()])
+      .then(([ordersRes, purchasableRes]) => {
+        const orderData = ordersRes.data as Order[] | { results?: Order[] };
+        setList(Array.isArray(orderData) ? orderData : (orderData.results ?? []));
+        setPurchasableItems((purchasableRes?.data ?? []) as PurchasableProduct[]);
       })
-      .catch(() => setList([]))
+      .catch(() => {
+        setList([]);
+        setPurchasableItems([]);
+      })
       .finally(() => setLoading(false));
   }, [user]);
+
+  const purchasableOrderIds = new Set(purchasableItems.map((item) => item.order_id));
 
   if (!user) {
     return (
@@ -78,6 +84,21 @@ export default function OrderHistory() {
           </div>
         )}
 
+        <div className="orderReviewHub">
+          <div>
+            <p className="orderReviewHubEyebrow">Đánh giá sản phẩm đã mua</p>
+            <h2 className="orderReviewHubTitle">Xem các món đã nhận và viết đánh giá của bạn</h2>
+            <p className="orderReviewHubText">
+              {purchasableItems.length > 0
+                ? `Hiện có ${purchasableItems.length} sản phẩm đang chờ bạn đánh giá.`
+                : 'Bạn có thể xem lại các đánh giá đã gửi và các sản phẩm đủ điều kiện đánh giá tại đây.'}
+            </p>
+          </div>
+          <Link to="/my-feedback" className="orderReviewHubBtn">
+            {purchasableItems.length > 0 ? 'Đi đánh giá ngay' : 'Mở trang đánh giá'}
+          </Link>
+        </div>
+
         {list.length === 0 ? (
           <div className="orderEmpty">
             <div className="orderEmptyIconWrap">
@@ -99,27 +120,30 @@ export default function OrderHistory() {
                 <div className="orderCardHeader">
                   <span className="orderId">Đơn #{order.id}</span>
                   <span className="orderDate">
-                    {order.created_at
-                      ? new Date(order.created_at).toLocaleDateString('vi-VN')
-                      : '—'}
+                    {order.created_at ? new Date(order.created_at).toLocaleDateString('vi-VN') : '—'}
                   </span>
                   <span className={`orderStatus orderStatus--${order.status}`}>
                     {STATUS_LABEL[order.status] ?? order.status}
                   </span>
                 </div>
+
+                {order.status === 'completed' && purchasableOrderIds.has(order.id) && (
+                  <div className="orderReviewPrompt">
+                    <span className="orderReviewPromptText">Đơn này có sản phẩm đủ điều kiện để đánh giá.</span>
+                    <Link to="/my-feedback" className="orderReviewPromptBtn">
+                      Đánh giá sản phẩm
+                    </Link>
+                  </div>
+                )}
+
                 <ul className="orderItems">
                   {order.items?.map((item) => (
                     <li key={item.id} className="orderItem">
                       <div className="orderItemInfo">
-                        <span className="orderItemName">
-                          {item.product?.name ?? 'Sản phẩm'}
-                        </span>
+                        <span className="orderItemName">{item.product?.name ?? 'Sản phẩm'}</span>
                         {item.variant_info && (
                           <span className="orderItemVariant">
-                            <span
-                              className="variantColor"
-                              style={{ backgroundColor: item.variant_info.color.code }}
-                            />
+                            <span className="variantColor" style={{ backgroundColor: item.variant_info.color.code }} />
                             {item.variant_info.color.name} / {item.variant_info.size.name}
                           </span>
                         )}
@@ -129,10 +153,14 @@ export default function OrderHistory() {
                     </li>
                   ))}
                 </ul>
+
                 <div className="orderTotal">
                   {order.subtotal != null && order.shipping_fee != null && (
                     <div className="orderTotalBreakdown">
                       Tạm tính: {order.subtotal}đ · Phí ship: {order.shipping_fee}đ
+                      {order.discount_amount && Number(order.discount_amount) > 0 && (
+                        <> · Giảm: {order.discount_amount}đ{order.discount_code ? ` (${order.discount_code})` : ''}</>
+                      )}
                     </div>
                   )}
                   Tổng: <strong>{order.total_price}đ</strong>

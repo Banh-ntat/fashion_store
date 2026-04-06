@@ -2,7 +2,43 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from products.serializers import ProductSerializer
-from .models import Order, OrderItem, Shipping
+from .models import DiscountCode, Order, OrderItem, Shipping
+
+
+class DiscountCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscountCode
+        fields = (
+            "id",
+            "name",
+            "code",
+            "discount_percent",
+            "min_order_value",
+            "start_date",
+            "end_date",
+            "is_active",
+            "usage_limit",
+            "used_count",
+        )
+        read_only_fields = ("used_count",)
+
+    def validate_code(self, value: str) -> str:
+        code = value.strip().upper()
+        if not code:
+            raise serializers.ValidationError("Vui lòng nhập mã giảm giá.")
+        return code
+
+    def validate_discount_percent(self, value: int) -> int:
+        if value <= 0 or value > 100:
+            raise serializers.ValidationError("Phần trăm giảm giá phải từ 1 đến 100.")
+        return value
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.")
+        return attrs
 
 
 class OrderUserSerializer(serializers.ModelSerializer):
@@ -21,7 +57,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
         read_only_fields = ("order",)
 
     def get_variant_info(self, obj: OrderItem):
-        """Lấy thông tin color và size của variant"""
         if not obj.product:
             return None
         return {
@@ -40,6 +75,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
     user = OrderUserSerializer(read_only=True)
     shipping = serializers.SerializerMethodField()
+    discount_code = serializers.CharField(source="discount_code_snapshot", read_only=True)
 
     class Meta:
         model = Order
@@ -47,6 +83,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "subtotal",
+            "discount_code",
+            "discount_amount",
             "shipping_fee",
             "total_price",
             "status",
@@ -54,7 +92,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
             "shipping",
         )
-        read_only_fields = ("user", "created_at", "items", "shipping")
+        read_only_fields = ("user", "created_at", "items", "shipping", "discount_code")
 
     def get_items(self, obj):
         qs = OrderItem.objects.filter(order=obj).select_related(

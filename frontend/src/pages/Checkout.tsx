@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cart, orders } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -14,14 +14,68 @@ interface CartItemType {
   quantity: number;
 }
 
+interface PricingPreview {
+  subtotal: string;
+  shipping_fee: string;
+  discount_amount: string;
+  total_price: string;
+  discount_code: string;
+  discount_name: string;
+  discount_percent: number;
+}
+
 function getUnitPrice(item: CartItemType): number {
-  const p = item.product;
-  if (!p) return 0;
-  let price = parseFloat(String(p.price ?? 0));
-  if (p.promotion?.discount_percent) {
-    price = price * (1 - p.promotion.discount_percent / 100);
+  const product = item.product;
+  if (!product) return 0;
+  let price = parseFloat(String(product.price ?? 0));
+  if (product.promotion?.discount_percent) {
+    price = price * (1 - product.promotion.discount_percent / 100);
   }
   return price;
+}
+
+function formatCurrency(value: number): string {
+  return `${value.toLocaleString('vi-VN')}₫`;
+}
+
+function parseMoney(value: string | number | undefined): number {
+  if (value == null) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeDiscountCode(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function getApiErrorMessage(data: unknown, fallback: string): string {
+  if (!data) return fallback;
+  if (typeof data === 'string') {
+    return data.trim().startsWith('<!DOCTYPE html>') ? fallback : data;
+  }
+  if (Array.isArray(data)) {
+    return typeof data[0] === 'string' ? data[0] : fallback;
+  }
+  if (typeof data === 'object') {
+    if ('detail' in data) {
+      const detail = (data as { detail?: unknown }).detail;
+      if (typeof detail === 'string') return detail;
+      if (Array.isArray(detail) && typeof detail[0] === 'string') return detail[0];
+    }
+    if ('non_field_errors' in data) {
+      const nonFieldErrors = (data as { non_field_errors?: unknown }).non_field_errors;
+      if (Array.isArray(nonFieldErrors) && typeof nonFieldErrors[0] === 'string') return nonFieldErrors[0];
+    }
+    const firstValue = Object.values(data as Record<string, unknown>)[0];
+    if (typeof firstValue === 'string') return firstValue;
+    if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
+  }
+  return fallback;
+}
+
+function shouldResetDiscountInput(message: string): boolean {
+  const normalized = message.toLocaleLowerCase('vi-VN');
+  return normalized.includes('mã giảm giá') || normalized.includes('ma giam gia');
 }
 
 export default function Checkout() {
@@ -33,6 +87,10 @@ export default function Checkout() {
   const [items, setItems] = useState<CartItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState('');
+  const [discountCode, setDiscountCode] = useState('');
+  const [pricingPreview, setPricingPreview] = useState<PricingPreview | null>(null);
   const [step, setStep] = useState<'shipping' | 'confirm'>('shipping');
 
   const [form, setForm] = useState({
@@ -60,9 +118,24 @@ export default function Checkout() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const subtotal = items.reduce((sum, it) => sum + getUnitPrice(it) * it.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + getUnitPrice(item) * item.quantity, 0);
   const shippingFee = subtotal >= 500000 ? 0 : 30000;
-  const total = subtotal + shippingFee;
+  const pricing = pricingPreview
+    ? {
+        subtotal: parseMoney(pricingPreview.subtotal),
+        shippingFee: parseMoney(pricingPreview.shipping_fee),
+        discountAmount: parseMoney(pricingPreview.discount_amount),
+        total: parseMoney(pricingPreview.total_price),
+      }
+    : {
+        subtotal,
+        shippingFee,
+        discountAmount: 0,
+        total: subtotal + shippingFee,
+      };
+
+  const appliedDiscountCode = pricingPreview?.discount_code ?? '';
+  const hasAppliedDiscount = !!appliedDiscountCode;
 
   const handleContinueToConfirm = () => {
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
@@ -72,8 +145,52 @@ export default function Checkout() {
     setStep('confirm');
   };
 
+  const handleApplyDiscount = async () => {
+    const normalizedCode = normalizeDiscountCode(discountCode);
+    if (!normalizedCode) {
+      setPricingPreview(null);
+      setDiscountMessage('Vui lòng nhập mã giảm giá.');
+      return;
+    }
+
+    setDiscountLoading(true);
+    setDiscountMessage('');
+    try {
+      const res = await orders.discountPreview({ discount_code: normalizedCode });
+      setPricingPreview(res.data as PricingPreview);
+      setDiscountCode(normalizedCode);
+      setDiscountMessage('Áp dụng mã giảm giá thành công.');
+    } catch (err) {
+      setPricingPreview(null);
+      const responseData = (err as { response?: { data?: unknown } })?.response?.data;
+      const message = getApiErrorMessage(responseData, 'Không thể áp dụng mã giảm giá.');
+      if (shouldResetDiscountInput(message)) {
+        setDiscountCode('');
+      }
+      setDiscountMessage(message);
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+
+  const handleClearDiscount = () => {
+    setDiscountCode('');
+    setPricingPreview(null);
+    setDiscountMessage('');
+  };
+
   const handleSubmit = async () => {
     if (!user || items.length === 0) return;
+
+    const normalizedCode = normalizeDiscountCode(discountCode);
+    if (normalizedCode && appliedDiscountCode !== normalizedCode) {
+      setDiscountCode('');
+      setPricingPreview(null);
+      setDiscountMessage('Mã giảm giá chưa được áp dụng. Vui lòng nhập lại nếu vẫn muốn sử dụng.');
+      alert('Mã giảm giá chưa được áp dụng. Mã đã được xóa khỏi ô nhập.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await orders.checkout({
@@ -81,24 +198,36 @@ export default function Checkout() {
         phone: form.phone.trim(),
         address: form.address.trim(),
         note: form.note.trim() || undefined,
+        discount_code: appliedDiscountCode || undefined,
       });
       setForm({ name: '', phone: '', address: '', note: '' });
+      setDiscountCode('');
+      setPricingPreview(null);
+      setDiscountMessage('');
       notifyCartUpdated();
       navigate('/orders', { state: { orderPlaced: true } });
     } catch (err) {
-      console.error(err);
       let errorMessage = 'Đặt hàng thất bại. Vui lòng thử lại.';
-      const resData = (err as any)?.response?.data;
+      const resData = (err as { response?: { data?: unknown } })?.response?.data as
+        | { detail?: string; non_field_errors?: string[] }
+        | string[]
+        | string
+        | Record<string, unknown>
+        | undefined;
+
       if (resData) {
-        if (resData.detail) {
-          errorMessage = Array.isArray(resData.detail) ? resData.detail[0] : resData.detail;
+        if (typeof resData === 'object' && !Array.isArray(resData) && 'detail' in resData && typeof resData.detail === 'string') {
+          errorMessage = resData.detail;
         } else if (Array.isArray(resData) && typeof resData[0] === 'string') {
           errorMessage = resData[0];
-        } else if (resData.non_field_errors) {
-          errorMessage = Array.isArray(resData.non_field_errors) ? resData.non_field_errors[0] : resData.non_field_errors;
+        } else if (typeof resData === 'object' && !Array.isArray(resData) && 'non_field_errors' in resData) {
+          const first = resData.non_field_errors;
+          if (Array.isArray(first) && typeof first[0] === 'string') errorMessage = first[0];
         } else if (typeof resData === 'string') {
-          errorMessage = resData;
-        } else if (typeof resData === 'object' && Object.keys(resData).length > 0) {
+          errorMessage = resData.trim().startsWith('<!DOCTYPE html>')
+            ? 'Backend đang lỗi nội bộ khi tạo đơn hàng. Kiểm tra server Django.'
+            : resData;
+        } else if (typeof resData === 'object' && !Array.isArray(resData)) {
           const firstVal = Object.values(resData)[0];
           if (typeof firstVal === 'string') errorMessage = firstVal;
           else if (Array.isArray(firstVal) && typeof firstVal[0] === 'string') errorMessage = firstVal[0];
@@ -162,8 +291,6 @@ export default function Checkout() {
   return (
     <section className="pageSection checkout-page">
       <div className="sectionContainer checkout-container">
-
-        {/* Step Indicator */}
         <div className="checkout-steps">
           <div className={`checkout-step ${step === 'shipping' ? 'active' : ''} ${step === 'confirm' ? 'completed' : ''}`}>
             <span className="checkout-step-num">{step === 'confirm' ? '✓' : '1'}</span>
@@ -177,8 +304,6 @@ export default function Checkout() {
         </div>
 
         <div className="checkout-layout">
-
-          {/* Main Form Area */}
           <div className="checkout-main">
             {step === 'shipping' && (
               <div className="checkout-card">
@@ -200,7 +325,7 @@ export default function Checkout() {
                       className="checkout-input"
                       placeholder="Nguyễn Văn A"
                       value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
                       required
                     />
                   </div>
@@ -212,7 +337,7 @@ export default function Checkout() {
                       className="checkout-input"
                       placeholder="0912 345 678"
                       value={form.phone}
-                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                      onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))}
                       required
                     />
                   </div>
@@ -224,7 +349,7 @@ export default function Checkout() {
                       placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                       rows={3}
                       value={form.address}
-                      onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      onChange={(e) => setForm((current) => ({ ...current, address: e.target.value }))}
                       required
                     />
                   </div>
@@ -236,7 +361,7 @@ export default function Checkout() {
                       placeholder="Ghi chú thêm cho đơn hàng..."
                       rows={2}
                       value={form.note}
-                      onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                      onChange={(e) => setForm((current) => ({ ...current, note: e.target.value }))}
                     />
                   </div>
                   <button type="submit" className="checkout-btn checkout-btn-primary checkout-btn-full">
@@ -252,7 +377,6 @@ export default function Checkout() {
                   <h2 className="checkout-card-title">Xác nhận đơn hàng</h2>
                 </div>
 
-                {/* Shipping info */}
                 <div className="checkout-summary-section">
                   <h3>Thông tin giao hàng</h3>
                   <div className="checkout-info-grid">
@@ -269,48 +393,37 @@ export default function Checkout() {
                       <span>{form.address}</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="checkout-edit-btn"
-                    onClick={() => setStep('shipping')}
-                  >
+                  <button type="button" className="checkout-edit-btn" onClick={() => setStep('shipping')}>
                     Chỉnh sửa
                   </button>
                 </div>
 
-                {/* Product list */}
                 <div className="checkout-summary-section">
                   <h3>Sản phẩm — {items.length} món</h3>
                   <ul className="checkout-product-list">
                     {items.map((item) => {
                       const unitPrice = getUnitPrice(item);
-                      const img = item.product?.image || PLACEHOLDER_IMAGE;
+                      const image = item.product?.image || PLACEHOLDER_IMAGE;
                       return (
                         <li key={item.id} className="checkout-product-item">
-                          <img src={img} alt="" className="checkout-product-img" />
+                          <img src={image} alt="" className="checkout-product-img" />
                           <div className="checkout-product-info">
                             <span className="checkout-product-name">{item.product?.name}</span>
                             {item.variant_info && (
                               <span className="checkout-product-variant">
-                                <span
-                                  className="checkout-variant-color"
-                                  style={{ backgroundColor: item.variant_info.color.code }}
-                                />
+                                <span className="checkout-variant-color" style={{ backgroundColor: item.variant_info.color.code }} />
                                 {item.variant_info.color.name} / {item.variant_info.size.name}
                               </span>
                             )}
                             <span className="checkout-product-qty">× {item.quantity}</span>
                           </div>
-                          <span className="checkout-product-price">
-                            {(unitPrice * item.quantity).toLocaleString('vi-VN')}₫
-                          </span>
+                          <span className="checkout-product-price">{formatCurrency(unitPrice * item.quantity)}</span>
                         </li>
                       );
                     })}
                   </ul>
                 </div>
 
-                {/* Actions */}
                 <div className="checkout-actions">
                   <button
                     type="button"
@@ -320,46 +433,93 @@ export default function Checkout() {
                   >
                     ← Quay lại
                   </button>
-                  <button
-                    type="button"
-                    className="checkout-btn checkout-btn-primary"
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                  >
-                    {submitting ? 'Đang xử lý...' : `Đặt hàng — ${total.toLocaleString('vi-VN')}₫`}
+                  <button type="button" className="checkout-btn checkout-btn-primary" onClick={handleSubmit} disabled={submitting}>
+                    {submitting ? 'Đang xử lý...' : `Đặt hàng — ${formatCurrency(pricing.total)}`}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar */}
           <aside className="checkout-sidebar">
             <div className="checkout-summary-box">
               <h3 className="checkout-summary-title">Tóm tắt đơn hàng</h3>
 
+              <div className="checkout-discount-box">
+                <label htmlFor="discount-code" className="checkout-discount-label">
+                  Mã giảm giá
+                </label>
+                <div className="checkout-discount-row">
+                  <input
+                    id="discount-code"
+                    type="text"
+                    className="checkout-input checkout-discount-input"
+                    placeholder="Nhập mã của bạn"
+                    value={discountCode}
+                    onChange={(e) => {
+                      const nextValue = e.target.value.toUpperCase();
+                      setDiscountCode(nextValue);
+                      if (pricingPreview && normalizeDiscountCode(nextValue) !== appliedDiscountCode) {
+                        setPricingPreview(null);
+                      }
+                      setDiscountMessage('');
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="checkout-btn checkout-btn-secondary checkout-discount-apply"
+                    onClick={handleApplyDiscount}
+                    disabled={discountLoading}
+                  >
+                    {discountLoading ? 'Đang áp dụng...' : 'Áp dụng'}
+                  </button>
+                </div>
+
+                {hasAppliedDiscount && (
+                  <div className="checkout-discount-meta">
+                    <span className="checkout-discount-badge">
+                      {appliedDiscountCode}
+                      {pricingPreview?.discount_percent ? ` - ${pricingPreview.discount_percent}%` : ''}
+                    </span>
+                    <button type="button" className="checkout-discount-clear" onClick={handleClearDiscount}>
+                      Bỏ mã
+                    </button>
+                  </div>
+                )}
+
+                {discountMessage && (
+                  <p className={`checkout-discount-message ${hasAppliedDiscount ? 'is-success' : 'is-error'}`}>
+                    {discountMessage}
+                  </p>
+                )}
+              </div>
+
               <div className="checkout-summary-rows">
                 <div className="checkout-summary-row">
                   <span>Tạm tính ({items.length} sản phẩm)</span>
-                  <span>{subtotal.toLocaleString('vi-VN')}₫</span>
+                  <span>{formatCurrency(pricing.subtotal)}</span>
                 </div>
                 <div className="checkout-summary-row">
                   <span>Phí vận chuyển</span>
-                  {shippingFee === 0 ? (
+                  {pricing.shippingFee === 0 ? (
                     <span className="checkout-free-shipping-badge">Miễn phí</span>
                   ) : (
-                    <span>{shippingFee.toLocaleString('vi-VN')}₫</span>
+                    <span>{formatCurrency(pricing.shippingFee)}</span>
                   )}
                 </div>
-                {shippingFee > 0 && (
-                  <p className="checkout-free-shipping-hint">
-                    Miễn phí vận chuyển đơn từ 500.000₫
-                  </p>
+                {pricing.discountAmount > 0 && (
+                  <div className="checkout-summary-row checkout-summary-row--discount">
+                    <span>Giảm giá{appliedDiscountCode ? ` (${appliedDiscountCode})` : ''}</span>
+                    <span>-{formatCurrency(pricing.discountAmount)}</span>
+                  </div>
                 )}
-                {shippingFee === 0 && (
+                {pricing.shippingFee > 0 && (
+                  <p className="checkout-free-shipping-hint">Miễn phí vận chuyển cho đơn từ 500.000₫</p>
+                )}
+                {pricing.shippingFee === 0 && (
                   <div className="checkout-ship-note">
                     <span className="checkout-ship-note-text">
-                      Đơn hàng đủ điều kiện miễn phí vận chuyển ( từ 500.000₫ trở lên)
+                      Đơn hàng đủ điều kiện miễn phí vận chuyển từ 500.000₫ trở lên.
                     </span>
                   </div>
                 )}
@@ -367,11 +527,10 @@ export default function Checkout() {
 
               <div className="checkout-summary-total">
                 <span>Tổng cộng</span>
-                <span>{total.toLocaleString('vi-VN')}₫</span>
+                <span>{formatCurrency(pricing.total)}</span>
               </div>
             </div>
           </aside>
-
         </div>
       </div>
     </section>

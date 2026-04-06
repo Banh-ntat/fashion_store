@@ -60,6 +60,8 @@ export interface Order {
   id: number;
   user: number;
   subtotal?: string;
+  discount_code?: string;
+  discount_amount?: string;
   shipping_fee?: string;
   total_price: string;
   status: string;

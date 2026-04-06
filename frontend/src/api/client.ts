@@ -231,12 +231,14 @@ export const orders = {
   list: () => api.get('/orders/orders/'),
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post('/orders/orders/', data),
+  discountPreview: (data: { discount_code?: string }) => api.post('/orders/orders/discount-preview/', data),
   /** Tạo đơn từ giỏ — tổng tiền & phí ship do server tính */
   checkout: (data: {
     name: string;
     phone: string;
     address: string;
     note?: string;
+    discount_code?: string;
   }) => api.post('/orders/orders/checkout/', data),
 };
 
@@ -383,6 +385,13 @@ export const admin = {
     list: (params?: Record<string, unknown>) => api.get('/orders/orders/', { params }),
     get: (id: number) => api.get(`/orders/orders/${id}/`),
     update: (id: number, data: Record<string, unknown>) => api.patch(`/orders/orders/${id}/`, data),
+  },
+  discountCodes: {
+    list: () => api.get('/orders/discount-codes/'),
+    get: (id: number) => api.get(`/orders/discount-codes/${id}/`),
+    create: (data: Record<string, unknown>) => api.post('/orders/discount-codes/', data),
+    update: (id: number, data: Record<string, unknown>) => api.put(`/orders/discount-codes/${id}/`, data),
+    delete: (id: number) => api.delete(`/orders/discount-codes/${id}/`),
   },
   // Users/Profiles
   users: {
