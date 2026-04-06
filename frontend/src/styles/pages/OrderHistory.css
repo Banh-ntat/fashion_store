@@ -8,9 +8,22 @@
 .orderHistoryTitle {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text, #1e1e1e);
-  margin-bottom: 32px;
+  margin-top: 20px;
+  padding-bottom: 8px;
+  position: relative;
+}
+
+.orderHistoryTitle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 30%;
+  height: 4px;
+  background: linear-gradient(90deg, #ff4d4f, #ff7a45);
+  border-radius: 2px;
 }
 
 .orderPlacedBanner {
@@ -24,16 +37,64 @@
   line-height: 1.45;
 }
 
-.orderLoginHint,
-.orderEmpty {
+.orderLoginHint {
   font-size: 1rem;
   color: var(--color-text-muted);
 }
 
-.orderLoginHint a,
-.orderEmpty a {
+.orderLoginHint a {
   color: var(--color-primary, #f55554);
   font-weight: 500;
+}
+
+.orderEmpty {
+  text-align: center;
+  padding: 20px 20px;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.orderEmptyIconWrap {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #FCEBEB;
+  border: 2px solid #F7C1C1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 40px auto 24px;
+}
+
+.orderEmpty h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #1e1e1e;
+}
+
+.orderEmpty p {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.orderEmptyBtn {
+  display: inline-block;
+  padding: 13px 40px;
+  background: #E24B4A;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.orderEmptyBtn:hover {
+  background: #C93D3C;
+  transform: translateY(-2px);
 }
 
 .orderList {
@@ -157,4 +218,22 @@
 
 .orderTotal strong {
   color: var(--color-primary);
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .order-history-page .sectionContainer {
+    padding: 0 16px;
+  }
+
+  .orderItem {
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+  }
 }

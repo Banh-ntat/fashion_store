@@ -116,7 +116,6 @@ export default function Cart() {
         <p>Vui lòng đăng nhập để xem giỏ hàng của bạn</p>
         <div className="cart-empty-actions">
           <Link to="/login" className="cart-btn-primary">Đăng nhập</Link>
-          <Link to="/products" className="cart-btn-secondary">Mua sắm</Link>
         </div>
       </div>
     );
