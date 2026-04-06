@@ -7,7 +7,7 @@
 .cart-title {
   font-size: 28px;
   font-weight: bold;
-  margin-bottom: 25px;
+  margin-bottom: 8px;
   position: relative;
   display: inline-block;
 }
@@ -253,4 +253,102 @@
     grid-template-columns: 1fr;
     gap: 10px;
   }
+}
+
+.cart-empty {
+  text-align: center;
+  padding: 60px 20px;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.cart-empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #FCEBEB;
+  border: 2px solid #F7C1C1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.cart-empty h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.cart-empty p {
+  font-size: 14px;
+  color: #888;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.cart-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Nút đăng nhập — đỏ */
+.cart-btn-primary {
+  display: block;
+  padding: 13px 0;
+  background: #E24B4A;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 999px;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.cart-btn-primary:hover {
+  background: #C93D3C;
+  transform: translateY(-2px);
+}
+
+/* Nút mua sắm — outline */
+.cart-btn-secondary {
+  display: block;
+  padding: 12px 0;
+  background: transparent;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  text-decoration: none;
+  text-align: center;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.cart-btn-secondary:hover {
+  border-color: #888;
+  transform: translateY(-2px);
+}
+
+.cart-register-hint {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 20px;
+}
+
+.cart-register-link {
+  color: #E24B4A;
+  text-decoration: none;
+}
+
+.cart-register-link:hover {
+  text-decoration: underline;
+}
+
+.cart-empty-icon {
+  font-size: 60px; /* tăng lên tùy ý, mặc định thường là 60px */
+  display: block;
+  margin-bottom: 15px;
 }
