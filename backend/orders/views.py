@@ -2,26 +2,31 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import F
-
-from .mail import send_order_confirmation_email
-from rest_framework import permissions, viewsets, status
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from core.permissions import is_admin, is_customer_support, is_order_manager, IsOrderStaff
 from cart.models import Cart, CartItem
+from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
-from .models import Order, OrderItem, Shipping
-from .pricing import shipping_fee_vnd, unit_price_vnd
-from .serializers import OrderSerializer, OrderItemSerializer
+from .mail import send_order_confirmation_email
+from .models import DiscountCode, Order, OrderItem, Shipping
+from .pricing import build_order_totals, normalize_discount_code, unit_price_vnd
+from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer
 
 
 class OrderPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 100
+
+
+class DiscountCodeViewSet(viewsets.ModelViewSet):
+    queryset = DiscountCode.objects.all().order_by("-id")
+    serializer_class = DiscountCodeSerializer
+    permission_classes = [IsAdminOrStaff]
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -37,20 +42,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_order_manager(user) or is_customer_support(user):
-            qs = (
-                Order.objects.select_related("user")
-                .prefetch_related("shipping")
-                .all()
-            )
+        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+            qs = Order.objects.select_related("user", "discount_code").prefetch_related("shipping").all()
         else:
-            qs = Order.objects.select_related("user").filter(user=user)
+            qs = Order.objects.select_related("user", "discount_code").filter(user=user)
 
         qs = qs.order_by("-created_at")
 
-        if self.action == "list" and (
-            is_admin(user) or is_order_manager(user) or is_customer_support(user)
-        ):
+        if self.action == "list" and (is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user)):
             st = self.request.query_params.get("status")
             if st:
                 qs = qs.filter(status=st)
@@ -66,14 +65,84 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def _load_cart_items(self, user, *, lock: bool = False):
+        cart_qs = Cart.objects.filter(user=user)
+        if lock:
+            cart_qs = cart_qs.select_for_update()
+        cart = cart_qs.first()
+        if not cart:
+            raise ValidationError("Giỏ hàng trống.")
+
+        cart_items_qs = CartItem.objects.filter(cart=cart).select_related(
+            "product",
+            "product__product",
+            "product__color",
+            "product__size",
+        ).order_by("product_id")
+        if lock:
+            cart_items_qs = cart_items_qs.select_for_update()
+
+        cart_items = list(cart_items_qs)
+        if not cart_items:
+            raise ValidationError("Giỏ hàng trống.")
+        return cart, cart_items
+
+    def _build_pricing_payload(self, cart_items, discount_code=None):
+        subtotal = Decimal("0")
+        for cart_item in cart_items:
+            subtotal += unit_price_vnd(cart_item.product.product) * cart_item.quantity
+
+        shipping_fee, discount_amount, total = build_order_totals(subtotal, discount_code)
+        return {
+            "subtotal": subtotal,
+            "shipping_fee": shipping_fee,
+            "discount_amount": discount_amount,
+            "total_price": total,
+            "discount_code": discount_code.code if discount_code else "",
+            "discount_name": discount_code.name if discount_code else "",
+            "discount_percent": discount_code.discount_percent if discount_code else 0,
+        }
+
+    @action(detail=False, methods=["post"], url_path="discount-preview")
+    def discount_preview(self, request):
+        user = request.user
+        code = normalize_discount_code(request.data.get("discount_code"))
+
+        try:
+            _cart, cart_items = self._load_cart_items(user, lock=False)
+        except ValidationError as exc:
+            return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+        discount_code = None
+        if code:
+            discount_code = DiscountCode.objects.filter(code__iexact=code).first()
+            if discount_code is None:
+                return Response({"detail": "Mã giảm giá không tồn tại."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            pricing = self._build_pricing_payload(cart_items, discount_code)
+        except ValidationError as exc:
+            return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serialized = {
+            "subtotal": str(pricing["subtotal"]),
+            "shipping_fee": str(pricing["shipping_fee"]),
+            "discount_amount": str(pricing["discount_amount"]),
+            "total_price": str(pricing["total_price"]),
+            "discount_code": pricing["discount_code"],
+            "discount_name": pricing["discount_name"],
+            "discount_percent": pricing["discount_percent"],
+        }
+        return Response(serialized)
+
     @action(detail=False, methods=["post"], url_path="checkout")
     def checkout(self, request):
-        """Tạo đơn từ giỏ: tính tiền hoàn toàn trên server, trừ tồn kho (transaction + khóa hàng)."""
         user = request.user
         name = request.data.get("name", "").strip()
         phone = request.data.get("phone", "").strip()
         address = request.data.get("address", "").strip()
         note = (request.data.get("note") or "").strip()
+        discount_code_value = normalize_discount_code(request.data.get("discount_code"))
         if len(note) > 2000:
             note = note[:2000]
 
@@ -84,100 +153,87 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         with transaction.atomic():
-            cart = Cart.objects.select_for_update().filter(user=user).first()
-            if not cart:
-                return Response(
-                    {"detail": "Giỏ hàng trống."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            try:
+                cart, cart_items = self._load_cart_items(user, lock=True)
+            except ValidationError as exc:
+                return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
 
-            cart_items = list(
-                CartItem.objects.filter(cart=cart)
-                .select_related(
-                    "product",
-                    "product__product",
-                    "product__product__promotion",
-                    "product__color",
-                    "product__size",
-                )
-                .order_by("product_id")
-            )
-            if not cart_items:
-                return Response(
-                    {"detail": "Giỏ hàng trống."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            variant_ids = sorted({ci.product_id for ci in cart_items})
+            variant_ids = sorted({cart_item.product_id for cart_item in cart_items})
             locked_variants = list(
                 ProductVariant.objects.select_for_update()
                 .filter(id__in=variant_ids)
                 .select_related("product", "color", "size")
                 .order_by("id")
             )
-            variants_map = {v.id: v for v in locked_variants}
+            variants_map = {variant.id: variant for variant in locked_variants}
             if len(variants_map) != len(variant_ids):
                 return Response(
                     {"detail": "Có sản phẩm trong giỏ không còn tồn tại."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            subtotal = Decimal("0")
             line_build = []
-            for ci in cart_items:
-                v = variants_map[ci.product_id]
-                if v.stock < ci.quantity:
-                    label = f"{v.product.name} ({v.color.name}/{v.size.name})"
+            subtotal = Decimal("0")
+            for cart_item in cart_items:
+                variant = variants_map[cart_item.product_id]
+                if variant.stock < cart_item.quantity:
+                    label = f"{variant.product.name} ({variant.color.name}/{variant.size.name})"
                     return Response(
-                        {
-                            "detail": (
-                                f"Không đủ hàng: {label}. "
-                                f"Còn {v.stock}, cần {ci.quantity}."
-                            )
-                        },
+                        {"detail": f"Không đủ hàng: {label}. Còn {variant.stock}, cần {cart_item.quantity}."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                unit = unit_price_vnd(v.product)
-                line_total = unit * ci.quantity
-                subtotal += line_total
-                line_build.append((ci, v, unit))
+                unit = unit_price_vnd(variant.product)
+                subtotal += unit * cart_item.quantity
+                line_build.append((cart_item, variant, unit))
 
-            ship = shipping_fee_vnd(subtotal)
-            total = subtotal + ship
+            discount_code = None
+            if discount_code_value:
+                discount_code = DiscountCode.objects.select_for_update().filter(code__iexact=discount_code_value).first()
+                if discount_code is None:
+                    return Response(
+                        {"detail": "Mã giảm giá không tồn tại."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-            # Trừ tồn kho trước khi tạo đơn; nếu lỗi → rollback toàn bộ (không dùng return Response sau khi đã ghi DB)
-            for _ci, v, _unit in line_build:
-                rows = ProductVariant.objects.filter(
-                    pk=v.pk, stock__gte=_ci.quantity
-                ).update(stock=F("stock") - _ci.quantity)
+            try:
+                shipping_fee, discount_amount, total_price = build_order_totals(subtotal, discount_code)
+            except ValidationError as exc:
+                return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+            for cart_item, variant, _unit in line_build:
+                rows = ProductVariant.objects.filter(pk=variant.pk, stock__gte=cart_item.quantity).update(
+                    stock=F("stock") - cart_item.quantity
+                )
                 if rows != 1:
                     raise ValidationError(
-                        "Không thể cập nhật tồn kho (có thể hết hàng trong lúc đặt). Vui lòng thử lại."
+                        "Không thể cập nhật tồn kho. Có thể sản phẩm đã hết hàng trong lúc đặt. Vui lòng thử lại."
                     )
 
             order = Order.objects.create(
                 user=user,
                 subtotal=subtotal,
-                shipping_fee=ship,
-                total_price=total,
+                discount_code=discount_code,
+                discount_code_snapshot=discount_code.code if discount_code else "",
+                discount_amount=discount_amount,
+                shipping_fee=shipping_fee,
+                total_price=total_price,
             )
-            for _ci, v, unit in line_build:
+            for cart_item, variant, unit in line_build:
                 OrderItem.objects.create(
                     order=order,
-                    product=v,
-                    quantity=_ci.quantity,
+                    product=variant,
+                    quantity=cart_item.quantity,
                     price=unit,
                 )
 
-            Shipping.objects.create(
-                order=order, name=name, phone=phone, address=address, note=note
-            )
+            if discount_code is not None:
+                DiscountCode.objects.filter(pk=discount_code.pk).update(used_count=F("used_count") + 1)
+
+            Shipping.objects.create(order=order, name=name, phone=phone, address=address, note=note)
             CartItem.objects.filter(cart=cart).delete()
 
             order_id_for_email = order.id
-            transaction.on_commit(
-                lambda oid=order_id_for_email: send_order_confirmation_email(oid)
-            )
+            transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
 
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -190,7 +246,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
             return OrderItem.objects.all().select_related(
                 "order", "product", "product__product", "product__product__category", "product__color", "product__size"
             )

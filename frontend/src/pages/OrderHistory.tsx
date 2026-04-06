@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { orders } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -22,8 +22,8 @@ export default function OrderHistory() {
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
-    const st = location.state as { orderPlaced?: boolean } | null;
-    if (st?.orderPlaced) {
+    const state = location.state as { orderPlaced?: boolean } | null;
+    if (state?.orderPlaced) {
       clearedPlacedState.current = true;
       setShowOrderPlacedBanner(true);
       navigate(location.pathname, { replace: true, state: {} });
@@ -89,27 +89,21 @@ export default function OrderHistory() {
                 <div className="orderCardHeader">
                   <span className="orderId">Đơn #{order.id}</span>
                   <span className="orderDate">
-                    {order.created_at
-                      ? new Date(order.created_at).toLocaleDateString('vi-VN')
-                      : '—'}
+                    {order.created_at ? new Date(order.created_at).toLocaleDateString('vi-VN') : '—'}
                   </span>
                   <span className={`orderStatus orderStatus--${order.status}`}>
                     {STATUS_LABEL[order.status] ?? order.status}
                   </span>
                 </div>
+
                 <ul className="orderItems">
                   {order.items?.map((item) => (
                     <li key={item.id} className="orderItem">
                       <div className="orderItemInfo">
-                        <span className="orderItemName">
-                          {item.product?.name ?? 'Sản phẩm'}
-                        </span>
+                        <span className="orderItemName">{item.product?.name ?? 'Sản phẩm'}</span>
                         {item.variant_info && (
                           <span className="orderItemVariant">
-                            <span 
-                              className="variantColor"
-                              style={{ backgroundColor: item.variant_info.color.code }}
-                            />
+                            <span className="variantColor" style={{ backgroundColor: item.variant_info.color.code }} />
                             {item.variant_info.color.name} / {item.variant_info.size.name}
                           </span>
                         )}
@@ -119,10 +113,14 @@ export default function OrderHistory() {
                     </li>
                   ))}
                 </ul>
+
                 <div className="orderTotal">
                   {order.subtotal != null && order.shipping_fee != null && (
                     <div className="orderTotalBreakdown">
                       Tạm tính: {order.subtotal}đ · Phí ship: {order.shipping_fee}đ
+                      {order.discount_amount && Number(order.discount_amount) > 0 && (
+                        <> · Giảm: {order.discount_amount}đ{order.discount_code ? ` (${order.discount_code})` : ''}</>
+                      )}
                     </div>
                   )}
                   Tổng: <strong>{order.total_price}đ</strong>

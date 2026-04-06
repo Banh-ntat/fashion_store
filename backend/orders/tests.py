@@ -1,3 +1,83 @@
-from django.test import TestCase
+from datetime import timedelta
+from decimal import Decimal
 
-# Create your tests here.
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from cart.models import Cart, CartItem
+from products.models import Category, Color, Product, ProductVariant, Promotion, Size
+
+from .models import DiscountCode, Order
+
+
+class DiscountCodeCheckoutTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username="buyer", password="123456")
+        self.client.force_authenticate(self.user)
+
+        category = Category.objects.create(name="Ao", description="")
+        promotion = Promotion.objects.create(
+            name="Sale thuong",
+            discount_percent=10,
+            start_date=timezone.localdate() - timedelta(days=1),
+            end_date=timezone.localdate() + timedelta(days=7),
+        )
+        color = Color.objects.create(name="Den", code="#000000")
+        size = Size.objects.create(name="M")
+        product = Product.objects.create(
+            name="Ao thun",
+            description="Demo",
+            category=category,
+            price=Decimal("300000"),
+            promotion=promotion,
+        )
+        variant = ProductVariant.objects.create(product=product, color=color, size=size, stock=10)
+
+        cart = Cart.objects.create(user=self.user)
+        CartItem.objects.create(cart=cart, product=variant, quantity=2)
+
+        self.discount_code = DiscountCode.objects.create(
+            name="Giam 15",
+            code="SAVE15",
+            discount_percent=15,
+            min_order_value=Decimal("200000"),
+            start_date=timezone.localdate() - timedelta(days=1),
+            end_date=timezone.localdate() + timedelta(days=7),
+            is_active=True,
+        )
+
+    def test_discount_preview_returns_discount_amount(self):
+        response = self.client.post("/api/orders/orders/discount-preview/", {"discount_code": "SAVE15"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["discount_code"], "SAVE15")
+        self.assertEqual(Decimal(response.data["subtotal"]), Decimal("540000"))
+        self.assertEqual(Decimal(response.data["discount_amount"]), Decimal("81000"))
+        self.assertEqual(Decimal(response.data["shipping_fee"]), Decimal("0"))
+        self.assertEqual(Decimal(response.data["total_price"]), Decimal("459000"))
+
+    def test_checkout_persists_discount_code_and_discount_amount(self):
+        response = self.client.post(
+            "/api/orders/orders/checkout/",
+            {
+                "name": "Nguyen Van A",
+                "phone": "0909123456",
+                "address": "123 Test Street",
+                "discount_code": "SAVE15",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        order = Order.objects.get()
+        self.discount_code.refresh_from_db()
+
+        self.assertEqual(order.discount_code_snapshot, "SAVE15")
+        self.assertEqual(order.discount_amount, Decimal("81000"))
+        self.assertEqual(order.shipping_fee, Decimal("0"))
+        self.assertEqual(order.total_price, Decimal("459000"))
+        self.assertEqual(self.discount_code.used_count, 1)

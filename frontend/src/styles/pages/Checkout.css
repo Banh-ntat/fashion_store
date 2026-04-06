@@ -148,6 +148,87 @@
   min-height: 80px;
 }
 
+.checkout-discount-box {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 248, 245, 0.7);
+}
+
+.checkout-discount-label {
+  display: block;
+  margin-bottom: 0.55rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.checkout-discount-row {
+  display: flex;
+  gap: 10px;
+}
+
+.checkout-discount-input {
+  flex: 1;
+}
+
+.checkout-discount-apply {
+  min-width: 110px;
+}
+
+.checkout-discount-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 0.75rem;
+}
+
+.checkout-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.checkout-discount-clear {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.checkout-discount-clear:hover {
+  color: var(--color-primary);
+}
+
+.checkout-discount-message {
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.checkout-discount-message.is-success {
+  color: #166534;
+}
+
+.checkout-discount-message.is-error {
+  color: #b91c1c;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+
 .checkout-btn {
   display: inline-flex;
   align-items: center;
@@ -396,6 +477,11 @@
   font-weight: 400;
 }
 
+.checkout-summary-row--discount span {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 .checkout-free-shipping-badge {
   font-size: 13px;
   color: #16a34a;
@@ -525,5 +611,11 @@
 
   .checkout-login-actions {
     flex-direction: column;
+  }
+
+  .checkout-discount-row,
+  .checkout-discount-meta {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
