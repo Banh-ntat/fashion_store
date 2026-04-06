@@ -79,9 +79,6 @@ export default function Home() {
                 <Link to="/products" className="heroPrimaryBtn">
                   Mua Sắm Ngay <ArrowRight size={13} />
                 </Link>
-                <Link to="/about" className="heroSecondaryBtn">
-                  Câu Chuyện Của Chúng Tôi <ArrowRight size={13} />
-                </Link>
               </div>
 
               <div className="heroStats">
@@ -102,7 +99,7 @@ export default function Home() {
 
             <div className="heroImageWrapper">
               <img
-                src="https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&h=700&fit=crop"
+                src="https://bizweb.dktcdn.net/100/369/010/articles/000003.jpg?v=1618475656540"
                 alt="New Fashion Collection"
                 className="heroImgMain"
               />

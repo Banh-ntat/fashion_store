@@ -1,5 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import {useEffect} from 'react';
+import {useLocation} from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
 import Policy from './pages/Policy';
@@ -35,6 +37,11 @@ import './styles/index.css';
 import './App.css';
 
 function App() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
   return (
     <AuthProvider>
       <ScrollToTop />

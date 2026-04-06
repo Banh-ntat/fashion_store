@@ -1,11 +1,9 @@
-/* ─── Layout ───────────────────────── */
 .cart-container {
   max-width: 1200px;
   margin: auto;
   padding: 30px;
 }
 
-/* ─── TITLE ───────────────────────── */
 .cart-title {
   font-size: 28px;
   font-weight: bold;
@@ -25,14 +23,12 @@
   border-radius: 2px;
 }
 
-/* ─── Layout grid ─────────────────── */
 .cart-layout {
   display: grid;
   grid-template-columns: 1fr 350px;
   gap: 30px;
 }
 
-/* ─── Cart List ───────────────────── */
 .cart-list {
   display: flex;
   flex-direction: column;
@@ -51,7 +47,7 @@
 
 .cart-item:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
 }
 
 .cart-item img {
@@ -59,7 +55,6 @@
   border-radius: 10px;
 }
 
-/* ─── Info ────────────────────────── */
 .cart-info h3 {
   font-size: 15px;
   margin-bottom: 4px;
@@ -80,7 +75,6 @@
   margin-top: 4px;
 }
 
-/* ─── Price ───────────────────────── */
 .price {
   font-weight: 500;
 }
@@ -90,7 +84,6 @@
   font-weight: bold;
 }
 
-/* ─── Quantity ───────────────────── */
 .qty {
   display: flex;
   align-items: center;
@@ -111,7 +104,6 @@
   color: white;
 }
 
-/* ─── REMOVE BUTTON ───────────────── */
 .remove {
   display: inline-flex;
   align-items: center;
@@ -132,22 +124,20 @@
   background: #ff4d4f;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(255,77,79,0.3);
+  box-shadow: 0 6px 12px rgba(255, 77, 79, 0.3);
 }
 
-/* ─── Summary ─────────────────────── */
 .cart-summary {
   background: white;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .cart-summary h3 {
   margin-bottom: 15px;
 }
 
-/* ─── Coupon (🔥 giống hình) ───────── */
 .cart-coupon {
   margin-bottom: 15px;
 }
@@ -192,14 +182,12 @@
   background: #000;
 }
 
-/* ─── Rows ───────────────────────── */
 .row {
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
 }
 
-/* 🔥 dòng giảm giá */
 .discount {
   color: #52c41a;
   font-weight: 500;
@@ -212,7 +200,6 @@
   color: #ff4d4f;
 }
 
-/* ─── Checkout ───────────────────── */
 .checkout {
   width: 100%;
   padding: 14px;
@@ -227,10 +214,9 @@
 
 .checkout:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255,77,79,0.4);
+  box-shadow: 0 8px 20px rgba(255, 77, 79, 0.4);
 }
 
-/* ─── Free Ship ──────────────────── */
 .free-ship {
   background: #f6ffed;
   color: green;
@@ -240,7 +226,6 @@
   text-align: center;
 }
 
-/* ─── Empty ─────────────────────── */
 .cart-empty {
   text-align: center;
   margin-top: 100px;
@@ -259,7 +244,6 @@
   border-radius: 999px;
 }
 
-/* ─── Responsive ────────────────── */
 @media (max-width: 768px) {
   .cart-layout {
     grid-template-columns: 1fr;

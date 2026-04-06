@@ -52,7 +52,6 @@ export default function Wishlist() {
           <div className="loading">Đang tải...</div>
         ) : productList.length === 0 ? (
           <div className="wishlistEmpty">
-              <div className="wishlistEmptyIcon">🛒</div>
               <p>Danh sách trống.</p>
               <Link to="/products" className="wishlistEmptyBtn">Khám phá sản phẩm</Link>
           </div> 

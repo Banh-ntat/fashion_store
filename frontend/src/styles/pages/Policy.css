@@ -1,5 +1,3 @@
-/* ── Policy page — scoped under .policy-page only ───────────────────────── */
-
 .policy-page {
   --policy-primary: var(--color-primary, #f55554);
   padding-bottom: clamp(2.5rem, 6vw, 4rem);
@@ -15,7 +13,6 @@
   }
 }
 
-/* Hero */
 .policy-hero {
   position: relative;
   padding: clamp(3.25rem, 9vw, 4.75rem) 1rem 2.75rem;
@@ -26,13 +23,22 @@
 .policy-heroMesh {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
+  background-image:
+    radial-gradient(
       circle at 15% 25%,
       rgba(245, 85, 84, 0.11) 0%,
       transparent 42%
     ),
-    radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.12) 0%, transparent 38%),
-    radial-gradient(circle at 70% 85%, rgba(139, 92, 246, 0.07) 0%, transparent 45%);
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(56, 189, 248, 0.12) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 70% 85%,
+      rgba(139, 92, 246, 0.07) 0%,
+      transparent 45%
+    );
   z-index: 0;
   pointer-events: none;
 }
@@ -45,7 +51,11 @@
   background-size: 22px 22px;
   opacity: 0.32;
   z-index: 0;
-  mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, #000 15%, transparent 70%);
+  mask-image: radial-gradient(
+    ellipse 85% 75% at 50% 35%,
+    #000 15%,
+    transparent 70%
+  );
 }
 
 .policy-heroFloat {
@@ -233,7 +243,10 @@
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 999px;
   backdrop-filter: blur(8px);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .policy-pill:hover {
@@ -242,7 +255,6 @@
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
 }
 
-/* Detail hero */
 .policy-hero--detail {
   padding-bottom: 2.25rem;
 }
@@ -263,7 +275,10 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(245, 85, 84, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .policy-backLink:hover {
@@ -288,7 +303,6 @@
   color: transparent;
 }
 
-/* Section & grid */
 .policy-section {
   padding: clamp(1.5rem, 4vw, 2.5rem) 0 clamp(2rem, 5vw, 3.5rem);
 }
@@ -321,7 +335,6 @@
   }
 }
 
-/* Cards */
 .policyCard {
   --enter-delay: 0ms;
   position: relative;
@@ -340,8 +353,10 @@
   box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
   animation: policy-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--enter-delay);
-  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1),
-    box-shadow 0.35s ease, border-color 0.25s ease;
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1),
+    box-shadow 0.35s ease,
+    border-color 0.25s ease;
 }
 
 @keyframes policy-card-in {
@@ -435,7 +450,9 @@
   align-items: center;
   justify-content: center;
   padding: 15px;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease,
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.35s ease,
     border-color 0.3s ease;
   box-shadow: 0 8px 28px color-mix(in srgb, var(--card-accent) 18%, transparent);
 }
@@ -443,7 +460,8 @@
 .policyCard:hover .policyIconInner {
   transform: scale(1.08) rotate(-3deg);
   border-color: var(--card-accent);
-  box-shadow: 0 12px 36px color-mix(in srgb, var(--card-accent) 28%, transparent);
+  box-shadow: 0 12px 36px
+    color-mix(in srgb, var(--card-accent) 28%, transparent);
 }
 
 .policyIconInner svg {
@@ -514,7 +532,9 @@
   margin: 12px auto 14px;
   background: linear-gradient(90deg, var(--card-accent), transparent);
   opacity: 0.85;
-  transition: width 0.35s ease, opacity 0.25s ease;
+  transition:
+    width 0.35s ease,
+    opacity 0.25s ease;
 }
 
 .policyCard:hover .policyAccentBar {
@@ -530,7 +550,9 @@
   font-weight: 700;
   color: var(--card-accent);
   margin-top: auto;
-  transition: gap 0.25s ease, transform 0.25s ease;
+  transition:
+    gap 0.25s ease,
+    transform 0.25s ease;
 }
 
 .policyCardCtaArrow {
@@ -546,7 +568,6 @@
   margin-top: auto;
 }
 
-/* Detail article */
 .policy-detailSheet {
   max-width: 720px;
   margin: 0 auto;
@@ -554,7 +575,9 @@
   border-radius: 24px;
   background: linear-gradient(165deg, #ffffff 0%, #fafafa 100%);
   border: 1px solid rgba(226, 232, 240, 0.95);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
   animation: policy-enter 0.5s ease both 0.05s;
 }
 
@@ -598,8 +621,6 @@
   width: 72%;
 }
 
-/* ── Policy detail (per slug) — themed hero + highlights + layout ───────── */
-
 .policy-page--detail {
   --detail-accent: #f55554;
   --detail-hero-bg: linear-gradient(168deg, #fff8f6 0%, #eef6ff 100%);
@@ -613,7 +634,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 90% 70% at 50% -30%, rgba(255, 255, 255, 0.92), transparent 55%);
+  background: radial-gradient(
+    ellipse 90% 70% at 50% -30%,
+    rgba(255, 255, 255, 0.92),
+    transparent 55%
+  );
   pointer-events: none;
   z-index: 1;
 }
@@ -666,7 +691,8 @@
   padding: 18px;
   background: color-mix(in srgb, var(--detail-accent) 12%, white);
   border: 2px solid color-mix(in srgb, var(--detail-accent) 28%, white);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--detail-accent) 22%, transparent),
+  box-shadow:
+    0 16px 48px color-mix(in srgb, var(--detail-accent) 22%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.8) inset;
   animation: policy-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -692,7 +718,8 @@
   border: 1px solid color-mix(in srgb, var(--detail-accent) 25%, #e2e8f0);
   border-radius: 999px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 24px color-mix(in srgb, var(--detail-accent) 12%, transparent);
+  box-shadow: 0 4px 24px
+    color-mix(in srgb, var(--detail-accent) 12%, transparent);
 }
 
 .policy-detailHeroTagText {
@@ -709,7 +736,8 @@
   margin: 0 0 0.65rem;
   color: #0f172a;
   padding-bottom: 0.65rem;
-  border-bottom: 3px solid color-mix(in srgb, var(--detail-accent) 65%, transparent);
+  border-bottom: 3px solid
+    color-mix(in srgb, var(--detail-accent) 65%, transparent);
   display: inline-block;
   max-width: 100%;
 }
@@ -751,7 +779,9 @@
   border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
   text-align: left;
-  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1), box-shadow 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1),
+    box-shadow 0.3s ease;
   animation: policy-enter 0.5s ease both;
   animation-delay: calc(var(--hl-index, 0) * 70ms);
 }
@@ -778,7 +808,11 @@
   right: 1rem;
   height: 4px;
   border-radius: 0 0 6px 6px;
-  background: linear-gradient(90deg, var(--detail-accent), color-mix(in srgb, var(--detail-accent) 40%, white));
+  background: linear-gradient(
+    90deg,
+    var(--detail-accent),
+    color-mix(in srgb, var(--detail-accent) 40%, white)
+  );
   opacity: 0.9;
   z-index: 2;
 }
@@ -886,7 +920,8 @@
     #fff
   );
   border: 1px solid color-mix(in srgb, var(--detail-accent) 22%, #e2e8f0);
-  box-shadow: 0 12px 40px color-mix(in srgb, var(--detail-accent) 12%, transparent);
+  box-shadow: 0 12px 40px
+    color-mix(in srgb, var(--detail-accent) 12%, transparent);
 }
 
 .policy-detailCtaLabel {
@@ -922,8 +957,11 @@
     var(--detail-accent),
     color-mix(in srgb, var(--detail-accent) 75%, #0f172a)
   );
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--detail-accent) 35%, transparent);
-  transition: transform 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 8px 24px
+    color-mix(in srgb, var(--detail-accent) 35%, transparent);
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
 }
 
 .policy-detailCtaBtn:hover {
@@ -944,8 +982,6 @@
   text-decoration: underline;
 }
 
-/* ── Policy detail — premium / market-grade UI ───────────────────────────── */
-
 .policy-page--detailPremium {
   overflow-x: clip;
 }
@@ -957,13 +993,15 @@
 .policy-hero--detailPremium {
   padding-bottom: clamp(3rem, 8vw, 4.5rem);
   border-radius: 0 0 clamp(24px, 5vw, 40px) clamp(24px, 5vw, 40px);
-  box-shadow: 0 24px 80px color-mix(in srgb, var(--detail-accent) 14%, transparent);
+  box-shadow: 0 24px 80px
+    color-mix(in srgb, var(--detail-accent) 14%, transparent);
 }
 
 .policy-detailHeroGrid {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(
+  background-image:
+    linear-gradient(
       color-mix(in srgb, var(--detail-accent) 6%, transparent) 1px,
       transparent 1px
     ),
@@ -973,7 +1011,11 @@
       transparent 1px
     );
   background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 70%);
+  mask-image: radial-gradient(
+    ellipse 80% 70% at 50% 20%,
+    #000 15%,
+    transparent 70%
+  );
   opacity: 0.55;
   z-index: 0;
   pointer-events: none;
@@ -1078,7 +1120,8 @@
     #fff
   );
   border: 2px solid color-mix(in srgb, var(--detail-accent) 32%, #fff);
-  box-shadow: 0 20px 56px color-mix(in srgb, var(--detail-accent) 28%, transparent),
+  box-shadow:
+    0 20px 56px color-mix(in srgb, var(--detail-accent) 28%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.9) inset,
     0 -8px 32px rgba(255, 255, 255, 0.5) inset;
   animation: policy-icon-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -1152,7 +1195,9 @@
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
-  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease;
 }
 
 .policy-trustChip:hover {
@@ -1237,8 +1282,12 @@
     transparent 50%,
     color-mix(in srgb, var(--detail-accent) 20%, transparent)
   );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -1280,7 +1329,8 @@
     color-mix(in srgb, var(--detail-accent) 14%, white),
     #fff
   );
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--detail-accent) 15%, transparent);
+  box-shadow: 0 6px 18px
+    color-mix(in srgb, var(--detail-accent) 15%, transparent);
 }
 
 .policy-highlightGlyphSvg {
@@ -1294,7 +1344,9 @@
   border-radius: 24px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid rgba(226, 232, 240, 0.98);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.09),
+    0 0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
 .policy-detailSheetHead {
@@ -1375,9 +1427,14 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #fff;
-  background: linear-gradient(135deg, var(--detail-accent), color-mix(in srgb, var(--detail-accent) 65%, #1e293b));
+  background: linear-gradient(
+    135deg,
+    var(--detail-accent),
+    color-mix(in srgb, var(--detail-accent) 65%, #1e293b)
+  );
   border-radius: 10px;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--detail-accent) 35%, transparent);
+  box-shadow: 0 4px 14px
+    color-mix(in srgb, var(--detail-accent) 35%, transparent);
 }
 
 .policy-detailCta--premium {
@@ -1385,9 +1442,14 @@
   padding: 1.5rem 1.35rem 1.65rem;
   overflow: hidden;
   border-radius: 22px;
-  background: linear-gradient(165deg, #fff 0%, color-mix(in srgb, var(--detail-accent) 5%, #fff) 100%);
+  background: linear-gradient(
+    165deg,
+    #fff 0%,
+    color-mix(in srgb, var(--detail-accent) 5%, #fff) 100%
+  );
   border: 1px solid color-mix(in srgb, var(--detail-accent) 22%, #e2e8f0);
-  box-shadow: 0 20px 50px color-mix(in srgb, var(--detail-accent) 15%, transparent);
+  box-shadow: 0 20px 50px
+    color-mix(in srgb, var(--detail-accent) 15%, transparent);
 }
 
 .policy-detailCtaGlow {
@@ -1424,7 +1486,10 @@
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.95);
   border: 1px solid #e2e8f0;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .policy-detailCtaMini:hover {
