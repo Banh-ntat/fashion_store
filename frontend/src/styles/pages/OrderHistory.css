@@ -8,9 +8,22 @@
 .orderHistoryTitle {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text, #1e1e1e);
-  margin-bottom: 32px;
+  margin-top: 20px;
+  padding-bottom: 8px;
+  position: relative;
+}
+
+.orderHistoryTitle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 30%;
+  height: 4px;
+  background: linear-gradient(90deg, #ff4d4f, #ff7a45);
+  border-radius: 2px;
 }
 
 .orderPlacedBanner {
@@ -24,14 +37,12 @@
   line-height: 1.45;
 }
 
-.orderLoginHint,
-.orderEmpty {
+.orderLoginHint {
   font-size: 1rem;
   color: var(--color-text-muted);
 }
 
-.orderLoginHint a,
-.orderEmpty a {
+.orderLoginHint a {
   color: var(--color-primary, #f55554);
   font-weight: 500;
 }
