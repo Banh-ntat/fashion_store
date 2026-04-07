@@ -27,8 +27,11 @@ interface DiscountCode {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  effective_is_active: boolean;
   usage_limit: number | null;
   used_count: number;
+  status: 'active' | 'expired';
+  status_label: string;
 }
 
 interface DiscountCodeFormData {
@@ -307,7 +310,7 @@ export default function AdminPromotions() {
                   {discountCode.used_count}
                   {discountCode.usage_limit != null ? ` / ${discountCode.usage_limit}` : ''}
                 </td>
-                <td>{discountCode.is_active ? 'Đang bật' : 'Tắt'}</td>
+                <td>{discountCode.status === 'active' ? 'Đang hoạt động' : 'Hết hạn'}</td>
                 <td>
                   <button className="btn-edit" onClick={() => handleEditDiscountCode(discountCode)}>
                     Sửa
@@ -450,14 +453,19 @@ export default function AdminPromotions() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="admin-inlineCheck">
-                    <input
-                      type="checkbox"
-                      checked={discountCodeForm.is_active}
-                      onChange={(e) => setDiscountCodeForm({ ...discountCodeForm, is_active: e.target.checked })}
-                    />
-                    <span>Đang kích hoạt</span>
-                  </label>
+                  <label>Trạng thái</label>
+                  <button
+                    type="button"
+                    className={`admin-statusToggle ${discountCodeForm.is_active ? 'is-active' : 'is-expired'}`}
+                    onClick={() =>
+                      setDiscountCodeForm({
+                        ...discountCodeForm,
+                        is_active: !discountCodeForm.is_active,
+                      })
+                    }
+                  >
+                    {discountCodeForm.is_active ? 'Hết hạn' : 'Đang hoạt động'}
+                  </button>
                 </div>
                 <div className="form-actions">
                   <button type="button" className="btn-secondary" onClick={() => setShowDiscountCodeModal(false)}>

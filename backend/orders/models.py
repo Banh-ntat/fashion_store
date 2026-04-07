@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 
 from products.models import ProductVariant
 
@@ -20,6 +21,27 @@ class DiscountCode(models.Model):
 
     def __str__(self):
         return f"{self.code} ({self.discount_percent}%)"
+
+    @property
+    def is_usage_exhausted(self) -> bool:
+        return self.usage_limit is not None and self.used_count >= self.usage_limit
+
+    @property
+    def effective_is_active(self) -> bool:
+        today = timezone.localdate()
+        return (
+            self.is_active
+            and self.start_date <= today <= self.end_date
+            and not self.is_usage_exhausted
+        )
+
+    @property
+    def status(self) -> str:
+        return "active" if self.effective_is_active else "expired"
+
+    @property
+    def status_label(self) -> str:
+        return "Dang hoat dong" if self.effective_is_active else "Het han"
 
 
 class Order(models.Model):

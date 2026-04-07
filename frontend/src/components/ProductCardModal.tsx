@@ -32,27 +32,57 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
 
   const productImage = product.image || PLACEHOLDER_IMAGE;
   const productStock = product.stock ?? 99;
+  const variants = product.variants ?? [];
+
+  const findVariantForColor = (colorName: string, preferredSize?: string) =>
+    variants.find((v) => v.color.name === colorName && v.size.name === preferredSize) ||
+    variants.find((v) => v.color.name === colorName && (v.stock ?? 0) > 0) ||
+    variants.find((v) => v.color.name === colorName) ||
+    null;
+
+  const findVariantForSize = (sizeName: string, preferredColor?: string) =>
+    variants.find((v) => v.size.name === sizeName && v.color.name === preferredColor) ||
+    variants.find((v) => v.size.name === sizeName && (v.stock ?? 0) > 0) ||
+    variants.find((v) => v.size.name === sizeName) ||
+    null;
 
   const discountedPrice = (price: string, pct: number) =>
     (parseFloat(price) * (1 - pct / 100)).toFixed(0);
 
   useEffect(() => {
     if (isOpen) {
-      const colorNames = product.variants ? [...new Set(product.variants.map((v) => v.color.name))] : [];
-      const sizeNames = product.variants ? [...new Set(product.variants.map((v) => v.size.name))] : [];
-      setSelectedColor((prev) => colorNames.includes(prev) ? prev : (colorNames[0] || ''));
-      setSelectedSize((prev) => sizeNames.includes(prev) ? prev : (sizeNames[0] || ''));
+      const firstVariant = variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
+      setSelectedColor(firstVariant?.color.name || '');
+      setSelectedSize(firstVariant?.size.name || '');
       setQuantity(1);
     }
-  }, [isOpen, product]);
+  }, [isOpen, variants]);
 
-  const sizes = product.variants && product.variants.length > 0 ? [...new Set(product.variants.map((v) => v.size.name))] : [];
-  const colors = product.variants && product.variants.length > 0 ? [...new Set(product.variants.map((v) => v.color.name))] : [];
+  useEffect(() => {
+    if (!variants.length) return;
+    const selectedVariantExists = variants.some(
+      (v) => v.size.name === selectedSize && v.color.name === selectedColor,
+    );
+    if (selectedVariantExists) return;
 
-  const selectedVariant = product.variants?.find(
+    const fallbackVariant =
+      findVariantForColor(selectedColor, selectedSize) ||
+      findVariantForSize(selectedSize, selectedColor) ||
+      variants.find((v) => (v.stock ?? 0) > 0) ||
+      variants[0];
+
+    if (!fallbackVariant) return;
+    setSelectedColor(fallbackVariant.color.name);
+    setSelectedSize(fallbackVariant.size.name);
+  }, [selectedColor, selectedSize, variants]);
+
+  const sizes = variants.length > 0 ? [...new Set(variants.map((v) => v.size.name))] : [];
+  const colors = variants.length > 0 ? [...new Set(variants.map((v) => v.color.name))] : [];
+
+  const selectedVariant = variants.find(
     (v) => v.size.name === selectedSize && v.color.name === selectedColor,
   );
-  const variantStock = selectedVariant?.stock ?? productStock;
+  const variantStock = variants.length > 0 ? (selectedVariant?.stock ?? 0) : productStock;
 
   const notify = (message: string, type: NotifType = "info", duration = 4000) => {
     const notif: Notification = { id: ++_notifId, type, message };
@@ -173,14 +203,14 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
                   </label>
                   <div className="color-buttons">
                     {colors.map((color) => {
-                      const variant = product.variants?.find(
+                      const variant = variants.find(
                         (v) => v.color.name === color,
                       );
                       const code = variant?.color.code || "#888";
                       const isWhite = ["#ffffff", "#fff", "white"].includes(
                         code.toLowerCase(),
                       );
-                      const hasStock = product.variants?.some(
+                      const hasStock = variants.some(
                         (v) => v.color.name === color && (v.stock ?? 0) > 0,
                       );
                       return (
@@ -188,7 +218,14 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
                           key={color}
                           type="button"
                           className={`color-btn${selectedColor === color ? " selected" : ""}${isWhite ? " white" : ""}${!hasStock ? " out-of-stock" : ""}`}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedColor(color); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const nextVariant = findVariantForColor(color, selectedSize);
+                            if (!nextVariant) return;
+                            setSelectedColor(nextVariant.color.name);
+                            setSelectedSize(nextVariant.size.name);
+                          }}
                           style={{ backgroundColor: code }}
                           title={`${color}${!hasStock ? " (Hết hàng)" : ""}`}
                           aria-label={color}
@@ -204,19 +241,26 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
                   <label>Kích thước:</label>
                   <div className="size-buttons">
                     {sizes.map((size) => {
-                      const variantForSize = product.variants?.find(
+                      const variantForSize = variants.find(
                         (v) =>
                           v.size.name === size && v.color.name === selectedColor,
                       );
                       const sizeHasStock = variantForSize
                         ? (variantForSize.stock ?? 0) > 0
-                        : true;
+                        : variants.some((v) => v.size.name === size && (v.stock ?? 0) > 0);
                       return (
                         <button
                           key={size}
                           type="button"
                           className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedSize(size); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const nextVariant = findVariantForSize(size, selectedColor);
+                            if (!nextVariant) return;
+                            setSelectedColor(nextVariant.color.name);
+                            setSelectedSize(nextVariant.size.name);
+                          }}
                           title={!sizeHasStock ? `${size} (Hết hàng)` : size}
                         >
                           {size}

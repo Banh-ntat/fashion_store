@@ -35,9 +35,12 @@ class DiscountCodeCheckoutTests(TestCase):
             promotion=promotion,
         )
         variant = ProductVariant.objects.create(product=product, color=color, size=size, stock=10)
+        size_l = Size.objects.create(name="L")
+        second_variant = ProductVariant.objects.create(product=product, color=color, size=size_l, stock=8)
 
         cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=variant, quantity=2)
+        self.first_cart_item = CartItem.objects.create(cart=cart, product=variant, quantity=2)
+        self.second_cart_item = CartItem.objects.create(cart=cart, product=second_variant, quantity=1)
 
         self.discount_code = DiscountCode.objects.create(
             name="Giam 15",
@@ -54,9 +57,21 @@ class DiscountCodeCheckoutTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["discount_code"], "SAVE15")
+        self.assertEqual(Decimal(response.data["subtotal"]), Decimal("810000"))
+        self.assertEqual(Decimal(response.data["discount_amount"]), Decimal("121500"))
+        self.assertEqual(Decimal(response.data["shipping_fee"]), Decimal("0"))
+        self.assertEqual(Decimal(response.data["total_price"]), Decimal("688500"))
+
+    def test_discount_preview_supports_selected_cart_items(self):
+        response = self.client.post(
+            "/api/orders/orders/discount-preview/",
+            {"discount_code": "SAVE15", "cart_item_ids": [self.first_cart_item.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(Decimal(response.data["subtotal"]), Decimal("540000"))
         self.assertEqual(Decimal(response.data["discount_amount"]), Decimal("81000"))
-        self.assertEqual(Decimal(response.data["shipping_fee"]), Decimal("0"))
         self.assertEqual(Decimal(response.data["total_price"]), Decimal("459000"))
 
     def test_checkout_persists_discount_code_and_discount_amount(self):
@@ -67,6 +82,7 @@ class DiscountCodeCheckoutTests(TestCase):
                 "phone": "0909123456",
                 "address": "123 Test Street",
                 "discount_code": "SAVE15",
+                "cart_item_ids": [self.first_cart_item.id],
             },
             format="json",
         )
@@ -81,3 +97,5 @@ class DiscountCodeCheckoutTests(TestCase):
         self.assertEqual(order.shipping_fee, Decimal("0"))
         self.assertEqual(order.total_price, Decimal("459000"))
         self.assertEqual(self.discount_code.used_count, 1)
+        self.assertFalse(CartItem.objects.filter(pk=self.first_cart_item.pk).exists())
+        self.assertTrue(CartItem.objects.filter(pk=self.second_cart_item.pk).exists())

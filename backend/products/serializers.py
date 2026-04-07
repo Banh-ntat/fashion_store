@@ -5,6 +5,10 @@ from rest_framework import serializers
 from .models import Category, Promotion, Product, ProductImage, ProductVariant, Color, Size
 
 
+def normalize_size_name(value: str) -> str:
+    return value.strip().upper()
+
+
 class CategorySerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
@@ -37,6 +41,23 @@ class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
         fields = ("id", "name")
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["name"] = normalize_size_name(data.get("name", ""))
+        return data
+
+    def validate_name(self, value: str) -> str:
+        normalized = normalize_size_name(value)
+        if not normalized:
+            raise serializers.ValidationError("Vui long nhap size.")
+
+        exists = Size.objects.filter(name__iexact=normalized).exclude(
+            pk=self.instance.pk if self.instance else None
+        )
+        if exists.exists():
+            raise serializers.ValidationError("Size nay da ton tai.")
+        return normalized
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -197,7 +218,7 @@ class ProductSerializer(serializers.ModelSerializer):
             {
                 "id": v.id,
                 "color": {"id": v.color.id, "name": v.color.name, "code": v.color.code},
-                "size": {"id": v.size.id, "name": v.size.name},
+                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name)},
                 "stock": v.stock,
             }
             for v in variants

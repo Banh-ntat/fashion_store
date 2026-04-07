@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cart, orders } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { notifyCartUpdated } from '../utils/cartEvents';
@@ -48,6 +48,15 @@ function normalizeDiscountCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
+function parseSelectedCartItemIds(rawValue: string | null): number[] {
+  if (!rawValue) return [];
+  const ids = rawValue
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  return [...new Set(ids)];
+}
+
 function getApiErrorMessage(data: unknown, fallback: string): string {
   if (!data) return fallback;
   if (typeof data === 'string') {
@@ -81,8 +90,11 @@ function shouldResetDiscountInput(message: string): boolean {
 export default function Checkout() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/checkout';
+  const selectedIdsFromQuery = parseSelectedCartItemIds(searchParams.get('items'));
+  const hasSpecificSelection = selectedIdsFromQuery.length > 0;
+  const redirectTo = `${location.pathname}${location.search}` || '/checkout';
 
   const [items, setItems] = useState<CartItemType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +104,7 @@ export default function Checkout() {
   const [discountCode, setDiscountCode] = useState('');
   const [pricingPreview, setPricingPreview] = useState<PricingPreview | null>(null);
   const [step, setStep] = useState<'shipping' | 'confirm'>('shipping');
+  const [selectionNotice, setSelectionNotice] = useState('');
 
   const [form, setForm] = useState({
     name: '',
@@ -105,19 +118,38 @@ export default function Checkout() {
       setLoading(false);
       return;
     }
+
     cart
       .get()
       .then((res) => {
         const data = res.data as { items?: CartItemType[] } | CartItemType[];
         const list = Array.isArray(data)
-          ? (data[0] as { items?: CartItemType[] })?.items ?? []
-          : (data as { items?: CartItemType[] }).items ?? [];
-        setItems(Array.isArray(list) ? list : []);
+          ? ((data[0] as { items?: CartItemType[] })?.items ?? [])
+          : (data.items ?? []);
+        const safeList = Array.isArray(list) ? list : [];
+
+        if (!hasSpecificSelection) {
+          setItems(safeList);
+          setSelectionNotice('');
+          return;
+        }
+
+        const filtered = safeList.filter((item) => selectedIdsFromQuery.includes(item.id));
+        setItems(filtered);
+
+        if (filtered.length === 0) {
+          setSelectionNotice('Các sản phẩm bạn chọn không còn trong giỏ hàng.');
+        } else if (filtered.length !== selectedIdsFromQuery.length) {
+          setSelectionNotice('Một số sản phẩm đã không còn trong giỏ. Hệ thống chỉ giữ lại các sản phẩm còn hợp lệ.');
+        } else {
+          setSelectionNotice('');
+        }
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [hasSpecificSelection, selectedIdsFromQuery.join(','), user]);
 
+  const selectedCartItemIds = items.map((item) => item.id);
   const subtotal = items.reduce((sum, item) => sum + getUnitPrice(item) * item.quantity, 0);
   const shippingFee = subtotal >= 500000 ? 0 : 30000;
   const pricing = pricingPreview
@@ -152,11 +184,19 @@ export default function Checkout() {
       setDiscountMessage('Vui lòng nhập mã giảm giá.');
       return;
     }
+    if (selectedCartItemIds.length === 0) {
+      setPricingPreview(null);
+      setDiscountMessage('Vui lòng chọn sản phẩm trước khi áp dụng mã giảm giá.');
+      return;
+    }
 
     setDiscountLoading(true);
     setDiscountMessage('');
     try {
-      const res = await orders.discountPreview({ discount_code: normalizedCode });
+      const res = await orders.discountPreview({
+        discount_code: normalizedCode,
+        cart_item_ids: selectedCartItemIds,
+      });
       setPricingPreview(res.data as PricingPreview);
       setDiscountCode(normalizedCode);
       setDiscountMessage('Áp dụng mã giảm giá thành công.');
@@ -199,6 +239,7 @@ export default function Checkout() {
         address: form.address.trim(),
         note: form.note.trim() || undefined,
         discount_code: appliedDiscountCode || undefined,
+        cart_item_ids: selectedCartItemIds,
       });
       setForm({ name: '', phone: '', address: '', note: '' });
       setDiscountCode('');
@@ -207,33 +248,8 @@ export default function Checkout() {
       notifyCartUpdated();
       navigate('/orders', { state: { orderPlaced: true } });
     } catch (err) {
-      let errorMessage = 'Đặt hàng thất bại. Vui lòng thử lại.';
-      const resData = (err as { response?: { data?: unknown } })?.response?.data as
-        | { detail?: string; non_field_errors?: string[] }
-        | string[]
-        | string
-        | Record<string, unknown>
-        | undefined;
-
-      if (resData) {
-        if (typeof resData === 'object' && !Array.isArray(resData) && 'detail' in resData && typeof resData.detail === 'string') {
-          errorMessage = resData.detail;
-        } else if (Array.isArray(resData) && typeof resData[0] === 'string') {
-          errorMessage = resData[0];
-        } else if (typeof resData === 'object' && !Array.isArray(resData) && 'non_field_errors' in resData) {
-          const first = resData.non_field_errors;
-          if (Array.isArray(first) && typeof first[0] === 'string') errorMessage = first[0];
-        } else if (typeof resData === 'string') {
-          errorMessage = resData.trim().startsWith('<!DOCTYPE html>')
-            ? 'Backend đang lỗi nội bộ khi tạo đơn hàng. Kiểm tra server Django.'
-            : resData;
-        } else if (typeof resData === 'object' && !Array.isArray(resData)) {
-          const firstVal = Object.values(resData)[0];
-          if (typeof firstVal === 'string') errorMessage = firstVal;
-          else if (Array.isArray(firstVal) && typeof firstVal[0] === 'string') errorMessage = firstVal[0];
-        }
-      }
-      alert(errorMessage);
+      const resData = (err as { response?: { data?: unknown } })?.response?.data;
+      alert(getApiErrorMessage(resData, 'Đặt hàng thất bại. Vui lòng thử lại.'));
     } finally {
       setSubmitting(false);
     }
@@ -277,11 +293,16 @@ export default function Checkout() {
         <div className="sectionContainer checkout-container">
           <div className="checkout-empty">
             <div className="checkout-empty-icon">🛒</div>
-            <h2>Giỏ hàng trống</h2>
-            <p>Bạn chưa có sản phẩm nào trong giỏ.</p>
-            <Link to="/products" className="checkout-btn checkout-btn-primary">
-              Tiếp tục mua sắm
-            </Link>
+            <h2>Không có sản phẩm để thanh toán</h2>
+            <p>{selectionNotice || 'Bạn chưa có sản phẩm nào trong giỏ.'}</p>
+            <div className="checkout-login-actions">
+              <Link to="/cart" className="checkout-btn checkout-btn-primary">
+                Quay lại giỏ hàng
+              </Link>
+              <Link to="/products" className="checkout-btn checkout-btn-secondary">
+                Tiếp tục mua sắm
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -303,6 +324,8 @@ export default function Checkout() {
           </div>
         </div>
 
+        {selectionNotice && <div className="checkout-selection-notice">{selectionNotice}</div>}
+
         <div className="checkout-layout">
           <div className="checkout-main">
             {step === 'shipping' && (
@@ -312,8 +335,8 @@ export default function Checkout() {
                 </div>
                 <form
                   className="checkout-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
+                  onSubmit={(event) => {
+                    event.preventDefault();
                     handleContinueToConfirm();
                   }}
                 >
@@ -325,7 +348,7 @@ export default function Checkout() {
                       className="checkout-input"
                       placeholder="Nguyễn Văn A"
                       value={form.name}
-                      onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+                      onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                       required
                     />
                   </div>
@@ -337,7 +360,7 @@ export default function Checkout() {
                       className="checkout-input"
                       placeholder="0912 345 678"
                       value={form.phone}
-                      onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))}
+                      onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
                       required
                     />
                   </div>
@@ -349,7 +372,7 @@ export default function Checkout() {
                       placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                       rows={3}
                       value={form.address}
-                      onChange={(e) => setForm((current) => ({ ...current, address: e.target.value }))}
+                      onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
                       required
                     />
                   </div>
@@ -361,7 +384,7 @@ export default function Checkout() {
                       placeholder="Ghi chú thêm cho đơn hàng..."
                       rows={2}
                       value={form.note}
-                      onChange={(e) => setForm((current) => ({ ...current, note: e.target.value }))}
+                      onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
                     />
                   </div>
                   <button type="submit" className="checkout-btn checkout-btn-primary checkout-btn-full">
@@ -399,7 +422,7 @@ export default function Checkout() {
                 </div>
 
                 <div className="checkout-summary-section">
-                  <h3>Sản phẩm — {items.length} món</h3>
+                  <h3>Sản phẩm đã chọn — {items.length} món</h3>
                   <ul className="checkout-product-list">
                     {items.map((item) => {
                       const unitPrice = getUnitPrice(item);
@@ -445,6 +468,10 @@ export default function Checkout() {
             <div className="checkout-summary-box">
               <h3 className="checkout-summary-title">Tóm tắt đơn hàng</h3>
 
+              <div className="checkout-summary-picked">
+                Bạn đang thanh toán <strong>{items.length}</strong> sản phẩm đã chọn từ giỏ hàng.
+              </div>
+
               <div className="checkout-discount-box">
                 <label htmlFor="discount-code" className="checkout-discount-label">
                   Mã giảm giá
@@ -456,8 +483,8 @@ export default function Checkout() {
                     className="checkout-input checkout-discount-input"
                     placeholder="Nhập mã của bạn"
                     value={discountCode}
-                    onChange={(e) => {
-                      const nextValue = e.target.value.toUpperCase();
+                    onChange={(event) => {
+                      const nextValue = event.target.value.toUpperCase();
                       setDiscountCode(nextValue);
                       if (pricingPreview && normalizeDiscountCode(nextValue) !== appliedDiscountCode) {
                         setPricingPreview(null);
@@ -519,7 +546,7 @@ export default function Checkout() {
                 {pricing.shippingFee === 0 && (
                   <div className="checkout-ship-note">
                     <span className="checkout-ship-note-text">
-                      Đơn hàng đủ điều kiện miễn phí vận chuyển từ 500.000₫ trở lên.
+                      Các sản phẩm đã chọn đủ điều kiện miễn phí vận chuyển từ 500.000₫ trở lên.
                     </span>
                   </div>
                 )}

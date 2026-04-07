@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from products.models import Product, ProductVariant
-from products.serializers import ProductSerializer
+from products.serializers import ProductSerializer, normalize_size_name
 from .models import Cart, CartItem
 
 
@@ -43,7 +43,7 @@ class CartItemSerializer(serializers.ModelSerializer):
             return None
         return {
             "color": {"id": obj.product.color.id, "name": obj.product.color.name, "code": obj.product.color.code},
-            "size": {"id": obj.product.size.id, "name": obj.product.size.name},
+            "size": {"id": obj.product.size.id, "name": normalize_size_name(obj.product.size.name)},
         }
 
     def validate(self, attrs):
@@ -58,7 +58,7 @@ class CartItemSerializer(serializers.ModelSerializer):
                         {
                             "quantity": (
                                 f"Không đủ hàng. Còn {variant.stock} sản phẩm "
-                                f"({variant.product.name}, {variant.color.name}/{variant.size.name})."
+                                f"({variant.product.name}, {variant.color.name}/{normalize_size_name(variant.size.name)})."
                             )
                         }
                     )
@@ -94,7 +94,7 @@ class CartItemSerializer(serializers.ModelSerializer):
                 )
                 need = existing.quantity + qty if existing else qty
                 if need > variant.stock:
-                    label = f"{variant.product.name} ({variant.color.name}/{variant.size.name})"
+                    label = f"{variant.product.name} ({variant.color.name}/{normalize_size_name(variant.size.name)})"
                     extra = (
                         f" Trong giỏ đã có {existing.quantity}."
                         if existing

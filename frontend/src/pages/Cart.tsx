@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cart } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -25,18 +25,21 @@ interface CartItemType {
   product?: CartProduct;
   variant_info?: VariantInfo | null;
   quantity: number;
-  /** Tồn kho variant (từ API) */
   stock?: number;
 }
 
 function getUnitPrice(item: CartItemType): number {
-  const p = item.product;
-  if (!p) return 0;
-  let price = parseFloat(String(p.price ?? 0));
-  if (p.promotion?.discount_percent) {
-    price = price * (1 - p.promotion.discount_percent / 100);
+  const product = item.product;
+  if (!product) return 0;
+  let price = parseFloat(String(product.price ?? 0));
+  if (product.promotion?.discount_percent) {
+    price = price * (1 - product.promotion.discount_percent / 100);
   }
   return price;
+}
+
+function formatCurrency(value: number): string {
+  return `${value.toLocaleString('vi-VN')}₫`;
 }
 
 export default function Cart() {
@@ -46,6 +49,8 @@ export default function Cart() {
   const [items, setItems] = useState<CartItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
 
   const fetchCart = () => {
     if (!user) {
@@ -53,14 +58,24 @@ export default function Cart() {
       setLoading(false);
       return;
     }
+
     setLoading(true);
-    cart.get()
+    cart
+      .get()
       .then((res) => {
-        const raw = res.data as any;
-        const list = Array.isArray(raw)
-          ? raw[0]?.items ?? []
-          : raw.items ?? [];
-        setItems(list);
+        const raw = res.data as { items?: CartItemType[] } | CartItemType[];
+        const list = Array.isArray(raw) ? ((raw[0] as { items?: CartItemType[] })?.items ?? []) : (raw.items ?? []);
+        const safeList = Array.isArray(list) ? list : [];
+
+        setItems(safeList);
+        setSelectedItemIds((prev) => {
+          if (!selectionInitialized) {
+            return safeList.map((item) => item.id);
+          }
+          const availableIds = new Set(safeList.map((item) => item.id));
+          return prev.filter((id) => availableIds.has(id));
+        });
+        setSelectionInitialized(true);
       })
       .catch(() => setItems([]))
       .finally(() => {
@@ -73,25 +88,44 @@ export default function Cart() {
     fetchCart();
   }, [user]);
 
+  const selectedItems = items.filter((item) => selectedItemIds.includes(item.id));
+  const allSelected = items.length > 0 && selectedItemIds.length === items.length;
+  const selectedSubtotal = selectedItems.reduce((sum, item) => sum + getUnitPrice(item) * item.quantity, 0);
+  const shipping = selectedSubtotal >= 500000 ? 0 : 30000;
+  const total = selectedSubtotal + shipping;
+
+  const handleToggleItem = (itemId: number) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  const handleToggleAll = () => {
+    setSelectedItemIds((prev) => (prev.length === items.length ? [] : items.map((item) => item.id)));
+  };
+
   const handleUpdateQty = async (id: number, newQty: number) => {
     if (newQty < 1) return;
-    const item = items.find((i) => i.id === id);
+
+    const item = items.find((entry) => entry.id === id);
     if (item?.stock != null && newQty > item.stock) {
       alert(`Chỉ còn ${item.stock} sản phẩm trong kho.`);
       return;
     }
+
     setUpdatingId(id);
     try {
       await cart.updateItem(id, newQty);
-      setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, quantity: newQty } : i))
-      );
+      setItems((prev) => prev.map((entry) => (entry.id === id ? { ...entry, quantity: newQty } : entry)));
       notifyCartUpdated();
     } catch (err) {
-      const res = (err as { response?: { data?: { quantity?: string[]; detail?: string } } })?.response;
-      const q = res?.data?.quantity;
-      const msg = Array.isArray(q) ? q[0] : (res?.data as { detail?: string })?.detail ?? 'Không thể cập nhật số lượng.';
-      alert(typeof msg === 'string' ? msg : 'Không thể cập nhật số lượng.');
+      const response = (err as { response?: { data?: { quantity?: string[]; detail?: string } } })?.response;
+      const quantityError = response?.data?.quantity;
+      const message =
+        Array.isArray(quantityError) && typeof quantityError[0] === 'string'
+          ? quantityError[0]
+          : response?.data?.detail || 'Không thể cập nhật số lượng.';
+      alert(message);
       fetchCart();
     } finally {
       setUpdatingId(null);
@@ -100,22 +134,34 @@ export default function Cart() {
 
   const handleRemove = async (id: number) => {
     await cart.removeItem(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setSelectedItemIds((prev) => prev.filter((itemId) => itemId !== id));
     notifyCartUpdated();
   };
 
-  const subtotal = items.reduce((sum, it) => sum + getUnitPrice(it) * it.quantity, 0);
-  const shipping = subtotal >= 500000 ? 0 : 30000;
-  const total = subtotal + shipping;
+  const handleCheckout = () => {
+    if (selectedItemIds.length === 0) {
+      alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán.');
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set('items', selectedItemIds.join(','));
+    navigate(`/checkout?${params.toString()}`);
+  };
 
   if (!user) {
     return (
       <div className="cart-empty">
         <span className="cart-empty-icon">🔐</span>
         <h2>Chưa đăng nhập</h2>
-        <p>Vui lòng đăng nhập để xem giỏ hàng của bạn</p>
+        <p>Vui lòng đăng nhập để xem giỏ hàng của bạn.</p>
         <div className="cart-empty-actions">
-          <Link to="/login" className="cart-btn-primary">Đăng nhập</Link>
+          <Link to="/login" className="cart-btn-primary">
+            Đăng nhập
+          </Link>
+          <Link to="/products" className="cart-btn-secondary">
+            Mua sắm
+          </Link>
         </div>
       </div>
     );
@@ -125,40 +171,59 @@ export default function Cart() {
     return <div className="cart-loading">Đang tải...</div>;
   }
 
-if (items.length === 0) {
-  return (
-    <section className="pageSection">
-      <div className="sectionContainer">
-        <h1 className="cart-title">Giỏ hàng</h1>
+  if (items.length === 0) {
+    return (
+      <section className="pageSection">
+        <div className="sectionContainer">
+          <h1 className="cart-title">Giỏ hàng</h1>
 
-        <div className="cart-empty">
-          <span className="cart-empty-icon">🛒</span>
-          <h2>Giỏ hàng trống</h2>
-          <p>Bạn chưa thêm sản phẩm nào vào giỏ hàng</p>
+          <div className="cart-empty">
+            <span className="cart-empty-icon">🛒</span>
+            <h2>Giỏ hàng trống</h2>
+            <p>Bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
 
-          <Link to="/products" className="cart-btn-primary">
-            Mua ngay
-          </Link>
+            <Link to="/products" className="cart-btn-primary">
+              Mua ngay
+            </Link>
+          </div>
         </div>
-      </div>
-    </section>
-  );
-}
+      </section>
+    );
+  }
 
   return (
     <section className="cart-container">
       <h1 className="cart-title">Giỏ hàng</h1>
 
       <div className="cart-layout">
-        {/* LIST */}
         <div className="cart-list">
+          <div className="cart-selection-bar">
+            <label className="cart-check cart-check--master">
+              <input type="checkbox" checked={allSelected} onChange={handleToggleAll} />
+              <span>Chọn tất cả ({items.length} sản phẩm)</span>
+            </label>
+            <span className="cart-selection-meta">
+              Đã chọn {selectedItems.length}/{items.length} sản phẩm
+            </span>
+          </div>
+
           {items.map((item) => {
             const price = getUnitPrice(item);
             const totalItem = price * item.quantity;
+            const isSelected = selectedItemIds.includes(item.id);
 
             return (
-              <div key={item.id} className="cart-item">
-                <img src={item.product?.image || PLACEHOLDER_IMAGE} />
+              <div key={item.id} className={`cart-item ${isSelected ? 'cart-item--selected' : ''}`}>
+                <label className="cart-check">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleItem(item.id)}
+                    aria-label={`Chọn ${item.product?.name ?? 'sản phẩm'}`}
+                  />
+                </label>
+
+                <img src={item.product?.image || PLACEHOLDER_IMAGE} alt={item.product?.name ?? 'Sản phẩm'} />
 
                 <div className="cart-info">
                   <h3>{item.product?.name}</h3>
@@ -170,20 +235,24 @@ if (items.length === 0) {
                   )}
 
                   {item.product?.promotion && (
-                    <span className="badge">
-                      -{item.product.promotion.discount_percent}%
-                    </span>
+                    <span className="badge">-{item.product.promotion.discount_percent}%</span>
                   )}
                 </div>
 
-                <div className="price">{price.toLocaleString()}₫</div>
+                <div className="price">{formatCurrency(price)}</div>
 
                 <div className="qty">
-                  <button onClick={() => handleUpdateQty(item.id, item.quantity - 1)}>-</button>
+                  <button
+                    type="button"
+                    disabled={updatingId === item.id}
+                    onClick={() => handleUpdateQty(item.id, item.quantity - 1)}
+                  >
+                    -
+                  </button>
                   <span>{item.quantity}</span>
                   <button
                     type="button"
-                    disabled={item.stock != null && item.quantity >= item.stock}
+                    disabled={updatingId === item.id || (item.stock != null && item.quantity >= item.stock)}
                     title={item.stock != null ? `Tối đa ${item.stock}` : undefined}
                     onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
                   >
@@ -191,9 +260,9 @@ if (items.length === 0) {
                   </button>
                 </div>
 
-                <div className="total">{totalItem.toLocaleString()}₫</div>
+                <div className="total">{formatCurrency(totalItem)}</div>
 
-                <button className="remove" onClick={() => handleRemove(item.id)}>
+                <button type="button" className="remove" onClick={() => handleRemove(item.id)}>
                   Xóa
                 </button>
               </div>
@@ -201,32 +270,31 @@ if (items.length === 0) {
           })}
         </div>
 
-        {/* SUMMARY */}
-        <div className="cart-summary">
+        <aside className="cart-summary">
           <h3>Tóm tắt đơn hàng</h3>
 
-          {shipping === 0 && (
-            <div className="free-ship"> Miễn phí vận chuyển</div>
-          )}
+          <div className="cart-summary-selected">
+            Bạn đang chọn <strong>{selectedItems.length}</strong> sản phẩm để thanh toán.
+          </div>
+
+          {selectedItems.length > 0 && shipping === 0 && <div className="free-ship">Miễn phí vận chuyển</div>}
 
           <div className="row">
             <span>Tạm tính</span>
-            <span>{subtotal.toLocaleString()}₫</span>
+            <span>{formatCurrency(selectedSubtotal)}</span>
           </div>
 
           <div className="row">
             <span>Phí vận chuyển</span>
-            <span>{shipping === 0 ? 'Free' : shipping.toLocaleString() + '₫'}</span>
+            <span>{selectedItems.length === 0 ? '—' : shipping === 0 ? 'Miễn phí' : formatCurrency(shipping)}</span>
           </div>
 
-          <div className="total-final">
-            {total.toLocaleString()}₫
-          </div>
+          <div className="total-final">{formatCurrency(selectedItems.length === 0 ? 0 : total)}</div>
 
-          <button className="checkout" onClick={() => navigate('/checkout')}>
-            Thanh toán
+          <button type="button" className="checkout" disabled={selectedItems.length === 0} onClick={handleCheckout}>
+            {selectedItems.length === 0 ? 'Chọn sản phẩm để thanh toán' : 'Thanh toán sản phẩm đã chọn'}
           </button>
-        </div>
+        </aside>
       </div>
     </section>
   );
