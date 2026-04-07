@@ -2,10 +2,12 @@
   display: flex;
   gap: 6px;
   width: 100%;
+  min-width: 0;
 }
 
 .search-input {
   flex: 1;
+  min-width: 0;
 
   padding: 8px 14px;
 
@@ -16,6 +18,7 @@
 }
 
 .search-button {
+  flex: 0 0 auto;
   background-color: #333;
   color: white;
 

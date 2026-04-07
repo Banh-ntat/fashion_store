@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from cart.models import Cart, CartItem
 from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
+from products.serializers import normalize_size_name
 from .mail import send_order_confirmation_email
 from .models import DiscountCode, Order, OrderItem, Shipping
 from .pricing import build_order_totals, normalize_discount_code, unit_price_vnd
@@ -76,7 +77,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             return str(first_value)
         return str(detail)
 
-    def _load_cart_items(self, user, *, lock: bool = False):
+    def _normalize_cart_item_ids(self, raw_ids):
+        if raw_ids in (None, ""):
+            return None
+        if not isinstance(raw_ids, list):
+            raise ValidationError("Danh sach san pham thanh toan khong hop le.")
+
+        normalized_ids = []
+        for raw_id in raw_ids:
+            try:
+                normalized_id = int(raw_id)
+            except (TypeError, ValueError):
+                raise ValidationError("Danh sach san pham thanh toan khong hop le.")
+            if normalized_id <= 0:
+                raise ValidationError("Danh sach san pham thanh toan khong hop le.")
+            normalized_ids.append(normalized_id)
+
+        if not normalized_ids:
+            raise ValidationError("Vui long chon san pham de thanh toan.")
+        return list(dict.fromkeys(normalized_ids))
+
+    def _load_cart_items(self, user, *, lock: bool = False, cart_item_ids=None):
         cart_qs = Cart.objects.filter(user=user)
         if lock:
             cart_qs = cart_qs.select_for_update()
@@ -90,12 +111,18 @@ class OrderViewSet(viewsets.ModelViewSet):
             "product__color",
             "product__size",
         ).order_by("product_id")
+        if cart_item_ids is not None:
+            cart_items_qs = cart_items_qs.filter(id__in=cart_item_ids)
         if lock:
             cart_items_qs = cart_items_qs.select_for_update()
 
         cart_items = list(cart_items_qs)
-        if not cart_items:
+        if not cart_items and cart_item_ids is None:
             raise ValidationError("Giỏ hàng trống.")
+        if cart_item_ids is not None and len(cart_items) != len(cart_item_ids):
+            raise ValidationError("Mot so san pham da chon khong con trong gio hang.")
+        if not cart_items and cart_item_ids is not None:
+            raise ValidationError("Vui long chon san pham de thanh toan.")
         return cart, cart_items
 
     def _build_pricing_payload(self, cart_items, discount_code=None):
@@ -118,9 +145,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     def discount_preview(self, request):
         user = request.user
         code = normalize_discount_code(request.data.get("discount_code"))
+        try:
+            cart_item_ids = self._normalize_cart_item_ids(request.data.get("cart_item_ids"))
+        except ValidationError as exc:
+            return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            _cart, cart_items = self._load_cart_items(user, lock=False)
+            _cart, cart_items = self._load_cart_items(user, lock=False, cart_item_ids=cart_item_ids)
         except ValidationError as exc:
             return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -154,6 +185,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         address = request.data.get("address", "").strip()
         note = (request.data.get("note") or "").strip()
         discount_code_value = normalize_discount_code(request.data.get("discount_code"))
+        try:
+            cart_item_ids = self._normalize_cart_item_ids(request.data.get("cart_item_ids"))
+        except ValidationError as exc:
+            return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
         if len(note) > 2000:
             note = note[:2000]
 
@@ -165,7 +200,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             try:
-                cart, cart_items = self._load_cart_items(user, lock=True)
+                cart, cart_items = self._load_cart_items(user, lock=True, cart_item_ids=cart_item_ids)
             except ValidationError as exc:
                 return Response({"detail": self._validation_error_message(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -188,7 +223,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             for cart_item in cart_items:
                 variant = variants_map[cart_item.product_id]
                 if variant.stock < cart_item.quantity:
-                    label = f"{variant.product.name} ({variant.color.name}/{variant.size.name})"
+                    label = f"{variant.product.name} ({variant.color.name}/{normalize_size_name(variant.size.name)})"
                     return Response(
                         {"detail": f"Không đủ hàng: {label}. Còn {variant.stock}, cần {cart_item.quantity}."},
                         status=status.HTTP_400_BAD_REQUEST,
@@ -241,7 +276,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 DiscountCode.objects.filter(pk=discount_code.pk).update(used_count=F("used_count") + 1)
 
             Shipping.objects.create(order=order, name=name, phone=phone, address=address, note=note)
-            CartItem.objects.filter(cart=cart).delete()
+            CartItem.objects.filter(cart=cart, id__in=[cart_item.id for cart_item, _variant, _unit in line_build]).delete()
 
             order_id_for_email = order.id
             transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))

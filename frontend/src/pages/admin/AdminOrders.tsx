@@ -44,6 +44,10 @@ const STATUS_CHOICES = [
   { value: 'cancelled', label: 'Đã hủy' },
 ];
 
+function isTerminalStatus(status: string) {
+  return status === 'completed' || status === 'cancelled';
+}
+
 function formatVnd(value: string | number) {
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (Number.isNaN(n)) return String(value);
@@ -231,9 +235,13 @@ export default function AdminOrders() {
                   <select
                     className="status-select"
                     value={order.status}
+                    disabled={isTerminalStatus(order.status)}
                     onChange={(e) => handleStatusChange(order.id, e.target.value)}
                   >
-                    {STATUS_CHOICES.map((status) => (
+                    {STATUS_CHOICES.filter((status) => {
+                      if (isTerminalStatus(order.status)) return status.value === order.status;
+                      return true;
+                    }).map((status) => (
                       <option key={status.value} value={status.value}>
                         {status.label}
                       </option>

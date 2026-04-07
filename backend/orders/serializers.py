@@ -1,11 +1,15 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from products.serializers import ProductSerializer
+from products.serializers import ProductSerializer, normalize_size_name
 from .models import DiscountCode, Order, OrderItem, Shipping
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(read_only=True)
+    status_label = serializers.CharField(read_only=True)
+    effective_is_active = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = DiscountCode
         fields = (
@@ -17,8 +21,11 @@ class DiscountCodeSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "is_active",
+            "effective_is_active",
             "usage_limit",
             "used_count",
+            "status",
+            "status_label",
         )
         read_only_fields = ("used_count",)
 
@@ -61,7 +68,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             return None
         return {
             "color": {"id": obj.product.color.id, "name": obj.product.color.name, "code": obj.product.color.code},
-            "size": {"id": obj.product.size.id, "name": obj.product.size.name},
+            "size": {"id": obj.product.size.id, "name": normalize_size_name(obj.product.size.name)},
         }
 
 
@@ -93,6 +100,20 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping",
         )
         read_only_fields = ("user", "created_at", "items", "shipping", "discount_code")
+
+    def validate_status(self, value: str) -> str:
+        if not self.instance:
+            return value
+
+        current_status = self.instance.status
+        if value == current_status:
+            return value
+
+        terminal_statuses = {"completed", "cancelled"}
+        if current_status in terminal_statuses:
+            raise serializers.ValidationError("Đơn hàng đã ở trạng thái cuối và không thể thay đổi nữa.")
+
+        return value
 
     def get_items(self, obj):
         qs = OrderItem.objects.filter(order=obj).select_related(

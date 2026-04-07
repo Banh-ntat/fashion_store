@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 from core.permissions import is_staff
+from products.serializers import normalize_size_name
 from .models import Review, Comment
 
 
@@ -40,7 +41,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         if obj.product:
             return {
                 'color': {'id': obj.product.color.id, 'name': obj.product.color.name, 'code': obj.product.color.code},
-                'size': {'id': obj.product.size.id, 'name': obj.product.size.name}
+                'size': {'id': obj.product.size.id, 'name': normalize_size_name(obj.product.size.name)}
             }
         return None
 

@@ -82,6 +82,16 @@
   align-items: start;
 }
 
+.checkout-selection-notice {
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #92400e;
+  line-height: 1.5;
+}
+
 .checkout-card {
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
@@ -442,6 +452,15 @@
   border-radius: var(--radius-md);
   border: 0.5px solid var(--color-border);
   padding: 1.25rem;
+}
+
+.checkout-summary-picked {
+  margin-bottom: 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 248, 245, 0.9);
+  color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
 .checkout-summary-title {

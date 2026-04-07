@@ -52,6 +52,22 @@ interface VariantFormData {
   stock: number;
 }
 
+function getApiErrorMessage(error: unknown, fallback = 'Có lỗi xảy ra!'): string {
+  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+  if (!responseData) return fallback;
+  if (typeof responseData === 'string') return responseData;
+  if (Array.isArray(responseData) && typeof responseData[0] === 'string') return responseData[0];
+  if (typeof responseData === 'object') {
+    if ('detail' in responseData && typeof (responseData as { detail?: unknown }).detail === 'string') {
+      return (responseData as { detail: string }).detail;
+    }
+    const firstValue = Object.values(responseData as Record<string, unknown>)[0];
+    if (typeof firstValue === 'string') return firstValue;
+    if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
+  }
+  return fallback;
+}
+
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
@@ -151,6 +167,8 @@ export default function AdminProducts() {
       setFormData({ name: '', description: '', price: '', category_id: 0, promotion_id: null, upload_images: [] });
       loadData();
     } catch (error) {
+      alert(getApiErrorMessage(error));
+      return;
       alert('Có lỗi xảy ra!');
     }
   };

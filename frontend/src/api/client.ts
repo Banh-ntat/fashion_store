@@ -231,7 +231,7 @@ export const orders = {
   list: () => api.get('/orders/orders/'),
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post('/orders/orders/', data),
-  discountPreview: (data: { discount_code?: string }) => api.post('/orders/orders/discount-preview/', data),
+  discountPreview: (data: { discount_code?: string; cart_item_ids?: number[] }) => api.post('/orders/orders/discount-preview/', data),
   /** Tạo đơn từ giỏ — tổng tiền & phí ship do server tính */
   checkout: (data: {
     name: string;
@@ -239,6 +239,7 @@ export const orders = {
     address: string;
     note?: string;
     discount_code?: string;
+    cart_item_ids?: number[];
   }) => api.post('/orders/orders/checkout/', data),
 };
 

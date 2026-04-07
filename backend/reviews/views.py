@@ -6,6 +6,7 @@ from django.db.models import Q
 
 from core.permissions import IsAdminOrStaff, is_admin, is_staff
 from orders.models import Order, OrderItem
+from products.serializers import normalize_size_name
 from .models import Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
 
@@ -87,7 +88,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
                     'product_name': item.product.product.name,
                     'variant_info': {
                         'color': {'id': item.product.color.id, 'name': item.product.color.name, 'code': item.product.color.code},
-                        'size': {'id': item.product.size.id, 'name': item.product.size.name}
+                        'size': {'id': item.product.size.id, 'name': normalize_size_name(item.product.size.name)}
                     },
                     'price': str(item.price),
                     'purchased_at': item.order.created_at.isoformat(),

@@ -83,6 +83,23 @@ function ProductDetail() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const thumbListRef = useRef<HTMLDivElement>(null);
+  const variants = product?.variants ?? [];
+
+  const findVariantForColor = (colorName: string, preferredSize?: string) =>
+    variants.find(
+      (v) => v.color.name === colorName && v.size.name === preferredSize,
+    ) ||
+    variants.find((v) => v.color.name === colorName && (v.stock ?? 0) > 0) ||
+    variants.find((v) => v.color.name === colorName) ||
+    null;
+
+  const findVariantForSize = (sizeName: string, preferredColor?: string) =>
+    variants.find(
+      (v) => v.size.name === sizeName && v.color.name === preferredColor,
+    ) ||
+    variants.find((v) => v.size.name === sizeName && (v.stock ?? 0) > 0) ||
+    variants.find((v) => v.size.name === sizeName) ||
+    null;
 
   const notify = (
     message: string,
@@ -148,19 +165,28 @@ function ProductDetail() {
       setSelectedSize("");
       return;
     }
-    const colorNames = product.variants
-      ? [...new Set(product.variants.map((v) => v.color.name))]
-      : [];
-    const sizeNames = product.variants
-      ? [...new Set(product.variants.map((v) => v.size.name))]
-      : [];
-    setSelectedColor((prev) =>
-      colorNames.includes(prev) ? prev : colorNames[0] || "",
+    const firstVariant = variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
+    setSelectedColor(firstVariant?.color.name || "");
+    setSelectedSize(firstVariant?.size.name || "");
+  }, [product, variants]);
+
+  useEffect(() => {
+    if (!variants.length) return;
+    const selectedVariantExists = variants.some(
+      (v) => v.size.name === selectedSize && v.color.name === selectedColor,
     );
-    setSelectedSize((prev) =>
-      sizeNames.includes(prev) ? prev : sizeNames[0] || "",
-    );
-  }, [product]);
+    if (selectedVariantExists) return;
+
+    const fallbackVariant =
+      findVariantForColor(selectedColor, selectedSize) ||
+      findVariantForSize(selectedSize, selectedColor) ||
+      variants.find((v) => (v.stock ?? 0) > 0) ||
+      variants[0];
+
+    if (!fallbackVariant) return;
+    setSelectedColor(fallbackVariant.color.name);
+    setSelectedSize(fallbackVariant.size.name);
+  }, [selectedColor, selectedSize, variants]);
 
   useEffect(() => {
     if (!product) return;
@@ -172,14 +198,14 @@ function ProductDetail() {
   /** Khi đổi màu/size, không để số lượng vượt tồn kho variant */
   useEffect(() => {
     if (!product) return;
-    const v = product.variants?.find(
+    const v = variants.find(
       (x) => x.size.name === selectedSize && x.color.name === selectedColor,
     );
-    const max = v?.stock ?? product.stock ?? 0;
+    const max = variants.length > 0 ? (v?.stock ?? 0) : (product.stock ?? 0);
     if (max > 0) {
       setQuantity((q) => Math.min(q, max));
     }
-  }, [product, selectedSize, selectedColor]);
+  }, [product, selectedSize, selectedColor, variants]);
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -187,10 +213,10 @@ function ProductDetail() {
       notify("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
       return;
     }
-    const selectedVariant = product.variants?.find(
+    const selectedVariant = variants.find(
       (v) => v.size.name === selectedSize && v.color.name === selectedColor,
     );
-    if (product.variants?.length && !selectedVariant) {
+    if (variants.length && !selectedVariant) {
       notify("Vui lòng chọn size và màu sắc.", "warning");
       return;
     }
@@ -312,11 +338,11 @@ function ProductDetail() {
     );
   }
 
-  const sizes = product.variants
-    ? [...new Set(product.variants.map((v) => v.size.name))]
+  const sizes = variants.length
+    ? [...new Set(variants.map((v) => v.size.name))]
     : ["M"];
-  const colors = product.variants
-    ? [...new Set(product.variants.map((v) => v.color.name))]
+  const colors = variants.length
+    ? [...new Set(variants.map((v) => v.color.name))]
     : [];
 
   const allImages: { id: number | string; image: string }[] =
@@ -328,10 +354,10 @@ function ProductDetail() {
 
   const hasThumbnails = allImages.length > 1;
 
-  const selectedVariant = product.variants?.find(
+  const selectedVariant = variants.find(
     (v) => v.size.name === selectedSize && v.color.name === selectedColor,
   );
-  const variantStock = selectedVariant?.stock ?? product.stock ?? 0;
+  const variantStock = variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const totalStock = product.variants
     ? product.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
@@ -505,14 +531,14 @@ function ProductDetail() {
                 </label>
                 <div className="color-buttons">
                   {colors.map((color) => {
-                    const variant = product.variants?.find(
+                    const variant = variants.find(
                       (v) => v.color.name === color,
                     );
                     const code = variant?.color.code || "#888";
                     const isWhite = ["#ffffff", "#fff", "white"].includes(
                       code.toLowerCase(),
                     );
-                    const hasStock = product.variants?.some(
+                    const hasStock = variants.some(
                       (v) => v.color.name === color && (v.stock ?? 0) > 0,
                     );
                     return (
@@ -520,7 +546,12 @@ function ProductDetail() {
                         key={color}
                         type="button"
                         className={`color-btn${selectedColor === color ? " selected" : ""}${isWhite ? " white" : ""}${!hasStock ? " out-of-stock" : ""}`}
-                        onClick={() => setSelectedColor(color)}
+                        onClick={() => {
+                          const nextVariant = findVariantForColor(color, selectedSize);
+                          if (!nextVariant) return;
+                          setSelectedColor(nextVariant.color.name);
+                          setSelectedSize(nextVariant.size.name);
+                        }}
                         style={{ backgroundColor: code }}
                         title={`${color}${!hasStock ? " (Hết hàng)" : ""}`}
                         aria-label={color}
@@ -535,19 +566,24 @@ function ProductDetail() {
               <label>Kích thước:</label>
               <div className="size-buttons">
                 {sizes.map((size) => {
-                  const variantForSize = product.variants?.find(
+                  const variantForSize = variants.find(
                     (v) =>
                       v.size.name === size && v.color.name === selectedColor,
                   );
                   const sizeHasStock = variantForSize
                     ? (variantForSize.stock ?? 0) > 0
-                    : true;
+                    : variants.some((v) => v.size.name === size && (v.stock ?? 0) > 0);
                   return (
                     <button
                       key={size}
                       type="button"
                       className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
-                      onClick={() => setSelectedSize(size)}
+                      onClick={() => {
+                        const nextVariant = findVariantForSize(size, selectedColor);
+                        if (!nextVariant) return;
+                        setSelectedColor(nextVariant.color.name);
+                        setSelectedSize(nextVariant.size.name);
+                      }}
                       title={!sizeHasStock ? `${size} (Hết hàng)` : size}
                     >
                       {size}
