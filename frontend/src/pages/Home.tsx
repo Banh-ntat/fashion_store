@@ -106,8 +106,7 @@ export default function Home() {
               <div className="heroImgBadge">
                 <div className="heroBadgeIcon">✦</div>
                 <div>
-                  <span className="heroBadgeTitle">New Arrivals</span>
-                  <span className="heroBadgeSub">Just dropped this week</span>
+                  <span className="heroBadgeTitle">Bộ sưu tập mới</span>
                 </div>
               </div>
             </div>

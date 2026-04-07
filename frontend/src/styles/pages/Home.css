@@ -357,13 +357,6 @@
   text-transform: uppercase;
 }
 
-.heroBadgeSub {
-  font-size: 0.62rem;
-  color: #999;
-  display: block;
-  margin-top: 2px;
-}
-
 .categoriesGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
