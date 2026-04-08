@@ -367,6 +367,20 @@ export const wishlistApi = {
     }),
 };
 
+export const returns = {
+  list: () => api.get("/orders/returns/"),
+  create: (data: { order: number; reason: string; description?: string }) =>
+    api.post("/orders/returns/", data),
+  approve: (id: number, adminNote?: string) =>
+    api.post(`/orders/returns/${id}/approve/`, { admin_note: adminNote ?? "" }),
+  reject: (id: number, adminNote?: string) =>
+    api.post(`/orders/returns/${id}/reject/`, { admin_note: adminNote ?? "" }),
+  complete: (id: number, adminNote?: string) =>
+    api.post(`/orders/returns/${id}/complete/`, {
+      admin_note: adminNote ?? "",
+    }),
+};
+
 export const admin = {
   dashboard: {
     stats: () => api.get<AdminDashboardStats>("/core/dashboard/stats/"),
@@ -496,5 +510,21 @@ export const admin = {
     patch: (id: number, data: Record<string, unknown>) =>
       api.patch(`/contact/feedbacks/${id}/`, data),
     delete: (id: number) => api.delete(`/contact/feedbacks/${id}/`),
+  },
+  returns: {
+    list: (params?: Record<string, unknown>) =>
+      api.get("/orders/returns/", { params }),
+    approve: (id: number, adminNote?: string) =>
+      api.post(`/orders/returns/${id}/approve/`, {
+        admin_note: adminNote ?? "",
+      }),
+    reject: (id: number, adminNote?: string) =>
+      api.post(`/orders/returns/${id}/reject/`, {
+        admin_note: adminNote ?? "",
+      }),
+    complete: (id: number, adminNote?: string) =>
+      api.post(`/orders/returns/${id}/complete/`, {
+        admin_note: adminNote ?? "",
+      }),
   },
 };

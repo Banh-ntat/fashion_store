@@ -13,9 +13,9 @@ from core.permissions import is_admin, is_customer_support, is_order_manager, is
 from products.models import ProductVariant
 from products.serializers import normalize_size_name
 from .mail import send_order_confirmation_email
-from .models import DiscountCode, Order, OrderItem, Shipping
+from .models import DiscountCode, Order, OrderItem, Shipping, ReturnRequest
 from .pricing import build_order_totals, normalize_discount_code, unit_price_vnd
-from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer
+from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer, ReturnRequestSerializer
 
 
 class OrderPagination(PageNumberPagination):
@@ -323,3 +323,94 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         return OrderItem.objects.filter(order__user=user).select_related(
             "order", "product", "product__product", "product__product__category", "product__color", "product__size"
         )
+
+class ReturnRequestViewSet(viewsets.ModelViewSet):
+    queryset = ReturnRequest.objects.all()
+    serializer_class = ReturnRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        base_qs = ReturnRequest.objects.select_related("order", "user").prefetch_related(
+            "order__orderitem_set__product__product__category",
+            "order__orderitem_set__product__color",
+            "order__orderitem_set__product__size",
+        )
+        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+            return base_qs.all()
+        return base_qs.filter(user=user)
+ 
+    def get_permissions(self):
+        if self.action in ("update", "partial_update", "destroy"):
+            return [permissions.IsAuthenticated(), IsOrderStaff()]
+        return [permissions.IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        order_id = request.data.get("order")
+
+        if not order_id:
+            return Response({"detail": "Thiếu order id."}, status=400)
+
+        try:
+            order_id = int(order_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "Order id không hợp lệ."}, status=400)
+
+        try:
+            order = Order.objects.get(pk=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"detail": "Đơn hàng không tồn tại."}, status=400)
+
+        if order.status != "completed":
+            return Response(
+                {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đã hoàn thành."},
+                status=400,
+            )
+
+        if ReturnRequest.objects.filter(order=order, user=request.user).exists():
+            return Response(
+                {"detail": "Bạn đã gửi yêu cầu trả hàng cho đơn này rồi."},
+                status=400,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user, order=order)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "pending":
+            return Response({"detail": "Chỉ duyệt được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
+        obj.status = "approved"
+        obj.admin_note = request.data.get("admin_note", "")
+        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "pending":
+            return Response({"detail": "Chỉ từ chối được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
+        obj.status = "rejected"
+        obj.admin_note = request.data.get("admin_note", "")
+        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete(self, request, pk=None):
+        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "approved":
+            return Response({"detail": "Chỉ hoàn thành được yêu cầu đã duyệt."}, status=status.HTTP_400_BAD_REQUEST)
+        obj.status = "completed"
+        obj.admin_note = request.data.get("admin_note", obj.admin_note)
+        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        return Response(self.get_serializer(obj).data)

@@ -1,40 +1,42 @@
-import { Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import {useEffect} from 'react';
-import {useLocation} from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-import Policy from './pages/Policy';
-import Contact from './pages/Contact';
-import Feedback from './pages/Feedback';
-import Careers from './pages/Careers';
-import Products from './pages/Products';
-import Search from './pages/Search';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import Profile from './pages/Profile';
-import OrderHistory from './pages/OrderHistory';
-import MyFeedback from './pages/MyFeedback';
-import Wishlist from './pages/Wishlist';
-import Layout from './components/Layout';
-import ProductDetail from './components/ProductDetail';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminCategories from './pages/admin/AdminCategories';
-import AdminPromotions from './pages/admin/AdminPromotions';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminReviews from './pages/admin/AdminReviews';
-import AdminContacts from './pages/admin/AdminContacts';
-import AdminFeedbacks from './pages/admin/AdminFeedbacks';
-import AdminPolicies from './pages/admin/AdminPolicies';
-import AdminRoute from './components/admin/AdminRoute';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ScrollToTop from './components/ScrollToTop';
-import './styles/index.css';
-import './App.css';
+import { Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Policy from "./pages/Policy";
+import Contact from "./pages/Contact";
+import Feedback from "./pages/Feedback";
+import Careers from "./pages/Careers";
+import Products from "./pages/Products";
+import Search from "./pages/Search";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import Profile from "./pages/Profile";
+import OrderHistory from "./pages/OrderHistory";
+import MyFeedback from "./pages/MyFeedback";
+import Wishlist from "./pages/Wishlist";
+import Layout from "./components/Layout";
+import ProductDetail from "./components/ProductDetail";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminPromotions from "./pages/admin/AdminPromotions";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminReviews from "./pages/admin/AdminReviews";
+import AdminContacts from "./pages/admin/AdminContacts";
+import AdminFeedbacks from "./pages/admin/AdminFeedbacks";
+import AdminPolicies from "./pages/admin/AdminPolicies";
+import AdminRoute from "./components/admin/AdminRoute";
+import MyReturns from "./pages/MyReturns";
+import AdminReturns from "./pages/admin/AdminReturns";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ScrollToTop from "./components/ScrollToTop";
+import "./styles/index.css";
+import "./App.css";
 
 function App() {
   const { pathname, search } = useLocation();
@@ -42,6 +44,7 @@ function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname, search]);
+
   return (
     <AuthProvider>
       <ScrollToTop />
@@ -62,6 +65,7 @@ function App() {
             <Route path="/orders" element={<OrderHistory />} />
             <Route path="/my-feedback" element={<MyFeedback />} />
             <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/my-returns" element={<MyReturns />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
@@ -81,6 +85,7 @@ function App() {
             <Route path="contacts" element={<AdminContacts />} />
             <Route path="feedbacks" element={<AdminFeedbacks />} />
             <Route path="policies" element={<AdminPolicies />} />
+            <Route path="returns" element={<AdminReturns />} />
           </Route>
         </Routes>
       </div>

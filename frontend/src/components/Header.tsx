@@ -7,7 +7,14 @@ import { CART_UPDATED_EVENT } from "../utils/cartEvents";
 import "../styles/components/Header.css";
 
 const CartIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
     <line x1="3" y1="6" x2="21" y2="6" />
     <path d="M16 10a4 4 0 01-8 0" />
@@ -15,14 +22,28 @@ const CartIcon = () => (
 );
 
 const UserIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
 
 const ArrowIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+  >
     <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 );
@@ -82,7 +103,8 @@ export default function Header() {
       ? [user.first_name, user.last_name].filter(Boolean).join(" ").trim()
       : user?.username || "Bạn";
 
-  const cartBadgeLabel = cartCount <= 0 ? "" : cartCount > 99 ? "99+" : String(cartCount);
+  const cartBadgeLabel =
+    cartCount <= 0 ? "" : cartCount > 99 ? "99+" : String(cartCount);
 
   return (
     <>
@@ -101,7 +123,9 @@ export default function Header() {
                 key={to}
                 to={to}
                 end={to === "/"}
-                className={({ isActive }) => `navLink ${isActive ? "navLinkActive" : ""}`}
+                className={({ isActive }) =>
+                  `navLink ${isActive ? "navLinkActive" : ""}`
+                }
               >
                 {label}
               </NavLink>
@@ -121,14 +145,20 @@ export default function Header() {
                 aria-label={`Giỏ hàng${cartCount > 0 ? `, ${cartCount} sản phẩm` : ""}`}
               >
                 <CartIcon />
-                {cartBadgeLabel ? <span className="cartBadge">{cartBadgeLabel}</span> : null}
+                {cartBadgeLabel ? (
+                  <span className="cartBadge">{cartBadgeLabel}</span>
+                ) : null}
               </button>
             )}
 
             {user ? (
               <div className="headerUserMenu">
                 <div className="accountDropdown">
-                  <button type="button" className="iconBtn accountTrigger" aria-label="Tài khoản">
+                  <button
+                    type="button"
+                    className="iconBtn accountTrigger"
+                    aria-label="Tài khoản"
+                  >
                     <UserIcon />
                   </button>
                   <div className="accountMenu">
@@ -151,6 +181,9 @@ export default function Header() {
                         <Link to="/orders" className="accountMenuItem">
                           Lịch sử đơn hàng
                         </Link>
+                        <Link to="/my-returns" className="accountMenuItem">
+                          Trả hàng & hoàn tiền
+                        </Link>
                         <Link to="/my-feedback" className="accountMenuItem">
                           Đánh giá sản phẩm
                         </Link>
@@ -172,7 +205,11 @@ export default function Header() {
               </div>
             ) : (
               <>
-                <button type="button" className="iconBtn" onClick={() => navigate("/login")}>
+                <button
+                  type="button"
+                  className="iconBtn"
+                  onClick={() => navigate("/login")}
+                >
                   <UserIcon />
                 </button>
                 <Link to="/login" className="loginBtn">
@@ -203,13 +240,19 @@ export default function Header() {
 
         <nav className="mobileNavLinks">
           {navLinks.map(({ to, label }) => (
-            <Link key={to} to={to} className="mobileNavLink" onClick={closeMenu}>
+            <Link
+              key={to}
+              to={to}
+              className="mobileNavLink"
+              onClick={closeMenu}
+            >
               {label}
             </Link>
           ))}
           {!isAdmin && (
             <Link to="/cart" className="mobileNavLink" onClick={closeMenu}>
-              Giỏ hàng{cartCount > 0 ? ` (${cartCount > 99 ? "99+" : cartCount})` : ""}
+              Giỏ hàng
+              {cartCount > 0 ? ` (${cartCount > 99 ? "99+" : cartCount})` : ""}
             </Link>
           )}
         </nav>
@@ -227,13 +270,32 @@ export default function Header() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/orders" className="mobileNavLink" onClick={closeMenu}>
+                  <Link
+                    to="/orders"
+                    className="mobileNavLink"
+                    onClick={closeMenu}
+                  >
                     Đơn hàng
                   </Link>
-                  <Link to="/my-feedback" className="mobileNavLink" onClick={closeMenu}>
+                  <Link
+                    to="/my-returns"
+                    className="mobileNavLink"
+                    onClick={closeMenu}
+                  >
+                    Trả hàng & hoàn tiền
+                  </Link>
+                  <Link
+                    to="/my-feedback"
+                    className="mobileNavLink"
+                    onClick={closeMenu}
+                  >
                     Đánh giá sản phẩm
                   </Link>
-                  <Link to="/wishlist" className="mobileNavLink" onClick={closeMenu}>
+                  <Link
+                    to="/wishlist"
+                    className="mobileNavLink"
+                    onClick={closeMenu}
+                  >
                     Yêu thích
                   </Link>
                 </>

@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from products.serializers import ProductSerializer, normalize_size_name
-from .models import DiscountCode, Order, OrderItem, Shipping
+from .models import DiscountCode, Order, OrderItem, Shipping, ReturnRequest
 
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
@@ -77,7 +77,25 @@ class ShippingNestedSerializer(serializers.ModelSerializer):
         model = Shipping
         fields = ("name", "phone", "address", "note")
 
-
+class ReturnRequestSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    order_total = serializers.CharField(source="order.total_price", read_only=True)
+    order_items = serializers.SerializerMethodField()
+ 
+    class Meta:
+        model = ReturnRequest
+        fields = [
+            "id", "order", "user", "username", "reason", "description",
+            "status", "admin_note", "order_total", "order_items", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "user", "username", "order_total", "order_items", "status", "admin_note", "created_at", "updated_at"]
+ 
+    def get_order_items(self, obj):
+        qs = OrderItem.objects.filter(order=obj.order).select_related(
+            "product", "product__product", "product__product__category", "product__color", "product__size"
+        )
+        return OrderItemSerializer(qs, many=True, context=self.context).data
+    
 class OrderSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
     user = OrderUserSerializer(read_only=True)
