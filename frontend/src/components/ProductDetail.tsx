@@ -262,6 +262,11 @@ function ProductDetail() {
       notify("Vui lòng đăng nhập để đánh giá sản phẩm", "warning");
       return;
     }
+    if (user.can_access_admin) {
+      notify("Tài khoản quản trị không thể đánh giá sản phẩm.", "warning");
+      return;
+    }
+
     try {
       const res = await reviewsApi.getPurchasable();
       const purchasable = (res?.data ?? []) as { variant_id: number }[];
@@ -292,6 +297,10 @@ function ProductDetail() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user?.can_access_admin) {
+      notify("Tài khoản quản trị không thể đánh giá sản phẩm.", "warning");
+      return;
+    }
     if (!reviewSelectedVariantId) {
       notify("Vui lòng chọn phân loại sản phẩm muốn đánh giá.", "warning");
       return;

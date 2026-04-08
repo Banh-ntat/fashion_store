@@ -322,13 +322,6 @@
   color: var(--color-text, #1e293b);
 }
 
-.profileCardLead {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: var(--color-text-muted, #64748b);
-}
-
 .profilePasswordForm {
   display: flex;
   flex-direction: column;
