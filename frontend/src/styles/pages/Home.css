@@ -482,8 +482,63 @@
 
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;
+}
+
+.promoCodeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.promoDiscount {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(245, 85, 84, 0.12);
+  color: #f55554;
+}
+
+.promoMinOrder {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  display: block;
+  margin-top: 2px;
+}
+
+.promoActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.promoBtnCopy {
+  background: transparent;
+  border: 1.5px solid currentColor;
+  color: inherit;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.promoBtnCopy.copied {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.promoBtnShop {
+  background: var(--color-primary, #f55554);
+  border: none;
+  color: #fff;
+}
+
+.promoBtnShop:hover {
+  filter: brightness(0.93);
 }
 
 @keyframes fadeInUp {

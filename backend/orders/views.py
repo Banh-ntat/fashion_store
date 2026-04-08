@@ -1,3 +1,4 @@
+from django.db import models
 from decimal import Decimal
 
 from django.db import transaction
@@ -7,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
 from cart.models import Cart, CartItem
 from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
@@ -23,12 +25,24 @@ class OrderPagination(PageNumberPagination):
     page_size_query_param = "page_size"
     max_page_size = 100
 
-
 class DiscountCodeViewSet(viewsets.ModelViewSet):
     queryset = DiscountCode.objects.all().order_by("-id")
     serializer_class = DiscountCodeSerializer
     permission_classes = [IsAdminOrStaff]
 
+    @action(detail=False, methods=["get"], url_path="active", permission_classes=[AllowAny])
+    def active(self, request):
+        from django.utils import timezone
+        today = timezone.localdate()
+        codes = DiscountCode.objects.filter(
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today,
+        ).filter(
+            models.Q(usage_limit__isnull=True) | models.Q(used_count__lt=models.F("usage_limit"))
+        ).order_by("-id")
+        serializer = self.get_serializer(codes, many=True)
+        return Response(serializer.data)
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()

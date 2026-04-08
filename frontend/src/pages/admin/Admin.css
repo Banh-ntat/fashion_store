@@ -943,23 +943,23 @@
   cursor: pointer;
 }
 
-.admin-statusToggle.is-active {
+.admin-statusToggle.is-expired {
   background: #fdf2f1;
   color: #9a4840;
   border-color: #e8c8c6;
 }
 
-.admin-statusToggle.is-active:hover {
+.admin-statusToggle.is-expired:hover {
   background: #fae8e7;
 }
 
-.admin-statusToggle.is-expired {
+.admin-statusToggle.is-active {
   background: #eef7f0;
   color: #3a7050;
   border-color: #c0dfc8;
 }
 
-.admin-statusToggle.is-expired:hover {
+.admin-statusToggle.is-active:hover {
   background: #e0f2e5;
 }
 

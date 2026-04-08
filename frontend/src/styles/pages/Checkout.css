@@ -101,7 +101,7 @@
 
 .checkout-card-title {
   font-family: var(--font-display);
-  font-size: 30px; 
+  font-size: 30px;
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: -0.01em;
@@ -143,7 +143,9 @@
   border-radius: var(--radius-sm);
   font-size: 15px;
   color: var(--color-text);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   background: var(--color-bg-white);
 }
 
@@ -169,7 +171,7 @@
 .checkout-discount-label {
   display: block;
   margin-bottom: 0.55rem;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -178,12 +180,15 @@
 }
 
 .checkout-discount-row {
-  display: flex;
+  width: 100%;
+  display: block;
   gap: 10px;
 }
 
 .checkout-discount-input {
   flex: 1;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .checkout-discount-apply {
@@ -257,6 +262,13 @@
   color: var(--color-text);
 }
 
+.back-btn{
+  background-color: var(--color-bg);
+}
+.back-btn:hover{
+  background-color: #eaeaea;
+}
+
 .checkout-btn-primary {
   background: #e60808;
   color: white;
@@ -264,18 +276,20 @@
 }
 
 .checkout-btn-primary:hover:not(:disabled) {
-  background: #993C1D;
-  border-color: #993C1D;
+  background: #993c1d;
+  border-color: #993c1d;
 }
 
 .checkout-btn-secondary {
-  background: transparent;
-  color: var(--color-text);
-  border: 0.5px solid var(--color-border);
+  display: flex;
+  background: #eb0c0c;
+  color: #fff;
+  margin: 15px auto 0  auto;
+  border: none;
 }
 
 .checkout-btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg);
+  background: #cf0404;
 }
 
 .checkout-btn:disabled {
@@ -448,6 +462,7 @@
 }
 
 .checkout-summary-box {
+  max-width: 450px;
   background: var(--color-bg-white);
   border-radius: var(--radius-md);
   border: 0.5px solid var(--color-border);

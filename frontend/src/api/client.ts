@@ -528,3 +528,7 @@ export const admin = {
       }),
   },
 };
+
+export const discountCodes = {
+  listActive: () => api.get("/orders/discount-codes/active/"),
+};
