@@ -23,6 +23,7 @@ const normalize = (p: import('../types').ApiProduct): import('../types').Product
   image: p.image ?? 'https://placehold.co/400x400?text=No+Image',
   category: p.category,
   promotion: p.promotion,
+  variants: p.variants,
 });
 
 export default function Home() {
