@@ -176,8 +176,9 @@ export default function Home() {
 
       {/* ── PROMO ── */}
       {codes.length > 0 && (
-        <div className="sectionContainer">
+        <div className="sectionContainer" style={{ padding: "0 48px 80px" }}>
           <div className="promoBanner">
+            {/* Nội dung bên trái */}
             <div className="promoContent">
               <span className="promoTag">Ưu Đãi Có Hạn</span>
               <h2 className="promoTitle">
@@ -189,6 +190,7 @@ export default function Home() {
                 Sao chép mã và dán vào ô mã giảm giá khi thanh toán
               </p>
 
+              {/* Danh sách các mã — mỗi mã một hàng */}
               <div className="promoList">
                 {codes.map((c) => (
                   <div key={c.id} className="promoItem">
@@ -213,7 +215,7 @@ export default function Home() {
                         className={`promoBtn promoBtnCopy ${copiedCode === c.code ? "copied" : ""}`}
                         onClick={() => handleClaimCode(c.code)}
                       >
-                        {copiedCode === c.code ? "✓ Đã sao chép" : "Sao chép"}
+                        {copiedCode === c.code ? "Đã sao chép" : "Sao chép"}
                       </button>
                       <button
                         type="button"
@@ -228,7 +230,7 @@ export default function Home() {
               </div>
             </div>
             <img
-              src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&h=300&fit=crop"
+              src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=700&h=600&fit=crop&crop=center"
               alt="Sale"
               className="promoImage"
             />
