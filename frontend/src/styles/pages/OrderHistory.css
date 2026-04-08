@@ -56,7 +56,11 @@
   padding: 20px 22px;
   border-radius: 16px;
   background:
-    radial-gradient(circle at top left, rgba(245, 85, 84, 0.12), transparent 42%),
+    radial-gradient(
+      circle at top left,
+      rgba(245, 85, 84, 0.12),
+      transparent 42%
+    ),
     linear-gradient(135deg, #fff7f3, #fff);
   border: 1px solid rgba(245, 85, 84, 0.18);
 }
@@ -73,7 +77,7 @@
 .orderReviewHubTitle {
   margin: 0 0 8px;
   font-size: 1.15rem;
-  color: var(--color-text, #1E1E1E);
+  color: var(--color-text, #1e1e1e);
 }
 
 .orderReviewHubText {
@@ -89,7 +93,7 @@
   justify-content: center;
   padding: 12px 18px;
   border-radius: 999px;
-  background: var(--color-primary, #F55554);
+  background: var(--color-primary, #f55554);
   color: #fff;
   font-weight: 600;
   text-decoration: none;
@@ -176,6 +180,120 @@
 .orderStatus--completed {
   background: #d1fae5;
   color: #065f46;
+}
+
+.orderStatus--cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.orderCancelWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.orderCancelError {
+  font-size: 0.85rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: 100%;
+  text-align: left;
+  margin: 0;
+}
+
+.orderCancelBtn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1.5px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.orderCancelBtn:hover:not(:disabled) {
+  background: #ef4444;
+  color: #fff;
+}
+
+.orderCancelBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.orderCancelConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.orderCancelConfirmText {
+  font-size: 0.9rem;
+  color: #7f1d1d;
+  font-weight: 500;
+}
+
+.orderCancelConfirmActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.orderCancelConfirmYes {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.orderCancelConfirmYes:hover {
+  background: #dc2626;
+}
+
+.orderCancelConfirmNo {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.orderCancelConfirmNo:hover {
+  border-color: #9ca3af;
+}
+
+@media (max-width: 480px) {
+  .orderCancelConfirm {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .orderItems {

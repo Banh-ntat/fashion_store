@@ -35,6 +35,30 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = OrderPagination
+    
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền hủy đơn hàng này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "pending":
+            return Response(
+                {"detail": "Chỉ có thể hủy đơn hàng đang chờ xử lý."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            items = OrderItem.objects.filter(order=order).select_related("product")
+            for item in items:
+                ProductVariant.objects.filter(pk=item.product_id).update(
+                    stock=F("stock") + item.quantity
+                )
+            order.status = "cancelled"
+            order.save(update_fields=["status"])
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
 
     def get_permissions(self):
         if self.action in ("update", "partial_update", "destroy"):

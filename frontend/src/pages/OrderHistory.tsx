@@ -9,6 +9,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'Chờ xử lý',
   shipping: 'Đang giao',
   completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
 };
 
 export default function OrderHistory() {
@@ -20,6 +21,10 @@ export default function OrderHistory() {
   const [purchasableItems, setPurchasableItems] = useState<PurchasableProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
+  const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
+  const [cancelErrorMsg, setCancelErrorMsg] = useState('');
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
@@ -48,6 +53,33 @@ export default function OrderHistory() {
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  const handleCancelRequest = (orderId: number) => {
+    setCancelErrorId(null);
+    setCancelErrorMsg('');
+    setConfirmCancelId(orderId);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (confirmCancelId === null) return;
+    const orderId = confirmCancelId;
+    setConfirmCancelId(null);
+    setCancellingId(orderId);
+    setCancelErrorId(null);
+    setCancelErrorMsg('');
+    try {
+      await orders.cancel(orderId);
+      setList((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+      );
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setCancelErrorId(orderId);
+      setCancelErrorMsg(detail ?? 'Không thể hủy đơn hàng. Vui lòng thử lại.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const purchasableOrderIds = new Set(purchasableItems.map((item) => item.order_id));
 
@@ -109,7 +141,7 @@ export default function OrderHistory() {
                 <line x1="9" y1="16" x2="13" y2="16"/>
               </svg>
             </div>
-            <h2>Lịch sử trống</h2>
+            <h2>Lịch sử trống</h2>
             <p>Hãy khám phá sản phẩm và mua sắm ngay!</p>
             <Link to="/products" className="orderEmptyBtn">Mua sắm ngay</Link>
           </div>
@@ -165,6 +197,44 @@ export default function OrderHistory() {
                   )}
                   Tổng: <strong>{order.total_price}đ</strong>
                 </div>
+
+                {order.status === 'pending' && (
+                  <div className="orderCancelWrap">
+                    {cancelErrorId === order.id && (
+                      <p className="orderCancelError" role="alert">{cancelErrorMsg}</p>
+                    )}
+                    {confirmCancelId === order.id ? (
+                      <div className="orderCancelConfirm">
+                        <span className="orderCancelConfirmText">Xác nhận hủy đơn #{order.id}?</span>
+                        <div className="orderCancelConfirmActions">
+                          <button
+                            type="button"
+                            className="orderCancelConfirmYes"
+                            onClick={handleCancelConfirm}
+                          >
+                            Hủy đơn
+                          </button>
+                          <button
+                            type="button"
+                            className="orderCancelConfirmNo"
+                            onClick={() => setConfirmCancelId(null)}
+                          >
+                            Giữ lại
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="orderCancelBtn"
+                        disabled={cancellingId === order.id}
+                        onClick={() => handleCancelRequest(order.id)}
+                      >
+                        {cancellingId === order.id ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
