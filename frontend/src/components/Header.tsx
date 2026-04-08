@@ -52,16 +52,18 @@ export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const isAdmin = Boolean(user?.can_access_admin);
+
   const closeMenu = () => setMenuOpen(false);
 
   const refreshCartCount = useCallback(async () => {
-    if (!user) {
+    if (!user || isAdmin) {
       setCartCount(0);
       return;
     }
     const count = await fetchCartItemCount();
     setCartCount(count);
-  }, [user]);
+  }, [user, isAdmin]);
 
   useEffect(() => {
     void refreshCartCount();
@@ -111,15 +113,17 @@ export default function Header() {
           </div>
 
           <div className="actions">
-            <button
-              type="button"
-              className="iconBtn"
-              onClick={() => navigate("/cart")}
-              aria-label={`Giỏ hàng${cartCount > 0 ? `, ${cartCount} sản phẩm` : ""}`}
-            >
-              <CartIcon />
-              {cartBadgeLabel ? <span className="cartBadge">{cartBadgeLabel}</span> : null}
-            </button>
+            {!isAdmin && (
+              <button
+                type="button"
+                className="iconBtn"
+                onClick={() => navigate("/cart")}
+                aria-label={`Giỏ hàng${cartCount > 0 ? `, ${cartCount} sản phẩm` : ""}`}
+              >
+                <CartIcon />
+                {cartBadgeLabel ? <span className="cartBadge">{cartBadgeLabel}</span> : null}
+              </button>
+            )}
 
             {user ? (
               <div className="headerUserMenu">
@@ -135,15 +139,23 @@ export default function Header() {
                     <Link to="/profile" className="accountMenuItem">
                       Thông tin tài khoản
                     </Link>
-                    <Link to="/wishlist" className="accountMenuItem">
-                      Yêu thích
-                    </Link>
-                    <Link to="/orders" className="accountMenuItem">
-                      Lịch sử đơn hàng
-                    </Link>
-                    <Link to="/my-feedback" className="accountMenuItem">
-                      Đánh giá sản phẩm
-                    </Link>
+                    {isAdmin ? (
+                      <Link to="/admin" className="accountMenuItem">
+                        Trang quản trị
+                      </Link>
+                    ) : (
+                      <>
+                        <Link to="/wishlist" className="accountMenuItem">
+                          Yêu thích
+                        </Link>
+                        <Link to="/orders" className="accountMenuItem">
+                          Lịch sử đơn hàng
+                        </Link>
+                        <Link to="/my-feedback" className="accountMenuItem">
+                          Đánh giá sản phẩm
+                        </Link>
+                      </>
+                    )}
                     <button
                       type="button"
                       className="accountMenuLogout"
@@ -195,9 +207,11 @@ export default function Header() {
               {label}
             </Link>
           ))}
-          <Link to="/cart" className="mobileNavLink" onClick={closeMenu}>
-            Giỏ hàng{cartCount > 0 ? ` (${cartCount > 99 ? "99+" : cartCount})` : ""}
-          </Link>
+          {!isAdmin && (
+            <Link to="/cart" className="mobileNavLink" onClick={closeMenu}>
+              Giỏ hàng{cartCount > 0 ? ` (${cartCount > 99 ? "99+" : cartCount})` : ""}
+            </Link>
+          )}
         </nav>
 
         <div className="mobileActions">
@@ -207,15 +221,23 @@ export default function Header() {
               <Link to="/profile" className="mobileNavLink" onClick={closeMenu}>
                 Tài khoản
               </Link>
-              <Link to="/orders" className="mobileNavLink" onClick={closeMenu}>
-                Đơn hàng
-              </Link>
-              <Link to="/my-feedback" className="mobileNavLink" onClick={closeMenu}>
-                Đánh giá sản phẩm
-              </Link>
-              <Link to="/wishlist" className="mobileNavLink" onClick={closeMenu}>
-                Yêu thích
-              </Link>
+              {isAdmin ? (
+                <Link to="/admin" className="mobileNavLink" onClick={closeMenu}>
+                  Trang quản trị
+                </Link>
+              ) : (
+                <>
+                  <Link to="/orders" className="mobileNavLink" onClick={closeMenu}>
+                    Đơn hàng
+                  </Link>
+                  <Link to="/my-feedback" className="mobileNavLink" onClick={closeMenu}>
+                    Đánh giá sản phẩm
+                  </Link>
+                  <Link to="/wishlist" className="mobileNavLink" onClick={closeMenu}>
+                    Yêu thích
+                  </Link>
+                </>
+              )}
               <button
                 type="button"
                 className="mobileLogoutBtn"

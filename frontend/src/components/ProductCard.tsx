@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import type { Product } from '../types';
-import { useWishlist } from '../hooks/useWishlist';
-import ProductCardModal from './ProductCardModal';
-import '../styles/components/ProductCard.css';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import type { Product } from "../types";
+import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../hooks/useWishlist";
+import ProductCardModal from "./ProductCardModal";
+import "../styles/components/ProductCard.css";
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/300x400?text=San+pham';
+const PLACEHOLDER_IMAGE = "https://via.placeholder.com/300x400?text=San+pham";
 
 interface ProductCardProps {
   product: Product;
@@ -13,10 +14,12 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const { user } = useAuth();
   const { ids, toggle: toggleWishlist } = useWishlist();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  const isAdmin = Boolean(user?.can_access_admin);
   const isWishlisted = ids.includes(product.id);
   const productImage = product.image || PLACEHOLDER_IMAGE;
   const productStock = product.stock ?? 99;
@@ -44,8 +47,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
   return (
     <>
-      <div onClick={() => navigate(`/product/${product.id}`)} className="productCard" style={{ cursor: 'pointer' }}>
-        {/* ── Image ── */}
+      <div
+        onClick={() => navigate(`/product/${product.id}`)}
+        className="productCard"
+        style={{ cursor: "pointer" }}
+      >
         <div className="productCardImageWrapper">
           <img
             src={productImage}
@@ -60,15 +66,16 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             </span>
           )}
 
-          {/* Quick actions */}
           <div className="productCardActions">
-            <button
-              className={`productCardActionBtn${isWishlisted ? ' wishlisted' : ''}`}
-              onClick={handleWishlist}
-              aria-label={isWishlisted ? 'Bỏ yêu thích' : 'Thêm yêu thích'}
-            >
-              {isWishlisted ? '♥' : '♡'}
-            </button>
+            {!isAdmin && (
+              <button
+                className={`productCardActionBtn${isWishlisted ? " wishlisted" : ""}`}
+                onClick={handleWishlist}
+                aria-label={isWishlisted ? "Bỏ yêu thích" : "Thêm yêu thích"}
+              >
+                {isWishlisted ? "♥" : "♡"}
+              </button>
+            )}
             <Link
               to={`/product/${product.id}`}
               className="productCardActionBtn"
@@ -80,7 +87,6 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           </div>
         </div>
 
-        {/* ── Info ── */}
         <div className="productCardContent">
           <p className="productCardCategory">{product.category.name}</p>
           <h3 className="productCardName">{product.name}</h3>
@@ -98,21 +104,25 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             )}
           </div>
 
-          <button
-            className="productCardAddBtn"
-            onClick={handleOpenModal}
-            disabled={outOfStock}
-          >
-            {outOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
-          </button>
+          {!isAdmin && (
+            <button
+              className="productCardAddBtn"
+              onClick={handleOpenModal}
+              disabled={outOfStock}
+            >
+              {outOfStock ? "Hết hàng" : "Thêm vào giỏ"}
+            </button>
+          )}
         </div>
       </div>
 
-      <ProductCardModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        product={product}
-      />
+      {!isAdmin && (
+        <ProductCardModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          product={product}
+        />
+      )}
     </>
   );
 }

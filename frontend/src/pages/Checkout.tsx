@@ -255,6 +255,23 @@ export default function Checkout() {
     }
   };
 
+  if (user?.can_access_admin) {
+    return (
+      <section className="pageSection checkout-page">
+        <div className="sectionContainer checkout-container">
+          <div className="checkout-empty">
+            <div className="checkout-empty-icon">🚫</div>
+            <h2>Không khả dụng</h2>
+            <p>Tài khoản quản trị không thể thực hiện thanh toán.</p>
+            <div className="checkout-login-actions">
+              <Link to="/admin" className="checkout-btn checkout-btn-primary">Trang quản trị</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!user) {
     return (
       <section className="pageSection checkout-page">

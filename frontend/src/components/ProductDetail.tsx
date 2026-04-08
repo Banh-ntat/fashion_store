@@ -165,7 +165,8 @@ function ProductDetail() {
       setSelectedSize("");
       return;
     }
-    const firstVariant = variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
+    const firstVariant =
+      variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
     setSelectedColor(firstVariant?.color.name || "");
     setSelectedSize(firstVariant?.size.name || "");
   }, [product, variants]);
@@ -213,6 +214,10 @@ function ProductDetail() {
       notify("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
       return;
     }
+    if (user.can_access_admin) {
+      notify("Tài khoản quản trị không thể thêm vào giỏ hàng.", "warning");
+      return;
+    }
     const selectedVariant = variants.find(
       (v) => v.size.name === selectedSize && v.color.name === selectedColor,
     );
@@ -242,8 +247,7 @@ function ProductDetail() {
       const apiMsg = Array.isArray(q) ? q[0] : data?.detail;
       if (status === 401)
         notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
-      else if (typeof apiMsg === "string")
-        notify(apiMsg, "error");
+      else if (typeof apiMsg === "string") notify(apiMsg, "error");
       else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
     }
   };
@@ -357,7 +361,8 @@ function ProductDetail() {
   const selectedVariant = variants.find(
     (v) => v.size.name === selectedSize && v.color.name === selectedColor,
   );
-  const variantStock = variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
+  const variantStock =
+    variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const totalStock = product.variants
     ? product.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
@@ -412,25 +417,31 @@ function ProductDetail() {
                 -{product.promotion.discount_percent}%
               </span>
             )}
-            <button
-              type="button"
-              className={`image-wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
-              title={
-                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
-              }
-              aria-label={
-                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
-              }
-              onClick={() => {
-                if (!user) {
-                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
-                  return;
+            {!user?.can_access_admin && (
+              <button
+                type="button"
+                className={`image-wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
+                title={
+                  isInWishlist(product.id)
+                    ? "Bỏ yêu thích"
+                    : "Thêm vào yêu thích"
                 }
-                void toggleWishlist(product.id);
-              }}
-            >
-              {isInWishlist(product.id) ? "♥" : "♡"}
-            </button>
+                aria-label={
+                  isInWishlist(product.id)
+                    ? "Bỏ yêu thích"
+                    : "Thêm vào yêu thích"
+                }
+                onClick={() => {
+                  if (!user) {
+                    notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
+                    return;
+                  }
+                  void toggleWishlist(product.id);
+                }}
+              >
+                {isInWishlist(product.id) ? "♥" : "♡"}
+              </button>
+            )}
           </div>
 
           {hasThumbnails && (
@@ -547,7 +558,10 @@ function ProductDetail() {
                         type="button"
                         className={`color-btn${selectedColor === color ? " selected" : ""}${isWhite ? " white" : ""}${!hasStock ? " out-of-stock" : ""}`}
                         onClick={() => {
-                          const nextVariant = findVariantForColor(color, selectedSize);
+                          const nextVariant = findVariantForColor(
+                            color,
+                            selectedSize,
+                          );
                           if (!nextVariant) return;
                           setSelectedColor(nextVariant.color.name);
                           setSelectedSize(nextVariant.size.name);
@@ -572,14 +586,19 @@ function ProductDetail() {
                   );
                   const sizeHasStock = variantForSize
                     ? (variantForSize.stock ?? 0) > 0
-                    : variants.some((v) => v.size.name === size && (v.stock ?? 0) > 0);
+                    : variants.some(
+                        (v) => v.size.name === size && (v.stock ?? 0) > 0,
+                      );
                   return (
                     <button
                       key={size}
                       type="button"
                       className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
                       onClick={() => {
-                        const nextVariant = findVariantForSize(size, selectedColor);
+                        const nextVariant = findVariantForSize(
+                          size,
+                          selectedColor,
+                        );
                         if (!nextVariant) return;
                         setSelectedColor(nextVariant.color.name);
                         setSelectedSize(nextVariant.size.name);
@@ -628,27 +647,34 @@ function ProductDetail() {
           </div>
 
           <div className="product-actions">
-            <button
-              className="add-to-cart-btn"
-              onClick={handleAddToCart}
-              disabled={variantStock === 0}
-              type="button"
-            >
-              {variantStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
-            </button>
-            <button
-              type="button"
-              className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
-              onClick={() => {
-                if (!user) {
-                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
-                  return;
-                }
-                void toggleWishlist(product.id);
-              }}
-            >
-              {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
-            </button>
+            {!user?.can_access_admin && (
+              <>
+                <button
+                  className="add-to-cart-btn"
+                  onClick={handleAddToCart}
+                  disabled={variantStock === 0}
+                  type="button"
+                >
+                  {variantStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
+                </button>
+                <button
+                  type="button"
+                  className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
+                  onClick={() => {
+                    if (!user) {
+                      notify(
+                        "Vui lòng đăng nhập để dùng yêu thích.",
+                        "warning",
+                      );
+                      return;
+                    }
+                    void toggleWishlist(product.id);
+                  }}
+                >
+                  {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
+                </button>
+              </>
+            )}
           </div>
 
           <div className="product-trust-badges">
@@ -771,7 +797,7 @@ function ProductDetail() {
         )}
 
         <div className="review-action-area">
-          {user && (
+          {user && !user.can_access_admin && (
             <button
               className="btn-review-product"
               type="button"
