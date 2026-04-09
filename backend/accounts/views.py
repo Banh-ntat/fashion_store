@@ -5,9 +5,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.mail import send_mail
+from urllib.parse import urlencode
+
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
 from core.permissions import is_admin, is_staff, RoleChoices
 from .models import Profile
@@ -15,6 +17,7 @@ from .serializers import (
     ProfileSerializer,
     RegisterSerializer,
     PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
 )
@@ -45,11 +48,11 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user):
+        if is_admin(user) or getattr(user, "is_superuser", False):
             return Profile.objects.all()
         return Profile.objects.filter(user=user)
 
@@ -100,6 +103,8 @@ class CurrentUserView(APIView):
             "address": profile.address,
             "role": profile.role,
             "can_access_admin": is_staff(request.user),
+            "is_admin": is_admin(request.user)
+            or getattr(request.user, "is_superuser", False),
         })
 
 
@@ -116,8 +121,8 @@ class PasswordResetRequestView(APIView):
             from django.contrib.auth.tokens import default_token_generator
             token = default_token_generator.make_token(user)
 
-            # Create reset URL
-            reset_url = f"http://localhost:5173/reset-password?token={token}&user_id={user.id}"
+            frontend = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
+            reset_url = f"{frontend}/reset-password?{urlencode({'token': token, 'user_id': str(user.id)})}"
 
             # Send email
             try:
@@ -148,6 +153,24 @@ class PasswordResetRequestView(APIView):
             return Response({
                 "message": f"Liên kết đặt lại mật khẩu đã được gửi đến {email}"
             }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data["_user"]
+            user.set_password(serializer.validated_data["new_password"])
+            user.save()
+            return Response(
+                {
+                    "message": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới."
+                },
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

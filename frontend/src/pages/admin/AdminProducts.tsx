@@ -689,6 +689,7 @@ export default function AdminProducts() {
                 </div>
               </div>
 
+              <div className="variant-modal__body">
               <section
                 className="variant-modal__panel variant-modal__panel--quick"
                 aria-label="Thêm nhanh màu và size"
@@ -1003,6 +1004,7 @@ export default function AdminProducts() {
                   </table>
                 </div>
               </section>
+              </div>
 
               <div className="variant-modal__footer">
                 <button

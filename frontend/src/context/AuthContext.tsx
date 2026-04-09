@@ -15,6 +15,7 @@ export interface AuthUser {
   id?: number;
   role?: string;
   can_access_admin?: boolean;
+  is_admin?: boolean;
   avatar?: string | null;
 }
 
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id?: number;
           role?: string;
           can_access_admin?: boolean;
+          is_admin?: boolean;
         }) => {
           if (data.role) {
             localStorage.setItem("user_role", data.role);
@@ -80,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: data.id,
             role: data.role,
             can_access_admin: data.can_access_admin,
+            is_admin: data.is_admin,
           });
         },
       )

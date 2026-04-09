@@ -1,6 +1,6 @@
 import type { ApiProduct, Category } from '../types';
 
-const BASE = 'http://localhost:8000/api/products';
+const BASE = '/api/products';
 
 const getList = async <T>(url: string): Promise<T[]> => {
   const res = await fetch(url);

@@ -14,7 +14,11 @@ from cart.models import Cart, CartItem
 from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
 from products.serializers import normalize_size_name
-from .mail import send_order_confirmation_email
+from .mail import (
+    send_order_confirmation_email,
+    send_order_shipped_email,
+    send_return_refund_completed_email,
+)
 from .models import DiscountCode, Order, OrderItem, Shipping, ReturnRequest
 from .pricing import build_order_totals, normalize_discount_code, unit_price_vnd
 from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer, ReturnRequestSerializer
@@ -123,6 +127,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        order = serializer.save()
+        if old_status != order.status and order.status == "shipping":
+            oid = order.pk
+            transaction.on_commit(lambda o=oid: send_order_shipped_email(o))
 
     def _validation_error_message(self, exc: ValidationError) -> str:
         detail = exc.detail
@@ -452,4 +463,6 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         obj.status = "completed"
         obj.admin_note = request.data.get("admin_note", obj.admin_note)
         obj.save(update_fields=["status", "admin_note", "updated_at"])
+        rid = obj.pk
+        transaction.on_commit(lambda r=rid: send_return_refund_completed_email(r))
         return Response(self.get_serializer(obj).data)

@@ -26,6 +26,7 @@ from accounts.views import (
     ChangePasswordView,
     CurrentUserView,
     PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 from accounts.views import GoogleAuthUrlView, GoogleCallbackView, GoogleLoginView
 from accounts.views import FacebookAuthUrlView, FacebookCallbackView, FacebookLoginView
@@ -40,6 +41,7 @@ urlpatterns = [
     path('api/auth/user/', CurrentUserView.as_view(), name='current_user'),
     path('api/auth/password/change/', ChangePasswordView.as_view(), name='password_change'),
     path('api/auth/password/reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('api/auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 
     # Google OAuth endpoints
     path('api/auth/google/url/', GoogleAuthUrlView.as_view(), name='google_auth_url'),

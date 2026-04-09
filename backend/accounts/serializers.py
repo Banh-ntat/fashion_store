@@ -6,7 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Profile
-from core.permissions import RoleChoices
+from core.permissions import RoleChoices, can_manage_profile_roles
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -117,13 +117,32 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(min_value=1)
     token = serializers.CharField()
-    new_password = serializers.CharField(min_length=8)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
 
-    def validate_new_password(self, value):
+    def validate(self, data):
+        from django.contrib.auth.tokens import default_token_generator
         from django.contrib.auth.password_validation import validate_password
-        validate_password(value)
-        return value
+
+        if data["new_password"] != data["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Mật khẩu xác nhận không khớp"}
+            )
+        try:
+            user = User.objects.get(pk=data["user_id"])
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                {"detail": "Liên kết không hợp lệ hoặc đã hết hạn."}
+            )
+        if not default_token_generator.check_token(user, data["token"]):
+            raise serializers.ValidationError(
+                {"detail": "Liên kết không hợp lệ hoặc đã hết hạn."}
+            )
+        validate_password(data["new_password"], user)
+        data["_user"] = user
+        return data
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -158,3 +177,18 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ("id", "user", "phone", "address", "role", "google_id", "facebook_id", "avatar", "created_at", "updated_at")
         read_only_fields = ("user", "google_id", "facebook_id", "created_at", "updated_at")
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request and not can_manage_profile_roles(request.user):
+            if "role" in attrs:
+                raise serializers.ValidationError(
+                    {"role": "Chỉ quản trị viên mới được thay đổi vai trò."}
+                )
+        return attrs
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        if request and not can_manage_profile_roles(request.user):
+            validated_data.pop("role", None)
+        return super().update(instance, validated_data)
