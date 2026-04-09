@@ -117,9 +117,10 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='featured')
     def featured(self, request):
-        """Lấy danh sách sản phẩm nổi bật (có khuyến mãi)"""
+        today = datetime.now().date()
         products = self.get_queryset().filter(
-            promotion__isnull=False
+            promotion__start_date__lte=today,
+            promotion__end_date__gte=today,
         ).order_by('-price')[:12]
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)

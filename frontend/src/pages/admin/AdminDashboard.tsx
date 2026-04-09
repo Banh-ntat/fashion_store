@@ -22,6 +22,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 const STATUS_VI: Record<string, string> = {
   pending: 'Chờ xử lý',
   shipping: 'Đang giao',
+  returing: "Đã hoàn trả",
   completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
 };

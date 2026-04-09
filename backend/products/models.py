@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -8,8 +9,6 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-
-
 class Promotion(models.Model):
     name = models.CharField(max_length=100)
     discount_percent = models.IntegerField()
@@ -18,6 +17,11 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_active(self) -> bool:
+        today = timezone.localdate()
+        return self.start_date <= today <= self.end_date
 
 
 class Product(models.Model):

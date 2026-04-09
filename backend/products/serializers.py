@@ -31,9 +31,21 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class PromotionSerializer(serializers.ModelSerializer):
+    is_active = serializers.SerializerMethodField()
+
     class Meta:
         model = Promotion
-        fields = ("id", "name", "discount_percent", "start_date", "end_date")
+        fields = ("id", "name", "discount_percent", "start_date", "end_date", "is_active")
+
+    def get_is_active(self, obj) -> bool:
+        return obj.is_active
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.")
+        return attrs
 
 
 class ColorSerializer(serializers.ModelSerializer):
@@ -46,7 +58,7 @@ class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
         fields = ("id", "name")
-
+        
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["name"] = normalize_size_name(data.get("name", ""))
@@ -96,7 +108,6 @@ class ProductVariantSerializer(serializers.ModelSerializer):
                     "Biến thể này đã tồn tại (cùng sản phẩm, màu, size)."
                 )
         return attrs
-
 
 class ProductImageSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -208,9 +219,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return total["total"] or 0
 
     def get_old_price(self, obj: Product) -> float | None:
-        """Trả về giá gốc (nếu có khuyến mãi thì tính lại giá gốc)"""
-        if obj.promotion:
-            # Tính giá gốc từ giá đã giảm
+        if obj.promotion and obj.promotion.is_active:
             discount = obj.promotion.discount_percent
             original_price = float(obj.price) / (1 - discount / 100)
             return round(original_price)
@@ -228,3 +237,17 @@ class ProductSerializer(serializers.ModelSerializer):
             }
             for v in variants
         ]
+        
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        promo = data.get("promotion")
+        if promo and not promo.get("is_active", False):
+            data["promotion"] = None
+        return data
+    
+    def validate_promotion_id(self, value):
+        if value is not None and not value.is_active:
+            raise serializers.ValidationError(
+                "Khuyến mãi này đã hết hạn hoặc chưa bắt đầu, không thể gán cho sản phẩm."
+            )
+        return value

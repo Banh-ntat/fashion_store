@@ -9,6 +9,7 @@ interface Promotion {
   discount_percent: number;
   start_date: string;
   end_date: string;
+  is_active: boolean;
 }
 
 interface PromotionFormData {
@@ -124,6 +125,9 @@ export default function AdminPromotions() {
     } finally {
       setLoading(false);
     }
+    admin.promotions.list().then((res) => {
+      console.log("promotions raw:", res.data);
+    });
   };
 
   const handlePromotionSubmit = async (e: React.FormEvent) => {
