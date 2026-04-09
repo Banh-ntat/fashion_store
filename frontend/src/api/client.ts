@@ -292,14 +292,18 @@ export const reviews = {
   delete: (id: number) => api.delete(`/reviews/reviews/${id}/`),
 };
 
-/** Profile của user đăng nhập (backend trả về list chỉ có 1 phần tử) */
 export const profiles = {
   getMe: () => api.get("/accounts/profiles/"),
   updateMe: (id: number, data: Record<string, unknown>) =>
     api.patch(`/accounts/profiles/${id}/`, data),
-};
 
-/** Meta trang liên hệ (hotline, giờ làm việc, chủ đề form) */
+  updateAvatar: (id: number, data: FormData) =>
+    api.patch(`/accounts/profiles/${id}/`, data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
+};
 export type ContactSubjectOption = { value: string; label: string };
 export type ContactMeta = {
   brand: string;

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from core.permissions import is_admin, is_staff, RoleChoices
 from .models import Profile
@@ -44,6 +45,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user

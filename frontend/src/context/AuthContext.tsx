@@ -13,10 +13,9 @@ export interface AuthUser {
   first_name?: string;
   last_name?: string;
   id?: number;
-  /** Role từ Profile (backend) — dùng cho /admin */
   role?: string;
-  /** Khớp backend `is_staff` + superuser — ưu tiên dùng thay vì chỉ đoán từ role */
   can_access_admin?: boolean;
+  avatar?: string | null;
 }
 
 interface AuthContextType {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { auth, profiles } from "../api/client";
@@ -219,13 +219,30 @@ function IconAdmin() {
   );
 }
 
+function IconCamera() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
+      <path
+        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.75" />
+    </svg>
+  );
+}
+
 export default function ProfilePage() {
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileWithUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ phone: "", address: "" });
+
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [pwdOld, setPwdOld] = useState("");
   const [pwdNew, setPwdNew] = useState("");
@@ -252,11 +269,48 @@ export default function ProfilePage() {
         setProfile(first);
         if (first) {
           setForm({ phone: first.phone ?? "", address: first.address ?? "" });
+          // Đồng bộ avatar từ profile về context nếu context chưa có
+          if (first.avatar && !authUser.avatar) {
+            setUser({ ...authUser, avatar: first.avatar });
+          }
         }
       })
       .catch(() => setProfile(null))
       .finally(() => setLoading(false));
   }, [authUser]);
+
+  // Upload avatar
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile || !authUser) return;
+    // Reset input value để có thể chọn lại cùng file
+    e.target.value = "";
+
+    // Optimistic preview
+    const localUrl = URL.createObjectURL(file);
+    const prevAvatar = profile.avatar;
+    setProfile((p) => (p ? { ...p, avatar: localUrl } : null));
+    setUser({ ...authUser, avatar: localUrl });
+
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await profiles.updateAvatar(profile.id, formData);
+      const serverAvatar = (res.data as { avatar?: string }).avatar ?? localUrl;
+      setProfile((p) => (p ? { ...p, avatar: serverAvatar } : null));
+      setUser({ ...authUser, avatar: serverAvatar });
+    } catch {
+      // Rollback nếu lỗi
+      setProfile((p) => (p ? { ...p, avatar: prevAvatar ?? null } : null));
+      setUser({ ...authUser, avatar: prevAvatar ?? null });
+      alert("Upload ảnh thất bại. Vui lòng thử lại.");
+    } finally {
+      setAvatarUploading(false);
+      URL.revokeObjectURL(localUrl);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,6 +447,9 @@ export default function ProfilePage() {
   const linkedFacebook = Boolean(profile?.facebook_id);
   const showAdminEntry = Boolean(authUser.can_access_admin);
 
+  // Avatar hiện tại: ưu tiên profile (mới nhất), fallback context
+  const currentAvatar = profile?.avatar ?? authUser.avatar ?? null;
+
   return (
     <section className="pageSection profile-page">
       <div className="profile-hero" aria-hidden>
@@ -407,17 +464,30 @@ export default function ProfilePage() {
         </header>
 
         <div className="profile-shell">
+          {/* ── Summary card ── */}
           <section
             className="profileCard profile-summary"
             aria-label="Tóm tắt tài khoản"
           >
             <div className="profileCardAccent" aria-hidden />
             <div className="profile-summaryBody">
+              {/* Avatar với overlay upload */}
               <div className="profile-summaryAvatar">
-                <div className="profileAvatarWrap">
-                  {profile?.avatar ? (
+                <div
+                  className="profileAvatarWrap profileAvatarWrap--editable"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Nhấp để đổi ảnh đại diện"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Đổi ảnh đại diện"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      fileInputRef.current?.click();
+                  }}
+                >
+                  {currentAvatar ? (
                     <img
-                      src={profile.avatar}
+                      src={currentAvatar}
                       alt=""
                       className="profileAvatar profileAvatar--lg"
                     />
@@ -433,8 +503,30 @@ export default function ProfilePage() {
                       ).toUpperCase()}
                     </div>
                   )}
+
+                  {/* Camera overlay */}
+                  <div className="profileAvatarOverlay" aria-hidden>
+                    {avatarUploading ? (
+                      <span className="profileAvatarOverlay-spinner" />
+                    ) : (
+                      <IconCamera />
+                    )}
+                    <span className="profileAvatarOverlay-label">
+                      {avatarUploading ? "Đang tải…" : "Đổi ảnh"}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: "none" }}
+                  onChange={handleAvatarChange}
+                />
               </div>
+
               <div className="profile-summaryInfo">
                 <h2 className="profileName profileName--summary">
                   {displayName}
@@ -469,6 +561,7 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+
               <div className="profile-summaryActions">
                 <button
                   type="button"
@@ -481,8 +574,10 @@ export default function ProfilePage() {
             </div>
           </section>
 
+          {/* ── Main content ── */}
           <div className="profile-content">
             <div className="profile-mainTop">
+              {/* Contact & delivery */}
               <div className="profileCard profileCard--secondary profileCard--panel">
                 <h3 className="profileSectionTitle profileSectionTitle--panel">
                   Liên hệ &amp; giao hàng
@@ -551,6 +646,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              {/* Security */}
               <div className="profileCard profileCard--secondary profileCard--panel">
                 <div className="profileCardHead profileCardHead--panel">
                   <IconShield />
@@ -626,6 +722,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Quick links */}
             <div className="profileCard profileCard--secondary profileCard--flush">
               <h3 className="profileSectionTitle profileSectionTitle--inCard">
                 Truy cập nhanh
@@ -696,7 +793,7 @@ export default function ProfilePage() {
                           Đánh giá sản phẩm
                         </span>
                         <span className="profileQuickCard-desc">
-                          Các món đã mua & đánh giá
+                          Các món đã mua &amp; đánh giá
                         </span>
                       </span>
                       <span className="profileQuickCard-arrow" aria-hidden>

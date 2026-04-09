@@ -150,6 +150,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(required=False)
     user = UserSerializer(read_only=True)
     role = serializers.ChoiceField(choices=RoleChoices.CHOICES, required=False)
 

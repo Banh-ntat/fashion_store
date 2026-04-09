@@ -198,9 +198,6 @@ export default function Cart() {
           <Link to="/login" className="cart-btn-primary">
             Đăng nhập
           </Link>
-          <Link to="/products" className="cart-btn-secondary">
-            Mua sắm
-          </Link>
         </div>
       </div>
     );

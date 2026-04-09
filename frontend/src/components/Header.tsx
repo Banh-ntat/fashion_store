@@ -67,6 +67,27 @@ async function fetchCartItemCount(): Promise<number> {
   }
 }
 
+// Avatar nhỏ dùng trong header dropdown trigger
+function HeaderAvatar({ src, initial }: { src?: string | null; initial: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1.5px solid rgba(245,85,84,0.35)",
+          display: "block",
+        }}
+      />
+    );
+  }
+  return <UserIcon />;
+}
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -159,10 +180,29 @@ export default function Header() {
                     className="iconBtn accountTrigger"
                     aria-label="Tài khoản"
                   >
-                    <UserIcon />
+                    <HeaderAvatar
+                      src={user.avatar}
+                      initial={(user.first_name?.[0] ?? user.username?.[0] ?? "U").toUpperCase()}
+                    />
                   </button>
                   <div className="accountMenu">
                     <div className="accountMenuHeader">
+                      {/* Avatar lớn hơn trong dropdown */}
+                      {user.avatar && (
+                        <img
+                          src={user.avatar}
+                          alt=""
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                            border: "2px solid rgba(245,85,84,0.3)",
+                            marginBottom: "0.4rem",
+                            display: "block",
+                          }}
+                        />
+                      )}
                       <span className="accountMenuLabel">Tài khoản</span>
                       <strong>{displayName}</strong>
                     </div>
@@ -182,7 +222,7 @@ export default function Header() {
                           Lịch sử đơn hàng
                         </Link>
                         <Link to="/my-returns" className="accountMenuItem">
-                          Trả hàng & hoàn tiền
+                          Trả hàng &amp; hoàn tiền
                         </Link>
                         <Link to="/my-feedback" className="accountMenuItem">
                           Đánh giá sản phẩm
@@ -260,7 +300,24 @@ export default function Header() {
         <div className="mobileActions">
           {user ? (
             <>
-              <span className="mobileUserName">Chào, {displayName}</span>
+              {/* Avatar trong mobile menu */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
+                {user.avatar && (
+                  <img
+                    src={user.avatar}
+                    alt=""
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "1.5px solid rgba(245,85,84,0.35)",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <span className="mobileUserName">Chào, {displayName}</span>
+              </div>
               <Link to="/profile" className="mobileNavLink" onClick={closeMenu}>
                 Tài khoản
               </Link>
@@ -270,32 +327,16 @@ export default function Header() {
                 </Link>
               ) : (
                 <>
-                  <Link
-                    to="/orders"
-                    className="mobileNavLink"
-                    onClick={closeMenu}
-                  >
+                  <Link to="/orders" className="mobileNavLink" onClick={closeMenu}>
                     Đơn hàng
                   </Link>
-                  <Link
-                    to="/my-returns"
-                    className="mobileNavLink"
-                    onClick={closeMenu}
-                  >
-                    Trả hàng & hoàn tiền
+                  <Link to="/my-returns" className="mobileNavLink" onClick={closeMenu}>
+                    Trả hàng &amp; hoàn tiền
                   </Link>
-                  <Link
-                    to="/my-feedback"
-                    className="mobileNavLink"
-                    onClick={closeMenu}
-                  >
+                  <Link to="/my-feedback" className="mobileNavLink" onClick={closeMenu}>
                     Đánh giá sản phẩm
                   </Link>
-                  <Link
-                    to="/wishlist"
-                    className="mobileNavLink"
-                    onClick={closeMenu}
-                  >
+                  <Link to="/wishlist" className="mobileNavLink" onClick={closeMenu}>
                     Yêu thích
                   </Link>
                 </>

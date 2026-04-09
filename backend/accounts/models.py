@@ -15,7 +15,7 @@ class Profile(models.Model):
     )
     google_id = models.CharField(max_length=255, blank=True, null=True)
     facebook_id = models.CharField(max_length=255, blank=True, null=True)
-    avatar = models.URLField(blank=True, null=True)
+    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
