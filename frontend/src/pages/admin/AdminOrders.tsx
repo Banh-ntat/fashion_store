@@ -40,12 +40,13 @@ interface Order {
 const STATUS_CHOICES = [
   { value: 'pending', label: 'Chờ xác nhận' },
   { value: 'shipping', label: 'Đang giao hàng' },
+  { value: 'returning', label: 'Đã hoàn trả' },
   { value: 'completed', label: 'Hoàn thành' },
   { value: 'cancelled', label: 'Đã hủy' },
 ];
 
 function isTerminalStatus(status: string) {
-  return status === 'completed' || status === 'cancelled';
+  return status === 'completed' || status === 'cancelled' || status === 'returning';
 }
 
 function formatVnd(value: string | number) {
@@ -131,6 +132,7 @@ export default function AdminOrders() {
     const statusMap: Record<string, string> = {
       pending: 'status-pending',
       shipping: 'status-shipping',
+      returning: 'status-returning',
       completed: 'status-completed',
       cancelled: 'status-cancelled',
     };

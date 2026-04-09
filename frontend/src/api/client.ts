@@ -260,6 +260,8 @@ export const orders = {
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post("/orders/orders/", data),
   cancel: (id: number) => api.post(`/orders/orders/${id}/cancel/`),
+  confirmReceived: (id: number) =>
+    api.post(`/orders/orders/${id}/confirm-received/`),
   discountPreview: (data: {
     discount_code?: string;
     cart_item_ids?: number[];
@@ -419,12 +421,18 @@ export const admin = {
     list: () => api.get("/products/categories/"),
     get: (id: number) => api.get(`/products/categories/${id}/`),
     create: (data: Record<string, unknown> | FormData) =>
-      api.post('/products/categories/', data, {
-        headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+      api.post("/products/categories/", data, {
+        headers:
+          data instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
       }),
     update: (id: number, data: Record<string, unknown> | FormData) =>
       api.put(`/products/categories/${id}/`, data, {
-        headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+        headers:
+          data instanceof FormData
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
       }),
     delete: (id: number) => api.delete(`/products/categories/${id}/`),
   },

@@ -122,15 +122,12 @@ class OrderSerializer(serializers.ModelSerializer):
     def validate_status(self, value: str) -> str:
         if not self.instance:
             return value
-
         current_status = self.instance.status
         if value == current_status:
             return value
-
-        terminal_statuses = {"completed", "cancelled"}
+        terminal_statuses = {"completed", "cancelled", "returning"}
         if current_status in terminal_statuses:
-            raise serializers.ValidationError("Đơn hàng đã ở trạng thái cuối và không thể thay đổi nữa.")
-
+            raise serializers.ValidationError("Đơn hàng đã ở trạng thái hoàn thành và không thể thay đổi nữa.")
         return value
 
     def get_items(self, obj):

@@ -25,6 +25,7 @@ class OrderPagination(PageNumberPagination):
     page_size_query_param = "page_size"
     max_page_size = 100
 
+
 class DiscountCodeViewSet(viewsets.ModelViewSet):
     queryset = DiscountCode.objects.all().order_by("-id")
     serializer_class = DiscountCodeSerializer
@@ -44,12 +45,30 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(codes, many=True)
         return Response(serializer.data)
 
+
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = OrderPagination
-    
+
+    @action(detail=True, methods=["post"], url_path="confirm-received")
+    def confirm_received(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "shipping":
+            return Response(
+                {"detail": "Chỉ có thể xác nhận nhận hàng khi đơn đang được giao."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        order.status = "completed"
+        order.save(update_fields=["status"])
+        return Response(self.get_serializer(order).data)
+
     @action(detail=True, methods=["post"], url_path="cancel")
     def cancel(self, request, pk=None):
         order = self.get_object()
@@ -338,6 +357,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
             "order", "product", "product__product", "product__product__category", "product__color", "product__size"
         )
 
+
 class ReturnRequestViewSet(viewsets.ModelViewSet):
     queryset = ReturnRequest.objects.all()
     serializer_class = ReturnRequestSerializer
@@ -353,7 +373,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
             return base_qs.all()
         return base_qs.filter(user=user)
- 
+
     def get_permissions(self):
         if self.action in ("update", "partial_update", "destroy"):
             return [permissions.IsAuthenticated(), IsOrderStaff()]
@@ -375,9 +395,9 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         except Order.DoesNotExist:
             return Response({"detail": "Đơn hàng không tồn tại."}, status=400)
 
-        if order.status != "completed":
+        if order.status not in ("shipping", "completed"):
             return Response(
-                {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đã hoàn thành."},
+                {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đang giao hoặc đã hoàn thành."},
                 status=400,
             )
 
@@ -400,9 +420,11 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         obj = self.get_object()
         if obj.status != "pending":
             return Response({"detail": "Chỉ duyệt được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
-        obj.status = "approved"
-        obj.admin_note = request.data.get("admin_note", "")
-        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        with transaction.atomic():
+            obj.status = "approved"
+            obj.admin_note = request.data.get("admin_note", "")
+            obj.save(update_fields=["status", "admin_note", "updated_at"])
+            Order.objects.filter(pk=obj.order_id, status="shipping").update(status="returning")
         return Response(self.get_serializer(obj).data)
 
     @action(detail=True, methods=["post"], url_path="reject")
@@ -412,9 +434,11 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         obj = self.get_object()
         if obj.status != "pending":
             return Response({"detail": "Chỉ từ chối được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
-        obj.status = "rejected"
-        obj.admin_note = request.data.get("admin_note", "")
-        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        with transaction.atomic():
+            obj.status = "rejected"
+            obj.admin_note = request.data.get("admin_note", "")
+            obj.save(update_fields=["status", "admin_note", "updated_at"])
+            Order.objects.filter(pk=obj.order_id, status="shipping").update(status="completed")
         return Response(self.get_serializer(obj).data)
 
     @action(detail=True, methods=["post"], url_path="complete")

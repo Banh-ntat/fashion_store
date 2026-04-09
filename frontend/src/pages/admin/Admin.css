@@ -351,6 +351,11 @@
   color: #3a6090;
 }
 
+.status-returning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .status-completed {
   background: #eef7f0;
   color: #3a7050;

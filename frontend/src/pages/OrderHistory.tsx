@@ -1,16 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { orders, reviews } from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import type { Order, PurchasableProduct } from '../types';
-import '../styles/pages/OrderHistory.css';
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { orders, reviews, returns } from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import type { Order, PurchasableProduct } from "../types";
+import "../styles/pages/OrderHistory.css";
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Chờ xử lý',
-  shipping: 'Đang giao',
-  completed: 'Hoàn thành',
-  cancelled: 'Đã hủy',
+  pending: "Chờ xử lý",
+  shipping: "Đang giao",
+  returning: "Đã hoàn trả",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
 };
+
+const REASON_OPTIONS = [
+  { value: "wrong_item", label: "Sản phẩm sai" },
+  { value: "damaged", label: "Sản phẩm hỏng/lỗi" },
+  { value: "not_as_described", label: "Không đúng mô tả" },
+  { value: "changed_mind", label: "Thay đổi quyết định" },
+  { value: "other", label: "Lý do khác" },
+];
 
 export default function OrderHistory() {
   const { user } = useAuth();
@@ -19,12 +28,20 @@ export default function OrderHistory() {
   const clearedPlacedState = useRef(false);
   const [list, setList] = useState<Order[]>([]);
   const [purchasableItems, setPurchasableItems] = useState<PurchasableProduct[]>([]);
+  const [returnedOrderIds, setReturnedOrderIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
   const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
-  const [cancelErrorMsg, setCancelErrorMsg] = useState('');
+  const [cancelErrorMsg, setCancelErrorMsg] = useState("");
+  const [confirmReceivedId, setConfirmReceivedId] = useState<number | null>(null);
+  const [receivedLoadingId, setReceivedLoadingId] = useState<number | null>(null);
+  const [showReturnFormId, setShowReturnFormId] = useState<number | null>(null);
+  const [returnForm, setReturnForm] = useState({ reason: "", description: "" });
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [returnError, setReturnError] = useState("");
+  const [returnSuccessId, setReturnSuccessId] = useState<number | null>(null);
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
@@ -41,22 +58,71 @@ export default function OrderHistory() {
       setLoading(false);
       return;
     }
-    Promise.all([orders.list(), reviews.getPurchasable()])
-      .then(([ordersRes, purchasableRes]) => {
+    Promise.all([orders.list(), reviews.getPurchasable(), returns.list()])
+      .then(([ordersRes, purchasableRes, returnsRes]) => {
         const orderData = ordersRes.data as Order[] | { results?: Order[] };
         setList(Array.isArray(orderData) ? orderData : (orderData.results ?? []));
         setPurchasableItems((purchasableRes?.data ?? []) as PurchasableProduct[]);
+        const returnData = returnsRes.data as { order: number }[] | { results?: { order: number }[] };
+        const returnArr = Array.isArray(returnData) ? returnData : (returnData.results ?? []);
+        setReturnedOrderIds(new Set(returnArr.map((r) => r.order)));
       })
       .catch(() => {
         setList([]);
         setPurchasableItems([]);
+        setReturnedOrderIds(new Set());
       })
       .finally(() => setLoading(false));
   }, [user]);
 
+  const handleConfirmReceived = async (orderId: number) => {
+    setReceivedLoadingId(orderId);
+    try {
+      await orders.confirmReceived(orderId);
+      setList((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "completed" } : o)),
+      );
+      setConfirmReceivedId(null);
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail ?? "Không thể xác nhận. Vui lòng thử lại.");
+    } finally {
+      setReceivedLoadingId(null);
+    }
+  };
+
+  const handleSubmitReturn = async (orderId: number) => {
+    if (!returnForm.reason) {
+      setReturnError("Vui lòng chọn lý do.");
+      return;
+    }
+    setReturnSubmitting(true);
+    setReturnError("");
+    try {
+      await returns.create({
+        order: orderId,
+        reason: returnForm.reason,
+        description: returnForm.description,
+      });
+      setShowReturnFormId(null);
+      setReturnForm({ reason: "", description: "" });
+      setReturnedOrderIds((prev) => new Set([...prev, orderId]));
+      setReturnSuccessId(orderId);
+      setTimeout(
+        () => setReturnSuccessId((prev) => (prev === orderId ? null : prev)),
+        5000,
+      );
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setReturnError(detail ?? "Không thể gửi yêu cầu. Vui lòng thử lại.");
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
   const handleCancelRequest = (orderId: number) => {
     setCancelErrorId(null);
-    setCancelErrorMsg('');
+    setCancelErrorMsg("");
     setConfirmCancelId(orderId);
   };
 
@@ -66,22 +132,65 @@ export default function OrderHistory() {
     setConfirmCancelId(null);
     setCancellingId(orderId);
     setCancelErrorId(null);
-    setCancelErrorMsg('');
+    setCancelErrorMsg("");
     try {
       await orders.cancel(orderId);
       setList((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+        prev.map((o) => (o.id === orderId ? { ...o, status: "cancelled" } : o)),
       );
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setCancelErrorId(orderId);
-      setCancelErrorMsg(detail ?? 'Không thể hủy đơn hàng. Vui lòng thử lại.');
+      setCancelErrorMsg(detail ?? "Không thể hủy đơn hàng. Vui lòng thử lại.");
     } finally {
       setCancellingId(null);
     }
   };
 
   const purchasableOrderIds = new Set(purchasableItems.map((item) => item.order_id));
+
+  // Inline form hoàn trả — dùng lại trong cả 2 trường hợp shipping & completed
+  const renderReturnForm = (orderId: number) => (
+    <div className="orderReturnForm">
+      <p className="orderReturnFormTitle">Yêu cầu hoàn trả đơn #{orderId}</p>
+      <select
+        value={returnForm.reason}
+        onChange={(e) => setReturnForm((f) => ({ ...f, reason: e.target.value }))}
+        className="orderReturnSelect"
+      >
+        <option value="">Chọn lý do</option>
+        {REASON_OPTIONS.map((r) => (
+          <option key={r.value} value={r.value}>{r.label}</option>
+        ))}
+      </select>
+      <textarea
+        value={returnForm.description}
+        onChange={(e) => setReturnForm((f) => ({ ...f, description: e.target.value }))}
+        placeholder="Mô tả thêm (tuỳ chọn)..."
+        rows={3}
+        className="orderReturnTextarea"
+        maxLength={1000}
+      />
+      {returnError && <p className="orderCancelError" role="alert">{returnError}</p>}
+      <div className="orderCancelConfirmActions">
+        <button
+          type="button"
+          className="orderCancelConfirmYes"
+          disabled={returnSubmitting}
+          onClick={() => handleSubmitReturn(orderId)}
+        >
+          {returnSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+        </button>
+        <button
+          type="button"
+          className="orderCancelConfirmNo"
+          onClick={() => { setShowReturnFormId(null); setReturnError(""); }}
+        >
+          Huỷ
+        </button>
+      </div>
+    </div>
+  );
 
   if (!user) {
     return (
@@ -119,15 +228,17 @@ export default function OrderHistory() {
         <div className="orderReviewHub">
           <div>
             <p className="orderReviewHubEyebrow">Đánh giá sản phẩm đã mua</p>
-            <h2 className="orderReviewHubTitle">Xem các món đã nhận và viết đánh giá của bạn</h2>
+            <h2 className="orderReviewHubTitle">
+              Xem các món đã nhận và viết đánh giá của bạn
+            </h2>
             <p className="orderReviewHubText">
               {purchasableItems.length > 0
                 ? `Hiện có ${purchasableItems.length} sản phẩm đang chờ bạn đánh giá.`
-                : 'Bạn có thể xem lại các đánh giá đã gửi và các sản phẩm đủ điều kiện đánh giá tại đây.'}
+                : "Bạn có thể xem lại các đánh giá đã gửi và các sản phẩm đủ điều kiện đánh giá tại đây."}
             </p>
           </div>
           <Link to="/my-feedback" className="orderReviewHubBtn">
-            {purchasableItems.length > 0 ? 'Đi đánh giá ngay' : 'Mở trang đánh giá'}
+            {purchasableItems.length > 0 ? "Đi đánh giá ngay" : "Mở trang đánh giá"}
           </Link>
         </div>
 
@@ -135,10 +246,10 @@ export default function OrderHistory() {
           <div className="orderEmpty">
             <div className="orderEmptyIconWrap">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-                <line x1="9" y1="12" x2="15" y2="12"/>
-                <line x1="9" y1="16" x2="13" y2="16"/>
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                <rect x="9" y="3" width="6" height="4" rx="1" />
+                <line x1="9" y1="12" x2="15" y2="12" />
+                <line x1="9" y1="16" x2="13" y2="16" />
               </svg>
             </div>
             <h2>Lịch sử trống</h2>
@@ -152,16 +263,20 @@ export default function OrderHistory() {
                 <div className="orderCardHeader">
                   <span className="orderId">Đơn #{order.id}</span>
                   <span className="orderDate">
-                    {order.created_at ? new Date(order.created_at).toLocaleDateString('vi-VN') : '—'}
+                    {order.created_at
+                      ? new Date(order.created_at).toLocaleDateString("vi-VN")
+                      : "—"}
                   </span>
                   <span className={`orderStatus orderStatus--${order.status}`}>
                     {STATUS_LABEL[order.status] ?? order.status}
                   </span>
                 </div>
 
-                {order.status === 'completed' && purchasableOrderIds.has(order.id) && (
+                {order.status === "completed" && purchasableOrderIds.has(order.id) && (
                   <div className="orderReviewPrompt">
-                    <span className="orderReviewPromptText">Đơn này có sản phẩm đủ điều kiện để đánh giá.</span>
+                    <span className="orderReviewPromptText">
+                      Đơn này có sản phẩm đủ điều kiện để đánh giá.
+                    </span>
                     <Link to="/my-feedback" className="orderReviewPromptBtn">
                       Đánh giá sản phẩm
                     </Link>
@@ -172,10 +287,15 @@ export default function OrderHistory() {
                   {order.items?.map((item) => (
                     <li key={item.id} className="orderItem">
                       <div className="orderItemInfo">
-                        <span className="orderItemName">{item.product?.name ?? 'Sản phẩm'}</span>
+                        <span className="orderItemName">
+                          {item.product?.name ?? "Sản phẩm"}
+                        </span>
                         {item.variant_info && (
                           <span className="orderItemVariant">
-                            <span className="variantColor" style={{ backgroundColor: item.variant_info.color.code }} />
+                            <span
+                              className="variantColor"
+                              style={{ backgroundColor: item.variant_info.color.code }}
+                            />
                             {item.variant_info.color.name} / {item.variant_info.size.name}
                           </span>
                         )}
@@ -186,26 +306,113 @@ export default function OrderHistory() {
                   ))}
                 </ul>
 
+                {/* Banner thành công sau khi gửi hoàn trả */}
+                {returnSuccessId === order.id && (
+                  <div className="orderReturnSuccess">
+                    ✓ Yêu cầu hoàn trả đã được gửi. Chúng tôi sẽ xem xét trong 1–3 ngày làm việc.
+                  </div>
+                )}
+
+                {/* Đang giao: xác nhận nhận hàng + yêu cầu hoàn trả */}
+                {order.status === "shipping" && !returnedOrderIds.has(order.id) && (
+                  <div className="orderShippingActions">
+                    {confirmReceivedId === order.id ? (
+                      <div className="orderCancelConfirm">
+                        <span className="orderCancelConfirmText">
+                          Xác nhận đã nhận được đơn #{order.id}?
+                        </span>
+                        <div className="orderCancelConfirmActions">
+                          <button
+                            type="button"
+                            className="orderCancelConfirmYes"
+                            disabled={receivedLoadingId === order.id}
+                            onClick={() => handleConfirmReceived(order.id)}
+                          >
+                            Xác nhận
+                          </button>
+                          <button
+                            type="button"
+                            className="orderCancelConfirmNo"
+                            onClick={() => setConfirmReceivedId(null)}
+                          >
+                            Quay lại
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="orderReceivedBtn"
+                        disabled={receivedLoadingId === order.id}
+                        onClick={() => setConfirmReceivedId(order.id)}
+                      >
+                        ✓ Đã nhận hàng
+                      </button>
+                    )}
+
+                    {showReturnFormId === order.id ? (
+                      renderReturnForm(order.id)
+                    ) : (
+                      confirmReceivedId !== order.id && (
+                        <button
+                          type="button"
+                          className="orderReturnBtn"
+                          onClick={() => {
+                            setShowReturnFormId(order.id);
+                            setReturnError("");
+                            setReturnForm({ reason: "", description: "" });
+                          }}
+                        >
+                          ↩ Yêu cầu hoàn trả
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* Đã hoàn thành: yêu cầu hoàn trả nếu chưa gửi */}
+                {order.status === "completed" && !returnedOrderIds.has(order.id) && (
+                  <div className="orderShippingActions">
+                    {showReturnFormId === order.id ? (
+                      renderReturnForm(order.id)
+                    ) : (
+                      <button
+                        type="button"
+                        className="orderReturnBtn"
+                        onClick={() => {
+                          setShowReturnFormId(order.id);
+                          setReturnError("");
+                          setReturnForm({ reason: "", description: "" });
+                        }}
+                      >
+                        ↩ Yêu cầu hoàn trả
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="orderTotal">
                   {order.subtotal != null && order.shipping_fee != null && (
                     <div className="orderTotalBreakdown">
                       Tạm tính: {order.subtotal}đ · Phí ship: {order.shipping_fee}đ
                       {order.discount_amount && Number(order.discount_amount) > 0 && (
-                        <> · Giảm: {order.discount_amount}đ{order.discount_code ? ` (${order.discount_code})` : ''}</>
+                        <> · Giảm: {order.discount_amount}đ{order.discount_code ? ` (${order.discount_code})` : ""}</>
                       )}
                     </div>
                   )}
                   Tổng: <strong>{order.total_price}đ</strong>
                 </div>
 
-                {order.status === 'pending' && (
+                {order.status === "pending" && (
                   <div className="orderCancelWrap">
                     {cancelErrorId === order.id && (
                       <p className="orderCancelError" role="alert">{cancelErrorMsg}</p>
                     )}
                     {confirmCancelId === order.id ? (
                       <div className="orderCancelConfirm">
-                        <span className="orderCancelConfirmText">Xác nhận hủy đơn #{order.id}?</span>
+                        <span className="orderCancelConfirmText">
+                          Xác nhận hủy đơn #{order.id}?
+                        </span>
                         <div className="orderCancelConfirmActions">
                           <button
                             type="button"
@@ -230,7 +437,7 @@ export default function OrderHistory() {
                         disabled={cancellingId === order.id}
                         onClick={() => handleCancelRequest(order.id)}
                       >
-                        {cancellingId === order.id ? 'Đang hủy...' : 'Hủy đơn hàng'}
+                        {cancellingId === order.id ? "Đang hủy..." : "Hủy đơn hàng"}
                       </button>
                     )}
                   </div>

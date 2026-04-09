@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { orders, returns } from '../api/client';
+import { returns } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import type { Order } from '../types';
 import '../styles/pages/MyReturns.css';
 
 const REASON_OPTIONS = [
@@ -50,55 +49,18 @@ interface ReturnRequest {
 export default function MyReturns() {
   const { user } = useAuth();
   const [returnList, setReturnList] = useState<ReturnRequest[]>([]);
-  const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
-  const [form, setForm] = useState({ order: '', reason: '', description: '' });
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    Promise.all([returns.list(), orders.list()])
-      .then(([returnRes, ordersRes]) => {
-        const returnData = returnRes.data as ReturnRequest[] | { results?: ReturnRequest[] };
-        setReturnList(Array.isArray(returnData) ? returnData : (returnData.results ?? []));
-        const orderData = ordersRes.data as Order[] | { results?: Order[] };
-        const allOrders = Array.isArray(orderData) ? orderData : (orderData.results ?? []);
-        setCompletedOrders(allOrders.filter((o) => o.status === 'completed'));
+    returns.list()
+      .then((res) => {
+        const data = res.data as ReturnRequest[] | { results?: ReturnRequest[] };
+        setReturnList(Array.isArray(data) ? data : (data.results ?? []));
       })
-      .catch(() => { setReturnList([]); setCompletedOrders([]); })
+      .catch(() => setReturnList([]))
       .finally(() => setLoading(false));
   }, [user]);
-
-  const alreadyRequestedOrderIds = new Set(returnList.map((r) => r.order));
-  const eligibleOrders = completedOrders.filter((o) => !alreadyRequestedOrderIds.has(o.id));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-    if (!form.order || !form.reason) { setFormError('Vui lòng chọn đơn hàng và lý do.'); return; }
-    setSubmitting(true);
-    try {
-      const res = await returns.create({
-        order: Number(form.order),
-        reason: form.reason,
-        description: form.description,
-      });
-      setReturnList((prev) => [res.data as ReturnRequest, ...prev]);
-      setCompletedOrders((prev) => prev.filter((o) => o.id !== Number(form.order)));
-      setForm({ order: '', reason: '', description: '' });
-      setShowForm(false);
-      setFormSuccess('Gửi yêu cầu thành công. Chúng tôi sẽ xem xét và phản hồi sớm.');
-    } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setFormError(detail ?? 'Không thể gửi yêu cầu. Vui lòng thử lại.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (!user) {
     return (
@@ -115,7 +77,9 @@ export default function MyReturns() {
   if (loading) {
     return (
       <section className="pageSection my-returns-page">
-        <div className="sectionContainer"><div className="loading">Đang tải...</div></div>
+        <div className="sectionContainer">
+          <div className="loading">Đang tải...</div>
+        </div>
       </section>
     );
   }
@@ -127,88 +91,17 @@ export default function MyReturns() {
           <div>
             <h1 className="returns-title">Yêu cầu trả hàng & hoàn tiền</h1>
             <p className="returns-subtitle">
-              Chỉ áp dụng cho đơn hàng đã hoàn thành. Chúng tôi sẽ xem xét trong 1–3 ngày làm việc.
+              Để gửi yêu cầu mới, vào{' '}
+              <Link to="/orders" className="returns-link">lịch sử đơn hàng</Link>{' '}
+              và chọn đơn cần hoàn trả.
             </p>
           </div>
-          {eligibleOrders.length > 0 && (
-            <button
-              type="button"
-              className="returns-new-btn"
-              onClick={() => { setShowForm((v) => !v); setFormError(''); setFormSuccess(''); }}
-            >
-              {showForm ? 'Đóng' : '+ Gửi yêu cầu mới'}
-            </button>
-          )}
         </div>
-
-        {formSuccess && (
-          <div className="returns-success" role="status">{formSuccess}</div>
-        )}
-
-        {showForm && (
-          <div className="returns-form-card">
-            <h2 className="returns-form-title">Thông tin yêu cầu trả hàng</h2>
-            <form onSubmit={handleSubmit} className="returns-form">
-              <div className="returns-field">
-                <label htmlFor="return-order">Đơn hàng *</label>
-                <select
-                  id="return-order"
-                  value={form.order}
-                  onChange={(e) => setForm((f) => ({ ...f, order: e.target.value }))}
-                  required
-                >
-                  <option value="">Chọn đơn hàng</option>
-                  {eligibleOrders.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      Đơn #{o.id} — {o.total_price}đ — {new Date(o.created_at).toLocaleDateString('vi-VN')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="returns-field">
-                <label htmlFor="return-reason">Lý do *</label>
-                <select
-                  id="return-reason"
-                  value={form.reason}
-                  onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
-                  required
-                >
-                  <option value="">Chọn lý do</option>
-                  {REASON_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="returns-field">
-                <label htmlFor="return-desc">Mô tả chi tiết (tuỳ chọn)</label>
-                <textarea
-                  id="return-desc"
-                  rows={4}
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Mô tả thêm về vấn đề của bạn..."
-                  maxLength={1000}
-                />
-              </div>
-              {formError && <p className="returns-form-error" role="alert">{formError}</p>}
-              <div className="returns-form-actions">
-                <button type="submit" className="returns-submit-btn" disabled={submitting}>
-                  {submitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
-                </button>
-                <button type="button" className="returns-cancel-btn" onClick={() => setShowForm(false)}>
-                  Hủy
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {returnList.length === 0 ? (
           <div className="returns-empty">
             <p>Bạn chưa có yêu cầu trả hàng nào.</p>
-            {eligibleOrders.length === 0 && completedOrders.length === 0 && (
-              <Link to="/orders" className="returns-link">Xem lịch sử đơn hàng</Link>
-            )}
+            <Link to="/orders" className="returns-link">Xem lịch sử đơn hàng</Link>
           </div>
         ) : (
           <ul className="returns-list">

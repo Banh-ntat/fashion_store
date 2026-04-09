@@ -48,6 +48,7 @@ class Order(models.Model):
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("shipping", "Shipping"),
+        ("returning", "Returning"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
     )
