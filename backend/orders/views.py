@@ -66,7 +66,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order.status = "completed"
-        order.save(update_fields=["status"])
+        order.confirmed_by_user = True
+        order.save(update_fields=["status", "confirmed_by_user"])
         return Response(self.get_serializer(order).data)
 
     @action(detail=True, methods=["post"], url_path="cancel")

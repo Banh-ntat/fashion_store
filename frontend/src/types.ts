@@ -67,6 +67,7 @@ export interface Order {
   status: string;
   created_at: string;
   items: OrderItem[];
+  confirmed_by_user?: boolean;
 }
 
 export interface PurchasableProduct {
