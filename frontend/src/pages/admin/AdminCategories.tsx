@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { admin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import './Admin.css';
@@ -7,6 +7,7 @@ interface Category {
   id: number;
   name: string;
   description: string;
+  image?: string;
 }
 
 interface CategoryFormData {
@@ -23,10 +24,21 @@ export default function AdminCategories() {
     name: '',
     description: '',
   });
+  /** File ảnh mới chọn (thêm/sửa); gửi multipart lên API */
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   const loadCategories = () => {
     admin.categories
@@ -41,17 +53,26 @@ export default function AdminCategories() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const fd = new FormData();
+      fd.append('name', formData.name.trim());
+      fd.append('description', formData.description.trim());
+      if (imageFile) {
+        fd.append('image', imageFile);
+      }
+
       if (editingCategory) {
-        await admin.categories.update(editingCategory.id, formData);
+        await admin.categories.update(editingCategory.id, fd);
       } else {
-        await admin.categories.create(formData);
+        await admin.categories.create(fd);
       }
       setShowModal(false);
       setEditingCategory(null);
       setFormData({ name: '', description: '' });
+      setImageFile(null);
+      setImagePreview(null);
       loadCategories();
     } catch {
-      alert('Có lỗi xảy ra!');
+      window.alert('Có lỗi xảy ra! Kiểm tra quyền admin và định dạng ảnh.');
     }
   };
 
@@ -61,34 +82,61 @@ export default function AdminCategories() {
       name: category.name,
       description: category.description,
     });
+    setImageFile(null);
+    setImagePreview(category.image || null);
     setShowModal(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
-      try {
-        await admin.categories.delete(id);
-        loadCategories();
-      } catch {
-        alert('Có lỗi xảy ra!');
-      }
+    if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
+    try {
+      await admin.categories.delete(id);
+      loadCategories();
+    } catch {
+      window.alert('Có lỗi xảy ra!');
     }
   };
 
   const openAddModal = () => {
     setEditingCategory(null);
     setFormData({ name: '', description: '' });
+    setImageFile(null);
+    setImagePreview(null);
     setShowModal(true);
   };
 
-  if (loading) return <AdminLayout><div className="loading">Loading...</div></AdminLayout>;
+  const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImageFile(f);
+    if (imagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(URL.createObjectURL(f));
+  };
+
+  const clearPickedImage = () => {
+    setImageFile(null);
+    if (imagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(editingCategory?.image || null);
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="loading">Loading...</div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="admin-page">
         <div className="page-header">
           <h3>Quản lý danh mục</h3>
-          <button className="btn-primary" onClick={openAddModal}>
+          <button type="button" className="btn-primary" onClick={openAddModal}>
             + Thêm danh mục
           </button>
         </div>
@@ -96,6 +144,7 @@ export default function AdminCategories() {
         <table className="data-table">
           <thead>
             <tr>
+              <th>Ảnh</th>
               <th>ID</th>
               <th>Tên danh mục</th>
               <th>Mô tả</th>
@@ -105,14 +154,23 @@ export default function AdminCategories() {
           <tbody>
             {categories.map((category) => (
               <tr key={category.id}>
+                <td className="admin-cat-thumb-cell">
+                  <img
+                    className="admin-cat-thumb"
+                    src={category.image}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </td>
                 <td>{category.id}</td>
                 <td>{category.name}</td>
-                <td>{category.description}</td>
+                <td className="message-cell">{category.description}</td>
                 <td>
-                  <button className="btn-edit" onClick={() => handleEdit(category)}>
+                  <button type="button" className="btn-edit" onClick={() => handleEdit(category)}>
                     Sửa
-                  </button>
-                  <button className="btn-delete" onClick={() => handleDelete(category.id)}>
+                  </button>{' '}
+                  <button type="button" className="btn-delete" onClick={() => handleDelete(category.id)}>
                     Xóa
                   </button>
                 </td>
@@ -123,12 +181,13 @@ export default function AdminCategories() {
 
         {showModal && (
           <div className="modal-overlay">
-            <div className="modal">
+            <div className="modal modal--category">
               <h3>{editingCategory ? 'Sửa danh mục' : 'Thêm danh mục'}</h3>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label>Tên danh mục</label>
+                  <label htmlFor="cat-name">Tên danh mục</label>
                   <input
+                    id="cat-name"
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -136,11 +195,32 @@ export default function AdminCategories() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Mô tả</label>
+                  <label htmlFor="cat-desc">Mô tả</label>
                   <textarea
+                    id="cat-desc"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="cat-image">Ảnh danh mục</label>
+                  <p className="admin-field-hint">JPG, PNG, WebP — tùy chọn; để trống khi sửa nếu giữ ảnh cũ.</p>
+                  <input
+                    id="cat-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={onPickImage}
+                  />
+                  {(imagePreview || editingCategory?.image) && (
+                    <div className="admin-cat-preview">
+                      <img src={imagePreview || editingCategory?.image} alt="Xem trước" />
+                      {imageFile && (
+                        <button type="button" className="btn-secondary btn-sm" onClick={clearPickedImage}>
+                          Bỏ ảnh vừa chọn
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="form-actions">
                   <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>

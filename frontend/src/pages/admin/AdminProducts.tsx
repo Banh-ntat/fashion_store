@@ -11,6 +11,10 @@ interface Product {
   category: { id: number; name: string };
   promotion: { id: number; name: string } | null;
   variants?: Variant[];
+  /** Ảnh đại diện (URL đầy đủ từ API) */
+  image?: string;
+  /** Danh sách ảnh gallery */
+  images?: { id: number; image: string | null }[];
 }
 
 interface Category {
@@ -66,6 +70,19 @@ function getApiErrorMessage(error: unknown, fallback = 'Có lỗi xảy ra!'): s
     if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
   }
   return fallback;
+
+function variantStockTone(stock: number): 'empty' | 'low' | 'ok' {
+  if (stock <= 0) return 'empty';
+  if (stock <= 5) return 'low';
+  return 'ok';
+}
+
+/** URL ảnh hiển thị trong modal biến thể (ưu tiên gallery từ API) */
+function productImageGallery(p: Product): string[] {
+  const fromDb = (p.images ?? []).map((x) => x.image).filter((u): u is string => Boolean(u));
+  if (fromDb.length > 0) return fromDb;
+  if (p.image) return [p.image];
+  return [];
 }
 
 export default function AdminProducts() {
@@ -99,10 +116,18 @@ export default function AdminProducts() {
     size_id: 0,
     stock: 0,
   });
+  /** Ảnh đang xem trong modal biến thể (khi có nhiều ảnh) */
+  const [variantImageIndex, setVariantImageIndex] = useState(0);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (showVariantModal && selectedProduct?.id) {
+      setVariantImageIndex(0);
+    }
+  }, [showVariantModal, selectedProduct?.id]);
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -212,19 +237,29 @@ export default function AdminProducts() {
 
   // Variant handlers
   const openVariantModal = async (product: Product) => {
-    setSelectedProduct(product);
     setEditingVariant(null);
     setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
-    
-    // Load variants for this product
+    setSelectedProduct(product);
+    setVariantImageIndex(0);
+
     try {
-      const res = await variantsApi.list({ product: product.id });
-      setProductVariants(res.data.results || res.data);
+      const [detailRes, varRes] = await Promise.all([
+        admin.products.get(product.id),
+        variantsApi.list({ product: product.id }),
+      ]);
+      const detail = detailRes.data as Product;
+      setSelectedProduct({ ...product, ...detail });
+      setProductVariants(varRes.data.results || varRes.data);
     } catch (err) {
       console.error(err);
-      setProductVariants([]);
+      try {
+        const res = await variantsApi.list({ product: product.id });
+        setProductVariants(res.data.results || res.data);
+      } catch {
+        setProductVariants([]);
+      }
     }
-    
+
     setShowVariantModal(true);
   };
 
@@ -315,6 +350,11 @@ export default function AdminProducts() {
 
   if (loading) return <AdminLayout><div className="loading">Loading...</div></AdminLayout>;
 
+  const variantGallery =
+    showVariantModal && selectedProduct ? productImageGallery(selectedProduct) : [];
+  const variantMainSrc =
+    variantGallery[variantImageIndex] ?? variantGallery[0] ?? '';
+
   return (
     <AdminLayout>
       <div className="admin-page">
@@ -365,11 +405,16 @@ export default function AdminProducts() {
                 <td>{product.category.name}</td>
                 <td>${product.price}</td>
                 <td>
-                  <button 
-                    className="btn-variant" 
+                  <button
+                    type="button"
+                    className="btn-variant"
                     onClick={() => openVariantModal(product)}
                   >
-                    Quản lý ({product.variants?.length || 0})
+                    <span className="btn-variant__icon" aria-hidden>
+                      ◎
+                    </span>
+                    <span className="btn-variant__text">Biến thể</span>
+                    <span className="btn-variant__count">{product.variants?.length ?? 0}</span>
                   </button>
                 </td>
                 <td>
@@ -467,161 +512,319 @@ export default function AdminProducts() {
 
         {/* Variant Modal */}
         {showVariantModal && selectedProduct && (
-          <div className="modal-overlay">
-            <div className="modal modal-large">
-              <h3>Quản lý biến thể - {selectedProduct.name}</h3>
-              
-              {/* Quick Add Color/Size */}
-              <div className="quick-add-row">
-                {!showQuickAddColor ? (
-                  <button className="btn-quick-add" onClick={() => setShowQuickAddColor(true)}>
-                    + Thêm màu mới
-                  </button>
-                ) : (
-                  <div className="quick-add-form">
-                    <input
-                      type="text"
-                      placeholder="Tên màu"
-                      value={quickAddColorName}
-                      onChange={(e) => setQuickAddColorName(e.target.value)}
-                    />
-                    <input
-                      type="color"
-                      value={quickAddColorCode}
-                      onChange={(e) => setQuickAddColorCode(e.target.value)}
-                    />
-                    <button className="btn-primary btn-sm" onClick={handleQuickAddColor}>Lưu</button>
-                    <button className="btn-secondary btn-sm" onClick={() => setShowQuickAddColor(false)}>Hủy</button>
+          <div
+            className="modal-overlay variant-modal-overlay"
+            role="presentation"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowVariantModal(false);
+            }}
+          >
+            <div
+              className="modal modal-large variant-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="variant-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="variant-modal__head variant-modal__head--media">
+                <div className="variant-modal__preview">
+                  {variantMainSrc ? (
+                    <>
+                      <div className="variant-modal__preview-main">
+                        <img src={variantMainSrc} alt="" loading="lazy" decoding="async" />
+                      </div>
+                      {variantGallery.length > 1 && (
+                        <div className="variant-modal__thumbs" role="tablist" aria-label="Ảnh sản phẩm">
+                          {variantGallery.map((url, idx) => (
+                            <button
+                              key={`${url}-${idx}`}
+                              type="button"
+                              role="tab"
+                              aria-selected={variantImageIndex === idx}
+                              className={`variant-modal__thumb ${variantImageIndex === idx ? 'is-active' : ''}`}
+                              onClick={() => setVariantImageIndex(idx)}
+                            >
+                              <img src={url} alt="" loading="lazy" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="variant-modal__preview-placeholder">
+                      <span>Chưa có ảnh</span>
+                      <small>Thêm ảnh khi sửa sản phẩm</small>
+                    </div>
+                  )}
+                </div>
+                <div className="variant-modal__head-main">
+                  <div className="variant-modal__head-top">
+                    <div>
+                      <h3 id="variant-modal-title">Biến thể &amp; tồn kho</h3>
+                      <p className="variant-modal__product-name">{selectedProduct.name}</p>
+                    </div>
+                    <span className="variant-modal__badge" title="Số biến thể">
+                      {productVariants.length} SKU
+                    </span>
                   </div>
-                )}
-                
-                {!showQuickAddSize ? (
-                  <button className="btn-quick-add" onClick={() => setShowQuickAddSize(true)}>
-                    + Thêm size mới
-                  </button>
-                ) : (
-                  <div className="quick-add-form">
-                    <input
-                      type="text"
-                      placeholder="Tên size"
-                      value={quickAddSizeName}
-                      onChange={(e) => setQuickAddSizeName(e.target.value)}
-                    />
-                    <button className="btn-primary btn-sm" onClick={handleQuickAddSize}>Lưu</button>
-                    <button className="btn-secondary btn-sm" onClick={() => setShowQuickAddSize(false)}>Hủy</button>
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* Variant Form */}
-              <form onSubmit={handleSubmitVariant} className="variant-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Màu sắc</label>
-                    <select
-                      value={variantForm.color_id}
-                      onChange={(e) => setVariantForm({ ...variantForm, color_id: Number(e.target.value) })}
-                      required
-                    >
-                      <option value="">Chọn màu</option>
-                      {colorsList.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Size</label>
-                    <select
-                      value={variantForm.size_id}
-                      onChange={(e) => setVariantForm({ ...variantForm, size_id: Number(e.target.value) })}
-                      required
-                    >
-                      <option value="">Chọn size</option>
-                      {sizesList.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Tồn kho</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={variantForm.stock}
-                      onChange={(e) => setVariantForm({ ...variantForm, stock: Number(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div className="form-actions">
-                    <button type="submit" className="btn-primary">
-                      {editingVariant ? 'Cập nhật' : 'Thêm biến thể'}
-                    </button>
-                    {editingVariant && (
-                      <button 
-                        type="button" 
-                        className="btn-secondary"
-                        onClick={() => {
-                          setEditingVariant(null);
-                          setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
-                        }}
+              <section className="variant-modal__panel variant-modal__panel--quick" aria-label="Thêm nhanh màu và size">
+                <h4 className="variant-modal__panel-title">Mở rộng danh mục dùng chung</h4>
+                <p className="variant-modal__hint">
+                  Thêm màu hoặc size mới để chọn ở form bên dưới (áp dụng cho toàn cửa hàng).
+                </p>
+                <div className="variant-quick-grid">
+                  <div className="variant-quick-card">
+                    <div className="variant-quick-card__label">
+                      <span className="variant-quick-card__dot" style={{ background: '#6366f1' }} aria-hidden />
+                      Màu sắc
+                    </div>
+                    {!showQuickAddColor ? (
+                      <button
+                        type="button"
+                        className="variant-quick-card__trigger"
+                        onClick={() => setShowQuickAddColor(true)}
                       >
-                        Hủy
+                        + Thêm màu mới
                       </button>
+                    ) : (
+                      <div className="variant-quick-card__form">
+                        <input
+                          type="text"
+                          placeholder="Tên màu (vd: Đỏ đô)"
+                          value={quickAddColorName}
+                          onChange={(e) => setQuickAddColorName(e.target.value)}
+                          aria-label="Tên màu"
+                        />
+                        <label className="variant-quick-card__colorPick">
+                          <span>Mã</span>
+                          <input
+                            type="color"
+                            value={quickAddColorCode}
+                            onChange={(e) => setQuickAddColorCode(e.target.value)}
+                            title="Chọn màu"
+                          />
+                        </label>
+                        <div className="variant-quick-card__actions">
+                          <button type="button" className="btn-primary btn-sm" onClick={handleQuickAddColor}>
+                            Lưu
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            onClick={() => setShowQuickAddColor(false)}
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="variant-quick-card">
+                    <div className="variant-quick-card__label">
+                      <span className="variant-quick-card__dot" style={{ background: '#0ea5e9' }} aria-hidden />
+                      Kích thước
+                    </div>
+                    {!showQuickAddSize ? (
+                      <button
+                        type="button"
+                        className="variant-quick-card__trigger"
+                        onClick={() => setShowQuickAddSize(true)}
+                      >
+                        + Thêm size mới
+                      </button>
+                    ) : (
+                      <div className="variant-quick-card__form variant-quick-card__form--stack">
+                        <input
+                          type="text"
+                          placeholder="Tên size (vd: M, 42)"
+                          value={quickAddSizeName}
+                          onChange={(e) => setQuickAddSizeName(e.target.value)}
+                          aria-label="Tên size"
+                        />
+                        <div className="variant-quick-card__actions">
+                          <button type="button" className="btn-primary btn-sm" onClick={handleQuickAddSize}>
+                            Lưu
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            onClick={() => setShowQuickAddSize(false)}
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
-              </form>
+              </section>
 
-              {/* Variants List */}
-              <table className="data-table variant-table">
-                <thead>
-                  <tr>
-                    <th>Màu sắc</th>
-                    <th>Size</th>
-                    <th>Tồn kho</th>
-                    <th>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productVariants.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', color: '#888' }}>
-                        Chưa có biến thể nào. Thêm biến thể bên trên.
-                      </td>
-                    </tr>
-                  ) : (
-                    productVariants.map((v) => (
-                      <tr key={v.id}>
-                        <td>
-                          <span 
-                            className="color-dot" 
-                            style={{ backgroundColor: v.color.code }}
-                          />
-                          {v.color.name}
-                        </td>
-                        <td>{v.size.name}</td>
-                        <td>{v.stock}</td>
-                        <td>
-                          <button className="btn-edit" onClick={() => handleEditVariant(v)}>
-                            Sửa
-                          </button>
-                          <button className="btn-delete" onClick={() => handleDeleteVariant(v.id)}>
-                            Xóa
-                          </button>
-                        </td>
+              <section className="variant-modal__panel variant-modal__panel--form" aria-label="Thêm hoặc sửa biến thể">
+                <h4 className="variant-modal__panel-title">
+                  {editingVariant ? 'Cập nhật biến thể' : 'Thêm biến thể mới'}
+                </h4>
+                <form onSubmit={handleSubmitVariant} className="variant-form-compact">
+                  <div className="variant-form-compact__grid">
+                    <div className="form-group">
+                      <label htmlFor="vf-color">Màu</label>
+                      <select
+                        id="vf-color"
+                        value={variantForm.color_id || ''}
+                        onChange={(e) =>
+                          setVariantForm({ ...variantForm, color_id: Number(e.target.value) })
+                        }
+                        required
+                      >
+                        <option value="" disabled>
+                          Chọn màu
+                        </option>
+                        {colorsList.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="vf-size">Size</label>
+                      <select
+                        id="vf-size"
+                        value={variantForm.size_id || ''}
+                        onChange={(e) =>
+                          setVariantForm({ ...variantForm, size_id: Number(e.target.value) })
+                        }
+                        required
+                      >
+                        <option value="" disabled>
+                          Chọn size
+                        </option>
+                        {sizesList.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="vf-stock">Tồn kho</label>
+                      <input
+                        id="vf-stock"
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={variantForm.stock}
+                        onChange={(e) =>
+                          setVariantForm({ ...variantForm, stock: Number(e.target.value) })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="variant-form-compact__submit">
+                      <button type="submit" className="btn-primary variant-form-compact__btn-main">
+                        {editingVariant ? 'Lưu thay đổi' : 'Thêm biến thể'}
+                      </button>
+                      {editingVariant && (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => {
+                            setEditingVariant(null);
+                            setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+                          }}
+                        >
+                          Hủy sửa
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              </section>
+
+              <section className="variant-modal__panel" aria-label="Danh sách biến thể">
+                <div className="variant-modal__list-head">
+                  <h4 className="variant-modal__panel-title variant-modal__panel-title--inline">Danh sách</h4>
+                  <p className="variant-modal__legend">
+                    Ô tồn: <span className="variant-legend-tag variant-legend-tag--ok">đủ</span>
+                    <span className="variant-legend-tag variant-legend-tag--low">thấp ≤5</span>
+                    <span className="variant-legend-tag variant-legend-tag--empty">hết</span>
+                  </p>
+                </div>
+                <div className="variant-table-wrap">
+                  <table className="data-table variant-table">
+                    <thead>
+                      <tr>
+                        <th>Màu</th>
+                        <th>Size</th>
+                        <th>Tồn</th>
+                        <th className="variant-table__actions">Thao tác</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {productVariants.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>
+                            <div className="variant-empty">
+                              <p className="variant-empty__title">Chưa có biến thể</p>
+                              <p className="variant-empty__text">
+                                Chọn màu, size và tồn kho ở form phía trên rồi bấm « Thêm biến thể ».
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        productVariants.map((v) => (
+                          <tr key={v.id}>
+                            <td>
+                              <div className="variant-cell-color">
+                                <span
+                                  className="color-dot color-dot--lg"
+                                  style={{ backgroundColor: v.color.code }}
+                                  title={v.color.name}
+                                />
+                                <span>{v.color.name}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="variant-size-pill">{v.size.name}</span>
+                            </td>
+                            <td>
+                              <span
+                                className={`variant-stock variant-stock--${variantStockTone(v.stock)}`}
+                              >
+                                {v.stock}
+                              </span>
+                            </td>
+                            <td className="variant-table__actions">
+                              <button
+                                type="button"
+                                className="btn-edit btn-edit--compact"
+                                onClick={() => handleEditVariant(v)}
+                              >
+                                Sửa
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-delete btn-delete--compact"
+                                onClick={() => handleDeleteVariant(v.id)}
+                              >
+                                Xóa
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
 
-              <div className="form-actions" style={{ marginTop: '20px' }}>
-                <button className="btn-secondary" onClick={() => setShowVariantModal(false)}>
-                  Đóng
+              <div className="variant-modal__footer">
+                <button type="button" className="btn-secondary variant-modal__close" onClick={() => setShowVariantModal(false)}>
+                  Đóng cửa sổ
                 </button>
               </div>
             </div>

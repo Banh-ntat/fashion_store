@@ -418,10 +418,14 @@ export const admin = {
   categories: {
     list: () => api.get("/products/categories/"),
     get: (id: number) => api.get(`/products/categories/${id}/`),
-    create: (data: Record<string, unknown>) =>
-      api.post("/products/categories/", data),
-    update: (id: number, data: Record<string, unknown>) =>
-      api.put(`/products/categories/${id}/`, data),
+    create: (data: Record<string, unknown> | FormData) =>
+      api.post('/products/categories/', data, {
+        headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+      }),
+    update: (id: number, data: Record<string, unknown> | FormData) =>
+      api.put(`/products/categories/${id}/`, data, {
+        headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+      }),
     delete: (id: number) => api.delete(`/products/categories/${id}/`),
   },
   // Promotions
