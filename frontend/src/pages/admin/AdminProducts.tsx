@@ -70,6 +70,7 @@ function getApiErrorMessage(error: unknown, fallback = 'Có lỗi xảy ra!'): s
     if (Array.isArray(firstValue) && typeof firstValue[0] === 'string') return firstValue[0];
   }
   return fallback;
+}
 
 function variantStockTone(stock: number): 'empty' | 'low' | 'ok' {
   if (stock <= 0) return 'empty';
