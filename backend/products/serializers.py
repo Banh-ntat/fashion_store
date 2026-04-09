@@ -6,19 +6,24 @@ from .models import Category, Promotion, Product, ProductImage, ProductVariant, 
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    """Đọc/ghi ảnh danh mục; response luôn là URL đầy đủ hoặc placeholder."""
 
     class Meta:
         model = Category
         fields = ("id", "name", "description", "image")
+        extra_kwargs = {"image": {"required": False, "allow_null": True}}
 
-    def get_image(self, obj):  # thêm method này
-        if obj.image:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return f'https://via.placeholder.com/400x400?text={obj.name.replace(" ", "+")}'
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if instance.image:
+            url = instance.image.url
+            data["image"] = request.build_absolute_uri(url) if request else url
+        else:
+            data["image"] = (
+                f'https://via.placeholder.com/400x400?text={instance.name.replace(" ", "+")}'
+            )
+        return data
 
 
 class PromotionSerializer(serializers.ModelSerializer):
