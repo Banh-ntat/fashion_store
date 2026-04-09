@@ -34,6 +34,7 @@ import AdminReturns from "./pages/admin/AdminReturns";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ScrollToTop from "./components/ScrollToTop";
 import "./styles/index.css";
 import "./App.css";
@@ -57,6 +58,7 @@ function App() {
             <Route path="/auth/facebook/callback" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/products" element={<Products />} />
             <Route path="/search" element={<Search />} />

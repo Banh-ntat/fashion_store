@@ -2,14 +2,15 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from cart.models import Cart, CartItem
 from products.models import Category, Color, Product, ProductVariant, Promotion, Size
 
-from .models import DiscountCode, Order
+from .models import DiscountCode, Order, OrderItem, ReturnRequest, Shipping
 
 
 class DiscountCodeCheckoutTests(TestCase):
@@ -99,3 +100,91 @@ class DiscountCodeCheckoutTests(TestCase):
         self.assertEqual(self.discount_code.used_count, 1)
         self.assertFalse(CartItem.objects.filter(pk=self.first_cart_item.pk).exists())
         self.assertTrue(CartItem.objects.filter(pk=self.second_cart_item.pk).exists())
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    ORDER_SHIPPED_EMAIL_ENABLED=True,
+    RETURN_REFUND_EMAIL_ENABLED=True,
+)
+class OrderNotificationEmailTests(TransactionTestCase):
+    def setUp(self):
+        mail.outbox.clear()
+        self.buyer = User.objects.create_user(
+            username="buyer2",
+            email="buyer2@example.com",
+            password="123456",
+        )
+        self.staff = User.objects.create_user(
+            username="staff_orders",
+            email="staff@example.com",
+            password="123456",
+            is_staff=True,
+        )
+
+        category = Category.objects.create(name="Giay", description="")
+        color = Color.objects.create(name="Trang", code="#fff")
+        size = Size.objects.create(name="42")
+        product = Product.objects.create(
+            name="Giay chay bo",
+            description="",
+            category=category,
+            price=Decimal("1500000"),
+        )
+        self.variant = ProductVariant.objects.create(
+            product=product, color=color, size=size, stock=5
+        )
+
+        self.order = Order.objects.create(
+            user=self.buyer,
+            subtotal=Decimal("1500000"),
+            shipping_fee=Decimal("0"),
+            discount_amount=Decimal("0"),
+            total_price=Decimal("1500000"),
+            status="pending",
+        )
+        OrderItem.objects.create(
+            order=self.order,
+            product=self.variant,
+            quantity=1,
+            price=Decimal("1500000"),
+        )
+        Shipping.objects.create(
+            order=self.order,
+            name="Buyer Two",
+            phone="0900000002",
+            address="1 Test Road",
+        )
+
+    def test_patch_status_to_shipping_sends_email(self):
+        client = APIClient()
+        client.force_authenticate(self.staff)
+        url = f"/api/orders/orders/{self.order.pk}/"
+        response = client.patch(url, {"status": "shipping"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("đang được giao", mail.outbox[0].subject.lower())
+        self.assertEqual(mail.outbox[0].to, ["buyer2@example.com"])
+
+    def test_return_complete_sends_refund_email(self):
+        self.order.status = "shipping"
+        self.order.save(update_fields=["status"])
+        rr = ReturnRequest.objects.create(
+            order=self.order,
+            user=self.buyer,
+            reason="changed_mind",
+            description="",
+            status="approved",
+            admin_note="Da hoan tien.",
+        )
+
+        client = APIClient()
+        client.force_authenticate(self.staff)
+        url = f"/api/orders/returns/{rr.pk}/complete/"
+        response = client.post(url, {}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("trả hàng", mail.outbox[0].subject.lower())
+        self.assertEqual(mail.outbox[0].to, ["buyer2@example.com"])
+        body = mail.outbox[0].body
+        self.assertIn("Da hoan tien.", body)

@@ -35,6 +35,15 @@ def is_admin(user):
     return user.is_authenticated and get_user_role(user) == RoleChoices.ADMIN
 
 
+def can_manage_profile_roles(user):
+    """Gán / đổi role Profile — chỉ admin (theo Profile) hoặc superuser Django."""
+    if not user.is_authenticated:
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return get_user_role(user) == RoleChoices.ADMIN
+
+
 def is_staff(user):
     if not user.is_authenticated:
         return False

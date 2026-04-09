@@ -128,6 +128,54 @@
   letter-spacing: 0.01em;
 }
 
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-header-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: "Be Vietnam Pro", sans-serif;
+  text-decoration: none;
+  border: 1px solid #e2dfd9;
+  background: #faf9f8;
+  color: #4a4540;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-header-action-link:hover {
+  background: #fff;
+  color: #2a2825;
+  border-color: #d0ccc4;
+}
+
+.admin-header-action-link--primary {
+  background: #2a2825;
+  border-color: #2a2825;
+  color: #fff;
+}
+
+.admin-header-action-link--primary:hover {
+  background: #3d3a36;
+  border-color: #3d3a36;
+  color: #fff;
+}
+
 .admin-header-user {
   display: flex;
   align-items: center;
@@ -499,6 +547,15 @@
   max-height: min(92vh, 900px);
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.2);
+}
+
+/* Phần giữa modal biến thể: cho phép cuộn khi nội dung dài (tránh cắt mất bảng « Danh sách ») */
+.variant-modal__body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .variant-modal__head {

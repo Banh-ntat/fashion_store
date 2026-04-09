@@ -92,9 +92,19 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
+_db_engine = os.getenv('DB_ENGINE', 'django.db.backends.postgresql')
+
+if _db_engine == 'django.db.backends.sqlite3':
+    DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': _db_engine,
             'NAME': os.getenv('DB_NAME', 'nt4'),
             'USER': os.getenv('DB_USER', 'postgres'),
             'PASSWORD': os.getenv('DB_PASSWORD', '123456'),
@@ -149,9 +159,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# React dev server (Vite) default: http://localhost:5173
+# React dev server (Vite) default: http://localhost:5173 — dùng cho CORS và link đặt lại mật khẩu trong email
+FRONTEND_ORIGIN = os.getenv('FRONTEND_ORIGIN', 'http://localhost:5173').rstrip('/')
+
 CORS_ALLOWED_ORIGINS = [
-    os.getenv('FRONTEND_ORIGIN', 'http://localhost:5173'),
+    FRONTEND_ORIGIN,
 ]
 
 REST_FRAMEWORK = {
@@ -192,6 +204,20 @@ EMAIL_TEMPLATE_DIR = BASE_DIR / 'templates' / 'emails'
 
 # Gửi email xác nhận đơn sau checkout (cần cấu hình SMTP trong .env)
 ORDER_CONFIRMATION_EMAIL_ENABLED = os.getenv('ORDER_CONFIRMATION_EMAIL_ENABLED', '1').lower() in (
+    '1',
+    'true',
+    'yes',
+)
+
+# Email khi đơn chuyển sang đang giao (staff PATCH status -> shipping)
+ORDER_SHIPPED_EMAIL_ENABLED = os.getenv('ORDER_SHIPPED_EMAIL_ENABLED', '1').lower() in (
+    '1',
+    'true',
+    'yes',
+)
+
+# Email khi staff hoàn tất yêu cầu trả hàng (ReturnRequest complete)
+RETURN_REFUND_EMAIL_ENABLED = os.getenv('RETURN_REFUND_EMAIL_ENABLED', '1').lower() in (
     '1',
     'true',
     'yes',

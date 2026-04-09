@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { auth } from "../../api/client";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "../../pages/admin/Admin.css";
 
@@ -108,6 +107,8 @@ type MenuItem = {
   path: string;
   label: string;
   icon: React.ReactNode;
+  /** Chỉ hiện khi user là admin (gán vai trò) */
+  adminOnly?: boolean;
 };
 
 const menuItems: MenuItem[] = [
@@ -117,7 +118,12 @@ const menuItems: MenuItem[] = [
   { path: "/admin/promotions", label: "Khuyến mãi", icon: <IconPercent /> },
   { path: "/admin/orders", label: "Đơn hàng", icon: <IconShoppingBag /> },
   { path: "/admin/returns", label: "Trả hàng", icon: <IconRefreshCcw /> },
-  { path: "/admin/users", label: "Người dùng", icon: <IconUsers /> },
+  {
+    path: "/admin/users",
+    label: "Người dùng",
+    icon: <IconUsers />,
+    adminOnly: true,
+  },
   { path: "/admin/reviews", label: "Đánh giá", icon: <IconStar /> },
   { path: "/admin/contacts", label: "Liên hệ", icon: <IconMail /> },
   { path: "/admin/feedbacks", label: "Góp ý", icon: <IconMessageSquare /> },
@@ -148,7 +154,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         <nav className="admin-sidebar-nav">
-          {menuItems.map((item) => (
+          {menuItems
+            .filter((item) => !item.adminOnly || user?.is_admin)
+            .map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -180,9 +188,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <main className="admin-main">
         <header className="admin-header">
           <h1>Quản trị</h1>
-          <div className="admin-header-user">
-            {user?.username ?? "Admin"}
-            {user?.role ? ` · ${user.role}` : ""}
+          <div className="admin-header-right">
+            <div className="admin-header-actions">
+              <Link to="/" className="admin-header-action-link admin-header-action-link--primary">
+                Về trang chủ
+              </Link>
+              <Link to="/products" className="admin-header-action-link">
+                Xem cửa hàng
+              </Link>
+            </div>
+            <div className="admin-header-user">
+              {user?.username ?? "Admin"}
+              {user?.role ? ` · ${user.role}` : ""}
+            </div>
           </div>
         </header>
 

@@ -89,6 +89,15 @@ export const auth = {
     const { data } = await api.post("/auth/password/reset/", { email });
     return data;
   },
+  confirmPasswordReset: async (body: {
+    user_id: number;
+    token: string;
+    new_password: string;
+    new_password_confirm: string;
+  }) => {
+    const { data } = await api.post("/auth/password/reset/confirm/", body);
+    return data;
+  },
   changePassword: async (
     oldPassword: string,
     newPassword: string,
