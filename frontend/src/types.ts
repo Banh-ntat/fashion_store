@@ -25,7 +25,6 @@ export interface ProductVariant {
   stock: number;
 }
 
-/** Dữ liệu từ API có thể thiếu image/old_price/stock */
 export interface ApiProduct {
   id: number;
   name: string;
@@ -68,6 +67,7 @@ export interface Order {
   created_at: string;
   items: OrderItem[];
   confirmed_by_user?: boolean;
+  completed_at?: string | null;
 }
 
 export interface PurchasableProduct {

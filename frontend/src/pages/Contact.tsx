@@ -16,9 +16,9 @@ const FALLBACK_META: ContactMeta = {
   hours:
     "Thứ Hai – Thứ Sáu: 8:30 – 17:30 (GMT+7). Thứ Bảy, Chủ nhật & ngày lễ: không làm việc tại văn phòng.",
   response_note:
-    "Chúng tôi phản hồi qua email trong 1–3 ngày làm việc. Trường hợp khẩn về đơn đang giao, vui lòng gọi hotline.",
+    "Chúng tôi phản hồi qua email trong 1–2 ngày làm việc. Trường hợp khẩn về đơn đang giao, vui lòng gọi hotline.",
   stats: [
-    { label: "Phản hồi email", value: "1–3 ngày làm việc" },
+    { label: "Phản hồi email", value: "1–2 ngày làm việc" },
     { label: "Hotline", value: "Giờ hành chính" },
     { label: "Làm việc", value: "Thứ 2 – Thứ 6" },
   ],
@@ -148,7 +148,7 @@ export default function Contact() {
           </h1>
           <p className="contact-hero-lead">
             Gửi câu hỏi hoặc yêu cầu — chúng tôi phản hồi qua email, thường
-            trong 1–3 ngày làm việc. Cần gấp về đơn đang giao? Gọi hotline trong
+            trong 1–2 ngày làm việc. Cần gấp về đơn đang giao? Gọi hotline trong
             giờ làm việc.
           </p>
           <div

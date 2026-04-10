@@ -224,11 +224,11 @@ RETURN_REFUND_EMAIL_ENABLED = os.getenv('RETURN_REFUND_EMAIL_ENABLED', '1').lowe
 )
 
 # Google OAuth2 Configuration
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5173/auth/google/callback')
 
 # Facebook OAuth Configuration
-FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', '1571626650928827')
-FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', '27d9675a186946fc4faeb9f18239452f')
+FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID')
+FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET')
 FACEBOOK_REDIRECT_URI = os.getenv('FACEBOOK_REDIRECT_URI', 'http://localhost:5173/auth/facebook/callback')
