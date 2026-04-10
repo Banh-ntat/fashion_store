@@ -21,10 +21,21 @@ const REASON_OPTIONS = [
   { value: "other", label: "Lý do khác" },
 ];
 
-export default function OrderHistory() {
+type OrderHistoryProps = { embedded?: boolean };
+
+export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const shellClass = embedded
+    ? "order-history-page order-history-page--embed"
+    : "pageSection order-history-page";
+  const innerClass = embedded
+    ? "sectionContainer customer-account-embedInner"
+    : "sectionContainer";
+  const loginRedirect = embedded
+    ? "/login?redirect=/dashboard/orders"
+    : "/login";
   const clearedPlacedState = useRef(false);
   const [list, setList] = useState<Order[]>([]);
   const [purchasableItems, setPurchasableItems] = useState<
@@ -50,9 +61,6 @@ export default function OrderHistory() {
   const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [returnError, setReturnError] = useState("");
   const [returnSuccessId, setReturnSuccessId] = useState<number | null>(null);
-  const [justConfirmedIds, setJustConfirmedIds] = useState<Set<number>>(
-    new Set(),
-  );
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
@@ -102,7 +110,6 @@ export default function OrderHistory() {
         prev.map((o) => (o.id === orderId ? { ...o, status: "completed", confirmed_by_user: true  } : o)),
       );
       setConfirmReceivedId(null);
-      setJustConfirmedIds((prev) => new Set([...prev, orderId]));
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail;
@@ -231,10 +238,10 @@ export default function OrderHistory() {
 
   if (!user) {
     return (
-      <section className="pageSection order-history-page">
-        <div className="sectionContainer">
+      <section className={shellClass}>
+        <div className={innerClass}>
           <p className="orderLoginHint">
-            Vui lòng <Link to="/login">đăng nhập</Link> để xem lịch sử đơn hàng.
+            Vui lòng <Link to={loginRedirect}>đăng nhập</Link> để xem lịch sử đơn hàng.
           </p>
         </div>
       </section>
@@ -243,8 +250,8 @@ export default function OrderHistory() {
 
   if (loading) {
     return (
-      <section className="pageSection order-history-page">
-        <div className="sectionContainer">
+      <section className={shellClass}>
+        <div className={innerClass}>
           <div className="loading">Đang tải...</div>
         </div>
       </section>
@@ -252,9 +259,17 @@ export default function OrderHistory() {
   }
 
   return (
-    <section className="pageSection order-history-page">
-      <div className="sectionContainer">
-        <h1 className="orderHistoryTitle">Lịch sử đơn hàng</h1>
+    <section className={shellClass}>
+      <div className={innerClass}>
+        <h1
+          className={
+            embedded
+              ? "orderHistoryTitle orderHistoryTitle--embed"
+              : "orderHistoryTitle"
+          }
+        >
+          Lịch sử đơn hàng
+        </h1>
 
         {showOrderPlacedBanner && (
           <div className="orderPlacedBanner" role="status">

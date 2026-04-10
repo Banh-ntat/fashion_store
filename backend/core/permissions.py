@@ -3,17 +3,13 @@ from rest_framework import permissions
 
 class RoleChoices:
     CUSTOMER = "customer"
+    STAFF = "staff"
     ADMIN = "admin"
-    PRODUCT_MANAGER = "product_manager"
-    ORDER_MANAGER = "order_manager"
-    CUSTOMER_SUPPORT = "customer_support"
 
     CHOICES = [
         (CUSTOMER, "Customer"),
+        (STAFF, "Staff"),
         (ADMIN, "Admin"),
-        (PRODUCT_MANAGER, "Product Manager"),
-        (ORDER_MANAGER, "Order Manager"),
-        (CUSTOMER_SUPPORT, "Customer Support"),
     ]
 
 
@@ -32,7 +28,12 @@ def get_user_role(user):
 
 
 def is_admin(user):
-    return user.is_authenticated and get_user_role(user) == RoleChoices.ADMIN
+    """Quản trị: gán role, xóa review/comment người khác (theo API)."""
+    if not user.is_authenticated:
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return get_user_role(user) == RoleChoices.ADMIN
 
 
 def can_manage_profile_roles(user):
@@ -45,6 +46,7 @@ def can_manage_profile_roles(user):
 
 
 def is_staff(user):
+    """Nhân viên nội bộ: staff hoặc admin; hoặc superuser / cờ staff Django."""
     if not user.is_authenticated:
         return False
     if getattr(user, "is_superuser", False):
@@ -52,55 +54,12 @@ def is_staff(user):
     if getattr(user, "is_staff", False):
         return True
     role = get_user_role(user)
-    return role != RoleChoices.CUSTOMER and role is not None
-
-
-def is_product_manager(user):
-    if not user.is_authenticated:
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-    if getattr(user, "is_staff", False):
-        return True
-    role = get_user_role(user)
-    return role in [RoleChoices.ADMIN, RoleChoices.PRODUCT_MANAGER]
-
-
-def is_order_manager(user):
-    if not user.is_authenticated:
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-    if getattr(user, "is_staff", False):
-        return True
-    role = get_user_role(user)
-    return role in [RoleChoices.ADMIN, RoleChoices.ORDER_MANAGER]
-
-
-def is_customer_support(user):
-    if not user.is_authenticated:
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-    if getattr(user, "is_staff", False):
-        return True
-    role = get_user_role(user)
-    return role in [RoleChoices.ADMIN, RoleChoices.CUSTOMER_SUPPORT]
+    return role in (RoleChoices.STAFF, RoleChoices.ADMIN)
 
 
 def is_order_staff(user):
-    if not user.is_authenticated:
-        return False
-    if getattr(user, "is_superuser", False):
-        return True
-    if getattr(user, "is_staff", False):
-        return True
-    role = get_user_role(user)
-    return role in (
-        RoleChoices.ADMIN,
-        RoleChoices.ORDER_MANAGER,
-        RoleChoices.CUSTOMER_SUPPORT,
-    )
+    """Đơn hàng / trả hàng — staff và admin (tương đương is_staff theo profile)."""
+    return is_staff(user)
 
 
 class IsOrderStaff(permissions.BasePermission):
@@ -115,6 +74,15 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         return is_staff(request.user)
 
 
+class IsAdminWritePublicRead(permissions.BasePermission):
+    """GET công khai; ghi chỉ admin Profile (hoặc superuser). Dùng cho biến thể/tồn kho."""
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return is_admin(request.user)
+
+
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return is_admin(request.user)
@@ -123,21 +91,6 @@ class IsAdmin(permissions.BasePermission):
 class IsAdminOrStaff(permissions.BasePermission):
     def has_permission(self, request, view):
         return is_staff(request.user)
-
-
-class IsProductManager(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return is_product_manager(request.user)
-
-
-class IsOrderManager(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return is_order_manager(request.user)
-
-
-class IsCustomerSupport(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return is_customer_support(request.user)
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):

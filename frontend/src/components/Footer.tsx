@@ -6,11 +6,12 @@ function SocialIcon({ type }: { type: string }) {
   const common = {
     width: size,
     height: size,
-    fill: "none",
+    fill: "none" as const,
     stroke: "currentColor",
     strokeWidth: 1.8,
-    strokeLinecap: "round" as "round",
-  };
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  } as const;
   switch (type) {
     case "facebook":
       return (

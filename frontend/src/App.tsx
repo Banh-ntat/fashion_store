@@ -30,6 +30,9 @@ import AdminFeedbacks from "./pages/admin/AdminFeedbacks";
 import AdminPolicies from "./pages/admin/AdminPolicies";
 import AdminRoute from "./components/admin/AdminRoute";
 import MyReturns from "./pages/MyReturns";
+import CustomerAccountRoute from "./components/account/CustomerAccountRoute";
+import CustomerAccountLayout from "./components/account/CustomerAccountLayout";
+import AccountDashboardHome from "./pages/account/AccountDashboardHome";
 import AdminReturns from "./pages/admin/AdminReturns";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -75,6 +78,14 @@ function App() {
             <Route path="/careers" element={<Careers />} />
             <Route path="/policy" element={<Policy />} />
             <Route path="/policy/:slug" element={<Policy />} />
+          </Route>
+          <Route path="/dashboard" element={<CustomerAccountRoute />}>
+            <Route element={<CustomerAccountLayout />}>
+              <Route index element={<AccountDashboardHome />} />
+              <Route path="orders" element={<OrderHistory embedded />} />
+              <Route path="profile" element={<Profile embedded />} />
+              <Route path="returns" element={<MyReturns embedded />} />
+            </Route>
           </Route>
           <Route path="/admin" element={<AdminRoute />}>
             <Route index element={<AdminDashboard />} />

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
 from cart.models import Cart, CartItem
-from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
+from core.permissions import is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
 from products.serializers import normalize_size_name
 from .mail import (
@@ -105,14 +105,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        if is_staff(user):
             qs = Order.objects.select_related("user", "discount_code").prefetch_related("shipping").all()
         else:
             qs = Order.objects.select_related("user", "discount_code").filter(user=user)
 
         qs = qs.order_by("-created_at")
 
-        if self.action == "list" and (is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user)):
+        if self.action == "list" and is_staff(user):
             st = self.request.query_params.get("status")
             if st:
                 qs = qs.filter(status=st)
@@ -359,9 +359,14 @@ class OrderItemViewSet(viewsets.ModelViewSet):
     serializer_class = OrderItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated(), IsOrderStaff()]
+
     def get_queryset(self):
         user = self.request.user
-        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        if is_staff(user):
             return OrderItem.objects.all().select_related(
                 "order", "product", "product__product", "product__product__category", "product__color", "product__size"
             )
@@ -382,7 +387,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
             "order__orderitem_set__product__color",
             "order__orderitem_set__product__size",
         )
-        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        if is_staff(user):
             return base_qs.all()
         return base_qs.filter(user=user)
 
@@ -427,7 +432,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
-        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+        if not is_staff(request.user):
             return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
         obj = self.get_object()
         if obj.status != "pending":
@@ -441,7 +446,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="reject")
     def reject(self, request, pk=None):
-        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+        if not is_staff(request.user):
             return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
         obj = self.get_object()
         if obj.status != "pending":
@@ -455,7 +460,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="complete")
     def complete(self, request, pk=None):
-        if not (is_staff(request.user) or is_admin(request.user) or is_order_manager(request.user)):
+        if not is_staff(request.user):
             return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
         obj = self.get_object()
         if obj.status != "approved":

@@ -229,6 +229,11 @@
   font-weight: 400;
 }
 
+.page-header-desc-em {
+  color: #6366f1;
+  font-weight: 700;
+}
+
 .btn-primary {
   background: #c96b65;
   color: #fff;
@@ -464,19 +469,9 @@
   color: #9a4840;
 }
 
-.role-product {
+.role-staff {
   background: #eef4fc;
   color: #3a6090;
-}
-
-.role-order {
-  background: #eef7f0;
-  color: #3a7050;
-}
-
-.role-support {
-  background: #fdf8ee;
-  color: #8a6830;
 }
 
 .role-customer {
@@ -544,15 +539,17 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Chiều cao tối thiểu để flex con không bị co về 0 (Chrome: flex:1 basis 0 + parent height:auto → body ẩn hết) */
+  min-height: min(560px, 92vh);
   max-height: min(92vh, 900px);
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.2);
 }
 
-/* Phần giữa modal biến thể: cho phép cuộn khi nội dung dài (tránh cắt mất bảng « Danh sách ») */
+/* Phần giữa modal: cuộn khi dài; không dùng flex-basis 0 — tránh vùng nội dung có chiều cao 0 */
 .variant-modal__body {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: min(320px, 50vh);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -692,6 +689,14 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #0f172a;
+}
+
+.variant-modal__kicker {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.45;
+  max-width: 40rem;
 }
 
 .variant-modal__product-name {
@@ -890,20 +895,100 @@
   margin: 0;
 }
 
+.variant-stock-workflow-hint {
+  margin: 0 0 14px;
+  font-size: 0.86rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .variant-form-compact__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr minmax(100px, 120px) auto;
+  grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
-  align-items: end;
+  align-items: start;
+}
+
+.variant-form-compact__grid .form-group--stock {
+  grid-column: 1 / -1;
+}
+
+.variant-form-compact__grid .variant-form-compact__submit {
+  grid-column: 1 / -1;
+}
+
+.form-group--stock .variant-stock-quick {
+  margin-top: 10px;
+}
+
+.variant-stock-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.variant-stock-quick__label {
+  font-size: 0.78rem;
+  color: #64748b;
+  width: 100%;
+}
+
+.variant-stock-quick__btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.variant-stock-quick__btn:hover {
+  background: #e0e7ff;
+}
+
+.variant-stock-inbound {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.variant-stock-inbound label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.variant-stock-inbound__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.variant-stock-inbound__row input {
+  flex: 1;
+  min-width: 140px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+.variant-stock-inbound__hint {
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.45;
 }
 
 @media (max-width: 720px) {
   .variant-form-compact__grid {
     grid-template-columns: 1fr;
-  }
-
-  .variant-form-compact__submit {
-    grid-column: 1 / -1;
   }
 }
 
@@ -1186,6 +1271,44 @@
   gap: 20px;
 }
 
+.dashboard-pageHead {
+  margin-bottom: 4px;
+}
+
+.dashboard-rolePill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.dashboard-rolePill--staff {
+  background: #eef4fc;
+  color: #3a6090;
+}
+
+.dashboard-rolePill--admin {
+  background: #fdf2f1;
+  color: #9a4840;
+}
+
+.dashboard-pageTitle {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2a2825;
+}
+
+.dashboard-pageSub {
+  margin: 0;
+  max-width: 52rem;
+  line-height: 1.5;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1309,6 +1432,11 @@
   .dashboard-charts {
     grid-template-columns: 1fr 1fr;
     align-items: start;
+  }
+
+  .dashboard-charts--staff {
+    grid-template-columns: minmax(0, 520px);
+    justify-content: start;
   }
 
   .chart-card--wide {
@@ -1606,6 +1734,13 @@
   background: #fdf2f1;
   border: 1px solid #e8c8c6;
   color: #9a4840;
+}
+
+.admin-banner.variant-modal__staff-readonly-banner {
+  margin: 0 0 0;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a5f;
 }
 
 .admin-statusToggle {

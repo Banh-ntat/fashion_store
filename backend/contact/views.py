@@ -3,7 +3,7 @@ from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsAdminOrStaff, is_admin, is_customer_support
+from core.permissions import IsAdminOrStaff, is_staff
 from .models import Contact, Feedback, Policy
 from .serializers import ContactSerializer, FeedbackSerializer, PolicySerializer
 
@@ -60,7 +60,7 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_customer_support(user):
+        if is_staff(user):
             return Contact.objects.all().order_by("-created_at")
         return Contact.objects.none()  # Non-staff can't see contacts
 
@@ -83,7 +83,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_customer_support(user):
+        if is_staff(user):
             return Feedback.objects.all().order_by("-created_at")
         return Feedback.objects.filter(user=user).order_by("-created_at")
 

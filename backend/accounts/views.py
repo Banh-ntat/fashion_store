@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.mail import send_mail
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -103,8 +103,7 @@ class CurrentUserView(APIView):
             "address": profile.address,
             "role": profile.role,
             "can_access_admin": is_staff(request.user),
-            "is_admin": is_admin(request.user)
-            or getattr(request.user, "is_superuser", False),
+            "is_admin": is_admin(request.user),
         })
 
 
@@ -406,10 +405,10 @@ class FacebookAuthUrlView(APIView):
         auth_url = (
             f"https://www.facebook.com/v21.0/dialog/oauth?"
             f"client_id={app_id}&"
-            f"redirect_uri={redirect_uri}&"
+            f"redirect_uri={quote(redirect_uri, safe='')}&"
             f"scope={scope}&"
             f"response_type=code&"
-            f"state=fashionstore"
+            f"state=facebook"
         )
 
         return Response({

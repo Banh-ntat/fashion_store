@@ -341,22 +341,43 @@ export const site = {
   getPolicies: () => api.get("/contact/policies/"),
 };
 
-/** Yêu thích — lưu trên server (cần đăng nhập) */
-/** Thống kê dashboard admin (GET /api/core/dashboard/stats/) */
+/** Dashboard: staff = vận hành; admin = thêm doanh thu & người dùng */
+export type StaffDashboardStats = {
+  role_scope: "staff";
+  orders_today: number;
+  pending_orders: number;
+  shipping_orders: number;
+  stale_pending_order_ids: number[];
+  pending_returns: number;
+  unhandled_contacts: number;
+  unhandled_feedbacks: number;
+  low_stock_threshold: number;
+  low_stock_variants: number;
+  low_stock_products: number;
+  catalog: { products: number; variants: number; categories: number };
+  orders_by_status: Record<string, number>;
+};
+
+/** Dashboard admin — đầy đủ tài chính + người dùng */
 export type AdminDashboardStats = {
+  role_scope: "admin";
   revenue_today: string;
   revenue_week: string;
   revenue_month: string;
   orders_today: number;
   orders_total: number;
   pending_orders: number;
+  shipping_orders: number;
   stale_pending_order_ids: number[];
+  pending_returns: number;
   low_stock_threshold: number;
   low_stock_variants: number;
   low_stock_products: number;
   unhandled_contacts: number;
   unhandled_feedbacks: number;
   catalog: { products: number; variants: number; categories: number };
+  users_total: number;
+  users_by_role: Record<string, number>;
   revenue_series: {
     date: string;
     label: string;
@@ -367,6 +388,32 @@ export type AdminDashboardStats = {
   top_products: { id: number; name: string; revenue: string }[];
 };
 
+export type DashboardStats = StaffDashboardStats | AdminDashboardStats;
+
+/** Dashboard khách (GET /api/core/dashboard/customer/) — chỉ role customer */
+export type CustomerDashboardData = {
+  orders_total: number;
+  orders_by_status: Record<string, number>;
+  recent_orders: {
+    id: number;
+    status: string;
+    total_price: string;
+    created_at: string;
+    item_count: number;
+  }[];
+  wishlist_count: number;
+  cart_item_count: number;
+  pending_returns: number;
+  active_returns: number;
+  /** Số đơn theo ngày (7 ngày gần nhất) — cho biểu đồ */
+  orders_daily_7d: { date: string; label: string; orders: number }[];
+};
+
+export const customerDashboard = {
+  get: () => api.get<CustomerDashboardData>("/core/dashboard/customer/"),
+};
+
+/** Yêu thích — lưu trên server (cần đăng nhập) */
 export const wishlistApi = {
   getIds: () => api.get<{ product_ids: number[] }>("/wishlist/items/"),
   toggle: (productId: number) =>
@@ -398,7 +445,7 @@ export const returns = {
 
 export const admin = {
   dashboard: {
-    stats: () => api.get<AdminDashboardStats>("/core/dashboard/stats/"),
+    stats: () => api.get<DashboardStats>("/core/dashboard/stats/"),
   },
   policies: {
     list: () => api.get("/contact/policies/"),

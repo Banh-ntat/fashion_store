@@ -39,6 +39,29 @@ export default function Search() {
           </div>
         </div>
 
+        <form
+          onSubmit={handleSubmit}
+          className="searchToolbar"
+          style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "1.25rem" }}
+        >
+          <input
+            type="search"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Từ khóa…"
+            aria-label="Từ khóa tìm kiếm"
+            style={{
+              flex: "1 1 200px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #e5e7eb",
+            }}
+          />
+          <button type="submit" className="btn-primary" style={{ padding: "10px 20px" }}>
+            Tìm kiếm
+          </button>
+        </form>
+
         {error && <p className="searchFallbackNote">{error}</p>}
 
         {loading ? (

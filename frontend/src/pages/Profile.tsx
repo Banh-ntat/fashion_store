@@ -5,6 +5,7 @@ import { auth, profiles } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Profile } from "../types";
 import "../styles/pages/Profile.css";
+import { parseApiFieldErrors } from "../utils/apiErrors";
 
 type ProfileWithUser = Omit<Profile, "user"> & {
   user?: {
@@ -22,10 +23,8 @@ type ProfileWithUser = Omit<Profile, "user"> & {
 function roleLabelVi(role: string): string {
   const m: Record<string, string> = {
     customer: "Khách hàng",
+    staff: "Nhân viên",
     admin: "Quản trị viên",
-    product_manager: "Quản lý sản phẩm",
-    order_manager: "Quản lý đơn hàng",
-    customer_support: "Hỗ trợ khách hàng",
   };
   return m[role] ?? role;
 }
@@ -39,17 +38,6 @@ function formatMemberSince(iso?: string): string | null {
     month: "long",
     year: "numeric",
   });
-}
-
-function parseApiFieldErrors(data: unknown): string {
-  if (!data || typeof data !== "object")
-    return "Đã xảy ra lỗi. Vui lòng thử lại.";
-  const parts: string[] = [];
-  for (const v of Object.values(data as Record<string, unknown>)) {
-    if (Array.isArray(v)) parts.push(...v.map(String));
-    else if (typeof v === "string") parts.push(v);
-  }
-  return parts.join(" ") || "Đã xảy ra lỗi. Vui lòng thử lại.";
 }
 
 function IconOrders() {
@@ -233,7 +221,9 @@ function IconCamera() {
   );
 }
 
-export default function ProfilePage() {
+type ProfilePageProps = { embedded?: boolean };
+
+export default function ProfilePage({ embedded = false }: ProfilePageProps) {
   const { user: authUser, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileWithUser | null>(null);
@@ -451,16 +441,32 @@ export default function ProfilePage() {
   const currentAvatar = profile?.avatar ?? authUser.avatar ?? null;
 
   return (
-    <section className="pageSection profile-page">
-      <div className="profile-hero" aria-hidden>
-        <div className="profile-heroMesh" />
-      </div>
-      <div className="sectionContainer profile-inner">
-        <header className="profile-pageHeader profile-pageHeader--standard">
+    <section
+      className={`pageSection profile-page${embedded ? " profile-page--embed" : ""}`}
+    >
+      {!embedded && (
+        <div className="profile-hero" aria-hidden>
+          <div className="profile-heroMesh" />
+        </div>
+      )}
+      <div
+        className={
+          embedded ? "sectionContainer profile-inner customer-account-embedInner" : "sectionContainer profile-inner"
+        }
+      >
+        <header
+          className={
+            embedded
+              ? "profile-pageHeader profile-pageHeader--embed"
+              : "profile-pageHeader profile-pageHeader--standard"
+          }
+        >
           <h1 className="profileTitle">Tài khoản của tôi</h1>
-          <p className="profileSubtitle">
-            Xem hồ sơ, cập nhật thông tin giao hàng và bảo mật đăng nhập.
-          </p>
+          {!embedded && (
+            <p className="profileSubtitle">
+              Xem hồ sơ, cập nhật thông tin giao hàng và bảo mật đăng nhập.
+            </p>
+          )}
         </header>
 
         <div className="profile-shell">
@@ -562,15 +568,17 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="profile-summaryActions">
-                <button
-                  type="button"
-                  className="profileBtn profileBtn--logout"
-                  onClick={handleLogout}
-                >
-                  Đăng xuất
-                </button>
-              </div>
+              {!embedded && (
+                <div className="profile-summaryActions">
+                  <button
+                    type="button"
+                    className="profileBtn profileBtn--logout"
+                    onClick={handleLogout}
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -722,7 +730,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Quick links */}
+            {/* Quick links — ẩn khi nhúng trong /dashboard (đã có sidebar) */}
+            {!embedded && (
             <div className="profileCard profileCard--secondary profileCard--flush">
               <h3 className="profileSectionTitle profileSectionTitle--inCard">
                 Truy cập nhanh
@@ -828,6 +837,7 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

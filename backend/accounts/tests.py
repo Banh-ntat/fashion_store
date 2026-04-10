@@ -36,13 +36,13 @@ class ProfileRolePermissionTests(TestCase):
         p.role = RoleChoices.ADMIN
         p.save()
 
-        self.pm_user = User.objects.create_user(
-            username="pm",
-            email="pm@example.com",
+        self.staff_user = User.objects.create_user(
+            username="staff1",
+            email="staff1@example.com",
             password="secret12345",
         )
-        p2 = Profile.objects.get(user=self.pm_user)
-        p2.role = RoleChoices.PRODUCT_MANAGER
+        p2 = Profile.objects.get(user=self.staff_user)
+        p2.role = RoleChoices.STAFF
         p2.save()
 
     def test_customer_cannot_patch_own_role(self):
@@ -63,24 +63,24 @@ class ProfileRolePermissionTests(TestCase):
         self.assertEqual(self.customer_profile.phone, "0909123456")
         self.assertEqual(self.customer_profile.role, RoleChoices.CUSTOMER)
 
-    def test_product_manager_cannot_patch_own_role(self):
-        self.client.force_authenticate(user=self.pm_user)
-        pm_profile = Profile.objects.get(user=self.pm_user)
-        url = f"/api/accounts/profiles/{pm_profile.id}/"
+    def test_staff_cannot_patch_own_role(self):
+        self.client.force_authenticate(user=self.staff_user)
+        staff_profile = Profile.objects.get(user=self.staff_user)
+        url = f"/api/accounts/profiles/{staff_profile.id}/"
         res = self.client.patch(url, {"role": RoleChoices.ADMIN}, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        pm_profile.refresh_from_db()
-        self.assertEqual(pm_profile.role, RoleChoices.PRODUCT_MANAGER)
+        staff_profile.refresh_from_db()
+        self.assertEqual(staff_profile.role, RoleChoices.STAFF)
 
     def test_admin_can_patch_other_user_role(self):
         self.client.force_authenticate(user=self.admin_user)
         url = f"/api/accounts/profiles/{self.other_profile.id}/"
         res = self.client.patch(
-            url, {"role": RoleChoices.ORDER_MANAGER}, format="json"
+            url, {"role": RoleChoices.STAFF}, format="json"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.other_profile.refresh_from_db()
-        self.assertEqual(self.other_profile.role, RoleChoices.ORDER_MANAGER)
+        self.assertEqual(self.other_profile.role, RoleChoices.STAFF)
 
     def test_current_user_is_admin_flag(self):
         self.client.force_authenticate(user=self.customer)
@@ -103,13 +103,55 @@ class ProfileRolePermissionTests(TestCase):
         self.client.force_authenticate(user=su)
         url = f"/api/accounts/profiles/{self.customer_profile.id}/"
         res = self.client.patch(
-            url, {"role": RoleChoices.CUSTOMER_SUPPORT}, format="json"
+            url, {"role": RoleChoices.STAFF}, format="json"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.customer_profile.refresh_from_db()
         self.assertEqual(
-            self.customer_profile.role, RoleChoices.CUSTOMER_SUPPORT
+            self.customer_profile.role, RoleChoices.STAFF
         )
+
+    def test_customer_cannot_access_dashboard_stats(self):
+        self.client.force_authenticate(user=self.customer)
+        r = self.client.get("/api/core/dashboard/stats/")
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_dashboard_returns_ops_scope(self):
+        self.client.force_authenticate(user=self.staff_user)
+        r = self.client.get("/api/core/dashboard/stats/")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data.get("role_scope"), "staff")
+        self.assertNotIn("revenue_today", r.data)
+        self.assertIn("pending_returns", r.data)
+        self.assertIn("shipping_orders", r.data)
+
+    def test_admin_dashboard_returns_financial_scope(self):
+        self.client.force_authenticate(user=self.admin_user)
+        r = self.client.get("/api/core/dashboard/stats/")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data.get("role_scope"), "admin")
+        self.assertIn("revenue_today", r.data)
+        self.assertIn("users_total", r.data)
+        self.assertIn("top_products", r.data)
+
+    def test_customer_dashboard_ok_for_customer(self):
+        self.client.force_authenticate(user=self.customer)
+        r = self.client.get("/api/core/dashboard/customer/")
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertIn("orders_total", r.data)
+        self.assertIn("recent_orders", r.data)
+        self.assertIn("orders_daily_7d", r.data)
+        self.assertEqual(len(r.data["orders_daily_7d"]), 7)
+
+    def test_customer_dashboard_forbidden_for_staff(self):
+        self.client.force_authenticate(user=self.staff_user)
+        r = self.client.get("/api/core/dashboard/customer/")
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_customer_dashboard_forbidden_for_admin_role(self):
+        self.client.force_authenticate(user=self.admin_user)
+        r = self.client.get("/api/core/dashboard/customer/")
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class PasswordResetConfirmTests(TestCase):

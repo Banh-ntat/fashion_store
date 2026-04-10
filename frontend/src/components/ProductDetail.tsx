@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  products,
-  cart,
-  promotions,
-  reviews as reviewsApi,
-} from "../api/client";
+import { products, cart, reviews as reviewsApi } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../hooks/useWishlist";
 import { notifyCartUpdated } from "../utils/cartEvents";
@@ -37,14 +32,6 @@ interface Product {
   variants?: ProductVariant[];
 }
 
-interface Promotion {
-  id: number;
-  name: string;
-  discount_percent: number;
-  start_date: string;
-  end_date: string;
-}
-
 type NotifType = "success" | "error" | "info" | "warning";
 interface Notification {
   id: number;
@@ -61,7 +48,6 @@ function ProductDetail() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -137,19 +123,16 @@ function ProductDetail() {
           setLoading(false);
           return;
         }
-        const [relatedRes, promotionsRes, reviewsRes] = await Promise.all([
+        const [relatedRes, reviewsRes] = await Promise.all([
           products.related(productId),
-          promotions.active(),
           reviewsApi.getByProduct(productId),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
-        setActivePromotions((promotionsRes?.data ?? []) as Promotion[]);
         setReviewsList((reviewsRes?.data ?? []) as Review[]);
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
         setRelatedProducts([]);
-        setActivePromotions([]);
         setReviewsList([]);
       } finally {
         setLoading(false);
@@ -372,10 +355,6 @@ function ProductDetail() {
   );
   const variantStock =
     variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
-
-  const totalStock = product.variants
-    ? product.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
-    : (product.stock ?? 0);
 
   const productVariantIds = new Set(product.variants?.map((v) => v.id) ?? []);
   const eligiblePurchasableVariants = purchasableVariants.filter((p) =>
