@@ -26,17 +26,24 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
   const { setUser } = useAuth();
-
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     const path = window.location.pathname;
 
-    // Check which OAuth provider based on URL path
-    if (code && path.includes('google')) {
+    if (!code) return;
+
+    // Một mã `code` OAuth chỉ đổi được token một lần; React Strict Mode (dev) chạy effect 2 lần → POST thứ hai 400.
+    if (path.includes('google')) {
+      const dedupeKey = `oauth_google_code_${code}`;
+      if (sessionStorage.getItem(dedupeKey)) return;
+      sessionStorage.setItem(dedupeKey, '1');
       handleGoogleCallback(code);
-    } else if (code && path.includes('facebook') && state === 'facebook') {
+    } else if (path.includes('facebook') && state === 'facebook') {
+      const dedupeKey = `oauth_facebook_code_${code}`;
+      if (sessionStorage.getItem(dedupeKey)) return;
+      sessionStorage.setItem(dedupeKey, '1');
       handleFacebookCallback(code);
     }
   }, []);

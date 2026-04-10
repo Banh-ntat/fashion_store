@@ -85,7 +85,25 @@ function HeaderAvatar({ src, initial }: { src?: string | null; initial: string }
       />
     );
   }
-  return <UserIcon />;
+  return (
+    <span
+      className="headerAvatarLetter"
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: "50%",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 12,
+        fontWeight: 700,
+        background: "rgba(245,85,84,0.12)",
+        color: "#c96b65",
+      }}
+    >
+      {initial}
+    </span>
+  );
 }
 
 export default function Header() {
@@ -206,6 +224,11 @@ export default function Header() {
                       <span className="accountMenuLabel">Tài khoản</span>
                       <strong>{displayName}</strong>
                     </div>
+                    {!isAdmin && (
+                      <Link to="/dashboard" className="accountMenuItem">
+                        Tổng quan tài khoản
+                      </Link>
+                    )}
                     <Link to="/profile" className="accountMenuItem">
                       Thông tin tài khoản
                     </Link>
@@ -318,6 +341,11 @@ export default function Header() {
                 )}
                 <span className="mobileUserName">Chào, {displayName}</span>
               </div>
+              {!isAdmin && (
+                <Link to="/dashboard" className="mobileNavLink" onClick={closeMenu}>
+                  Tổng quan tài khoản
+                </Link>
+              )}
               <Link to="/profile" className="mobileNavLink" onClick={closeMenu}>
                 Tài khoản
               </Link>

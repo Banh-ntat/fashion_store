@@ -7,6 +7,7 @@ import {
   variants as variantsApi,
 } from "../../api/client";
 import AdminLayout from "../../components/admin/AdminLayout";
+import { useAuth } from "../../context/AuthContext";
 import "./Admin.css";
 
 interface Product {
@@ -106,6 +107,10 @@ function productImageGallery(p: Product): string[] {
 }
 
 export default function AdminProducts() {
+  const { user } = useAuth();
+  /** Chỉ admin mới ghi nhận tồn/biến thể; staff chỉ xem bảng màu–size–tồn */
+  const canManageVariantStock = user?.is_admin === true;
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [colorsList, setColorsList] = useState<Color[]>([]);
@@ -139,18 +144,10 @@ export default function AdminProducts() {
     size_id: 0,
     stock: 0,
   });
+  /** Số lượng nhập thêm vào tồn (áp dụng một lần, cộng dồn vào ô tồn kho) */
+  const [warehouseDelta, setWarehouseDelta] = useState("");
   /** Ảnh đang xem trong modal biến thể (khi có nhiều ảnh) */
   const [variantImageIndex, setVariantImageIndex] = useState(0);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (showVariantModal && selectedProduct?.id) {
-      setVariantImageIndex(0);
-    }
-  }, [showVariantModal, selectedProduct?.id]);
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -185,6 +182,16 @@ export default function AdminProducts() {
       .catch(console.error)
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (showVariantModal && selectedProduct?.id) {
+      setVariantImageIndex(0);
+    }
+  }, [showVariantModal, selectedProduct?.id]);
 
   const applyProductFilters = (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,6 +290,7 @@ export default function AdminProducts() {
   const openVariantModal = async (product: Product) => {
     setEditingVariant(null);
     setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+    setWarehouseDelta("");
     setSelectedProduct(product);
     setVariantImageIndex(0);
 
@@ -310,6 +318,7 @@ export default function AdminProducts() {
   const handleSubmitVariant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
+    if (!canManageVariantStock) return;
 
     try {
       if (editingVariant) {
@@ -329,6 +338,7 @@ export default function AdminProducts() {
       setProductVariants(res.data.results || res.data);
 
       setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+      setWarehouseDelta("");
       setEditingVariant(null);
     } catch (error: unknown) {
       const msg = (error as { response?: { data?: { detail?: string } } })
@@ -339,11 +349,28 @@ export default function AdminProducts() {
 
   const handleEditVariant = (variant: Variant) => {
     setEditingVariant(variant);
+    setWarehouseDelta("");
     setVariantForm({
       color_id: variant.color.id,
       size_id: variant.size.id,
       stock: variant.stock,
     });
+  };
+
+  const applyWarehouseDelta = () => {
+    const raw = warehouseDelta.trim();
+    if (raw === "") return;
+    const d = Number(raw);
+    if (Number.isNaN(d) || !Number.isFinite(d)) {
+      alert("Nhập số hợp lệ (có thể âm khi điều chỉnh giảm).");
+      return;
+    }
+    setVariantForm((f) => ({ ...f, stock: Math.max(0, Math.round(f.stock + d)) }));
+    setWarehouseDelta("");
+  };
+
+  const bumpStock = (delta: number) => {
+    setVariantForm((f) => ({ ...f, stock: Math.max(0, f.stock + delta) }));
   };
 
   const handleDeleteVariant = async (id: number) => {
@@ -414,7 +441,24 @@ export default function AdminProducts() {
     <AdminLayout>
       <div className="admin-page">
         <div className="page-header">
-          <h3>Quản lý sản phẩm</h3>
+          <div>
+            <h3>Quản lý sản phẩm</h3>
+            <p className="page-header-desc">
+              {canManageVariantStock ? (
+                <>
+                  Tồn kho theo màu &amp; size không hiện trên bảng — bấm nút tím{" "}
+                  <strong className="page-header-desc-em">Biến thể</strong> trên từng sản phẩm để
+                  nhập kho / chỉnh số lượng trong cửa sổ.
+                </>
+              ) : (
+                <>
+                  Bấm <strong className="page-header-desc-em">Biến thể</strong> để{" "}
+                  <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ xem; nhập kho do quản trị
+                  viên).
+                </>
+              )}
+            </p>
+          </div>
           <button className="btn-primary" onClick={openAddProductModal}>
             + Thêm sản phẩm
           </button>
@@ -677,7 +721,16 @@ export default function AdminProducts() {
                 <div className="variant-modal__head-main">
                   <div className="variant-modal__head-top">
                     <div>
-                      <h3 id="variant-modal-title">Biến thể &amp; tồn kho</h3>
+                      <h3 id="variant-modal-title">
+                        {canManageVariantStock
+                          ? "Biến thể & nhập kho"
+                          : "Biến thể (chỉ xem tồn)"}
+                      </h3>
+                      <p className="variant-modal__kicker">
+                        {canManageVariantStock
+                          ? "Điều chỉnh tồn theo từng màu và size tại đây — không có trang kho riêng."
+                          : "Xem màu, size và số lượng tồn từng SKU để theo dõi. Nhập kho / chỉnh số lượng: quản trị viên."}
+                      </p>
                       <p className="variant-modal__product-name">
                         {selectedProduct.name}
                       </p>
@@ -690,6 +743,16 @@ export default function AdminProducts() {
               </div>
 
               <div className="variant-modal__body">
+              {!canManageVariantStock && (
+                <div
+                  className="admin-banner variant-modal__staff-readonly-banner"
+                  role="status"
+                >
+                  <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp; size. Thêm/sửa/xóa biến thể
+                  và nhập kho do <strong>quản trị viên</strong> thực hiện.
+                </div>
+              )}
+              {canManageVariantStock && (
               <section
                 className="variant-modal__panel variant-modal__panel--quick"
                 aria-label="Thêm nhanh màu và size"
@@ -806,14 +869,21 @@ export default function AdminProducts() {
                   </div>
                 </div>
               </section>
+              )}
 
+              {canManageVariantStock && (
               <section
                 className="variant-modal__panel variant-modal__panel--form"
                 aria-label="Thêm hoặc sửa biến thể"
               >
                 <h4 className="variant-modal__panel-title">
-                  {editingVariant ? "Cập nhật biến thể" : "Thêm biến thể mới"}
+                  {editingVariant ? "Cập nhật biến thể & tồn" : "Thêm biến thể mới"}
                 </h4>
+                <p className="variant-stock-workflow-hint">
+                  {editingVariant
+                    ? "Chọn đúng màu/size của SKU, chỉnh « Tồn kho » trực tiếp hoặc « Nhập thêm » rồi Lưu."
+                    : "Chọn màu, size và tồn ban đầu; sau này mở lại đây để nhập thêm hàng."}
+                </p>
                 <form
                   onSubmit={handleSubmitVariant}
                   className="variant-form-compact"
@@ -865,8 +935,10 @@ export default function AdminProducts() {
                         ))}
                       </select>
                     </div>
-                    <div className="form-group">
-                      <label htmlFor="vf-stock">Tồn kho</label>
+                    <div className="form-group form-group--stock">
+                      <label htmlFor="vf-stock">
+                        {editingVariant ? "Tồn kho (sau cập nhật)" : "Tồn kho ban đầu"}
+                      </label>
                       <input
                         id="vf-stock"
                         type="number"
@@ -876,11 +948,51 @@ export default function AdminProducts() {
                         onChange={(e) =>
                           setVariantForm({
                             ...variantForm,
-                            stock: Number(e.target.value),
+                            stock: Math.max(0, Number(e.target.value) || 0),
                           })
                         }
                         required
                       />
+                      <div
+                        className="variant-stock-quick"
+                        role="group"
+                        aria-label="Cộng nhanh vào tồn"
+                      >
+                        <span className="variant-stock-quick__label">Cộng nhanh:</span>
+                        {[1, 5, 10, 50, 100].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            className="variant-stock-quick__btn"
+                            onClick={() => bumpStock(n)}
+                          >
+                            +{n}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="variant-stock-inbound">
+                        <label htmlFor="vf-warehouse-delta">Nhập thêm vào kho</label>
+                        <div className="variant-stock-inbound__row">
+                          <input
+                            id="vf-warehouse-delta"
+                            type="number"
+                            inputMode="numeric"
+                            placeholder="VD: 20 hoặc -3"
+                            value={warehouseDelta}
+                            onChange={(e) => setWarehouseDelta(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            onClick={applyWarehouseDelta}
+                          >
+                            Áp dụng
+                          </button>
+                        </div>
+                        <p className="variant-stock-inbound__hint">
+                          Số dương = nhập thêm; số âm = trừ tồn (kiểm kê). Bấm Áp dụng để cộng vào ô tồn phía trên, rồi Lưu.
+                        </p>
+                      </div>
                     </div>
                     <div className="variant-form-compact__submit">
                       <button
@@ -895,6 +1007,7 @@ export default function AdminProducts() {
                           className="btn-secondary"
                           onClick={() => {
                             setEditingVariant(null);
+                            setWarehouseDelta("");
                             setVariantForm({
                               color_id: 0,
                               size_id: 0,
@@ -909,6 +1022,7 @@ export default function AdminProducts() {
                   </div>
                 </form>
               </section>
+              )}
 
               <section
                 className="variant-modal__panel"
@@ -916,7 +1030,7 @@ export default function AdminProducts() {
               >
                 <div className="variant-modal__list-head">
                   <h4 className="variant-modal__panel-title variant-modal__panel-title--inline">
-                    Danh sách
+                    {canManageVariantStock ? "Danh sách" : "Danh sách (màu · size · tồn)"}
                   </h4>
                   <p className="variant-modal__legend">
                     Ô tồn:{" "}
@@ -938,20 +1052,23 @@ export default function AdminProducts() {
                         <th>Màu</th>
                         <th>Size</th>
                         <th>Tồn</th>
-                        <th className="variant-table__actions">Thao tác</th>
+                        {canManageVariantStock && (
+                          <th className="variant-table__actions">Thao tác</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {productVariants.length === 0 ? (
                         <tr>
-                          <td colSpan={4}>
+                          <td colSpan={canManageVariantStock ? 4 : 3}>
                             <div className="variant-empty">
                               <p className="variant-empty__title">
                                 Chưa có biến thể
                               </p>
                               <p className="variant-empty__text">
-                                Chọn màu, size và tồn kho ở form phía trên rồi
-                                bấm « Thêm biến thể ».
+                                {canManageVariantStock
+                                  ? "Chọn màu, size và tồn kho ở form phía trên rồi bấm « Thêm biến thể »."
+                                  : "Chưa có SKU — quản trị viên thêm biến thể và tồn kho."}
                               </p>
                             </div>
                           </td>
@@ -981,22 +1098,24 @@ export default function AdminProducts() {
                                 {v.stock}
                               </span>
                             </td>
-                            <td className="variant-table__actions">
-                              <button
-                                type="button"
-                                className="btn-edit btn-edit--compact"
-                                onClick={() => handleEditVariant(v)}
-                              >
-                                Sửa
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-delete btn-delete--compact"
-                                onClick={() => handleDeleteVariant(v.id)}
-                              >
-                                Xóa
-                              </button>
-                            </td>
+                            {canManageVariantStock && (
+                              <td className="variant-table__actions">
+                                <button
+                                  type="button"
+                                  className="btn-edit btn-edit--compact"
+                                  onClick={() => handleEditVariant(v)}
+                                >
+                                  Sửa
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-delete btn-delete--compact"
+                                  onClick={() => handleDeleteVariant(v.id)}
+                                >
+                                  Xóa
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}

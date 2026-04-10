@@ -19,20 +19,14 @@ interface UserProfile {
 
 const ROLE_CHOICES = [
   { value: 'customer', label: 'Customer' },
+  { value: 'staff', label: 'Staff' },
   { value: 'admin', label: 'Admin' },
-  { value: 'product_manager', label: 'Product Manager' },
-  { value: 'order_manager', label: 'Order Manager' },
-  { value: 'customer_support', label: 'Customer Support' },
 ];
 
 export default function AdminUsers() {
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   const loadUsers = () => {
     admin.users
@@ -43,6 +37,10 @@ export default function AdminUsers() {
       .catch(console.error)
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleRoleChange = async (profileId: number, newRole: string) => {
     try {
@@ -56,9 +54,7 @@ export default function AdminUsers() {
   const getRoleBadge = (role: string) => {
     const roleMap: Record<string, string> = {
       admin: 'role-admin',
-      product_manager: 'role-product',
-      order_manager: 'role-order',
-      customer_support: 'role-support',
+      staff: 'role-staff',
       customer: 'role-customer',
     };
     return roleMap[role] || '';

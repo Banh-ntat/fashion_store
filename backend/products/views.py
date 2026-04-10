@@ -6,10 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import filters
 from datetime import datetime
 
-from core.permissions import (
-    IsAdminOrReadOnly, IsProductManager, IsAdmin
-)
-from rest_framework.permissions import IsAuthenticated
+from core.permissions import IsAdminOrReadOnly, IsAdminWritePublicRead
 from .models import Category, Promotion, Product, ProductVariant, Color, Size, ProductImage
 from .serializers import CategorySerializer, PromotionSerializer, ProductSerializer, ProductVariantSerializer, ColorSerializer, SizeSerializer, ProductImageSerializer
 
@@ -155,24 +152,24 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class ColorViewSet(viewsets.ModelViewSet):
-    """Quản lý màu sắc"""
+    """Quản lý màu sắc — đọc công khai; ghi chỉ staff/admin (tránh khách sửa catalog)."""
     queryset = Color.objects.all()
     serializer_class = ColorSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class SizeViewSet(viewsets.ModelViewSet):
-    """Quản lý kích thước"""
+    """Quản lý kích thước — đọc công khai; ghi chỉ staff/admin."""
     queryset = Size.objects.all()
     serializer_class = SizeSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class ProductVariantViewSet(viewsets.ModelViewSet):
-    """Quản lý biến thể sản phẩm (màu + size + tồn kho)"""
+    """Biến thể (màu + size + tồn): đọc công khai; ghi chỉ admin (staff chỉ xem để theo dõi)."""
     queryset = ProductVariant.objects.select_related('product', 'color', 'size').all()
     serializer_class = ProductVariantSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminWritePublicRead]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -183,10 +180,10 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
 
 
 class ProductImageViewSet(viewsets.ModelViewSet):
-    """Quản lý ảnh sản phẩm"""
+    """Quản lý ảnh sản phẩm — đọc công khai; ghi chỉ staff/admin."""
     queryset = ProductImage.objects.all()
     serializer_class = ProductImageSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         queryset = super().get_queryset()

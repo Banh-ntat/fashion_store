@@ -28,6 +28,16 @@ export default function AdminCategories() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const loadCategories = () => {
+    admin.categories
+      .list()
+      .then((res) => {
+        setCategories(res.data.results || res.data);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -39,16 +49,6 @@ export default function AdminCategories() {
       }
     };
   }, [imagePreview]);
-
-  const loadCategories = () => {
-    admin.categories
-      .list()
-      .then((res) => {
-        setCategories(res.data.results || res.data);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

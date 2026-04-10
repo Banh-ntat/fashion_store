@@ -46,14 +46,24 @@ interface ReturnRequest {
   created_at: string;
 }
 
-export default function MyReturns() {
+type MyReturnsProps = { embedded?: boolean };
+
+export default function MyReturns({ embedded = false }: MyReturnsProps) {
   const { user } = useAuth();
+  const ordersPath = embedded ? "/dashboard/orders" : "/orders";
+  const loginRedirect = embedded ? "/login?redirect=/dashboard/returns" : "/login";
+  const shellClass = embedded ? "my-returns-page my-returns-page--embed" : "pageSection my-returns-page";
+  const innerClass = embedded ? "sectionContainer customer-account-embedInner" : "sectionContainer";
   const [returnList, setReturnList] = useState<ReturnRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
-    returns.list()
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    returns
+      .list()
       .then((res) => {
         const data = res.data as ReturnRequest[] | { results?: ReturnRequest[] };
         setReturnList(Array.isArray(data) ? data : (data.results ?? []));
@@ -64,10 +74,10 @@ export default function MyReturns() {
 
   if (!user) {
     return (
-      <section className="pageSection my-returns-page">
-        <div className="sectionContainer">
+      <section className={shellClass}>
+        <div className={innerClass}>
           <p className="returns-login-hint">
-            Vui lòng <Link to="/login">đăng nhập</Link> để xem yêu cầu trả hàng.
+            Vui lòng <Link to={loginRedirect}>đăng nhập</Link> để xem yêu cầu trả hàng.
           </p>
         </div>
       </section>
@@ -76,8 +86,8 @@ export default function MyReturns() {
 
   if (loading) {
     return (
-      <section className="pageSection my-returns-page">
-        <div className="sectionContainer">
+      <section className={shellClass}>
+        <div className={innerClass}>
           <div className="loading">Đang tải...</div>
         </div>
       </section>
@@ -85,14 +95,14 @@ export default function MyReturns() {
   }
 
   return (
-    <section className="pageSection my-returns-page">
-      <div className="sectionContainer">
+    <section className={shellClass}>
+      <div className={innerClass}>
         <div className="returns-header">
           <div>
-            <h1 className="returns-title">Yêu cầu trả hàng & hoàn tiền</h1>
+            <h1 className={`returns-title ${embedded ? 'returns-title--embed' : ''}`.trim()}>Yêu cầu trả hàng & hoàn tiền</h1>
             <p className="returns-subtitle">
               Để gửi yêu cầu mới, vào{' '}
-              <Link to="/orders" className="returns-link">lịch sử đơn hàng</Link>{' '}
+              <Link to={ordersPath} className="returns-link">lịch sử đơn hàng</Link>{' '}
               và chọn đơn cần hoàn trả.
             </p>
           </div>
@@ -101,7 +111,7 @@ export default function MyReturns() {
         {returnList.length === 0 ? (
           <div className="returns-empty">
             <p>Bạn chưa có yêu cầu trả hàng nào.</p>
-            <Link to="/orders" className="returns-link">Xem lịch sử đơn hàng</Link>
+            <Link to={ordersPath} className="returns-link">Xem lịch sử đơn hàng</Link>
           </div>
         ) : (
           <ul className="returns-list">
