@@ -1,11 +1,12 @@
 from django.contrib.auth.models import User
-from rest_framework import permissions, viewsets, status
+from rest_framework import mixins, permissions, viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.mail import send_mail
-from urllib.parse import quote, urlencode
+from django.template.loader import render_to_string
+from urllib.parse import quote, quote_plus, urlencode
 
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -22,6 +23,39 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+def _password_reset_email_bodies(user: User, reset_url: str) -> tuple[str, str]:
+    """Nội dung email dạng text + HTML (template trong templates/emails/)."""
+    display_name = (user.get_full_name() or "").strip() or user.username
+    ctx = {"display_name": display_name, "reset_url": reset_url}
+    text_body = render_to_string("emails/password_reset.txt", ctx).strip()
+    html_body = render_to_string("emails/password_reset.html", ctx).strip()
+    return text_body, html_body
+
+
+def _allowed_google_oauth_redirect_uris():
+    """
+    Các redirect_uri được phép khi đổi code — phải khớp một URI đã khai báo trong
+    Google Cloud Console (Authorized redirect URIs).
+    """
+    uris = set()
+    primary = (getattr(settings, "GOOGLE_REDIRECT_URI", "") or "").strip().rstrip("/")
+    fe = (getattr(settings, "FRONTEND_ORIGIN", "") or "").strip().rstrip("/")
+    if primary:
+        uris.add(primary)
+    if fe:
+        uris.add(f"{fe}/auth/google/callback")
+    expanded = set()
+    for u in uris:
+        if not u:
+            continue
+        expanded.add(u)
+        if "//localhost" in u:
+            expanded.add(u.replace("//localhost", "//127.0.0.1", 1))
+        if "//127.0.0.1" in u:
+            expanded.add(u.replace("//127.0.0.1", "//localhost", 1))
+    return expanded
 
 
 def _facebook_profile_picture_url(userinfo: dict) -> str:
@@ -44,7 +78,13 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-class ProfileViewSet(viewsets.ModelViewSet):
+class ProfileViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Profile do signal tạo; chỉ liệt kê / xem / cập nhật (không POST/DELETE)."""
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -113,8 +153,25 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data['email']
+            email = serializer.validated_data["email"]
             user = User.objects.get(email=email)
+
+            backend = (settings.EMAIL_BACKEND or "").lower()
+            if "smtp" in backend:
+                if not (settings.EMAIL_HOST_USER or "").strip() or not (
+                    settings.EMAIL_HOST_PASSWORD or ""
+                ).strip():
+                    return Response(
+                        {
+                            "message": (
+                                "Chưa cấu hình gửi email: trong backend/.env cần EMAIL_HOST_USER "
+                                "(Gmail đầy đủ), EMAIL_HOST_PASSWORD (mật khẩu ứng dụng 16 ký tự, "
+                                "bỏ dấu cách), và nên đặt DEFAULT_FROM_EMAIL cùng Gmail. "
+                                "Khởi động lại server sau khi sửa .env."
+                            ),
+                        },
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
 
             # Generate password reset token
             from django.contrib.auth.tokens import default_token_generator
@@ -123,35 +180,58 @@ class PasswordResetRequestView(APIView):
             frontend = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
             reset_url = f"{frontend}/reset-password?{urlencode({'token': token, 'user_id': str(user.id)})}"
 
-            # Send email
+            text_body, html_body = _password_reset_email_bodies(user, reset_url)
+
+            # Gửi email (Gmail: cấu hình SMTP trong .env — xem env.example)
             try:
                 send_mail(
-                    subject='Đặt lại mật khẩu - FashionStore',
-                    message=f'''
-                    Xin chào {user.username},
-
-                    Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản FashionStore của mình.
-
-                    Nhấp vào liên kết bên dưới để đặt lại mật khẩu:
-                    {reset_url}
-
-                    Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
-
-                    Trân trọng,
-                    FashionStore
-                    ''',
+                    subject="Đặt lại mật khẩu - FashionStore",
+                    message=text_body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                     fail_silently=False,
+                    html_message=html_body,
                 )
             except Exception as e:
-                return Response({
-                    "message": f"Lỗi gửi email: {str(e)}. Vui lòng thử lại sau."
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                err_s = str(e)
+                low = err_s.lower()
+                if (
+                    "535" in err_s
+                    or "badcredentials" in low
+                    or "username and password not accepted" in low
+                ):
+                    return Response(
+                        {
+                            "message": (
+                                "Gmail từ chối đăng nhập SMTP (lỗi 535). Kiểm tra backend/.env: "
+                                "(1) EMAIL_HOST_USER đúng Gmail đã tạo Mật khẩu ứng dụng; "
+                                "(2) EMAIL_HOST_PASSWORD là mật khẩu 16 ký tự do Google cấp "
+                                "(không dùng mật khẩu đăng nhập web; có thể dán có dấu cách — "
+                                "server sẽ tự bỏ khoảng trắng); "
+                                "(3) tài khoản Google đã bật xác minh 2 bước; "
+                                "(4) tạo mật khẩu mới tại https://myaccount.google.com/apppasswords "
+                                "nếu mật cũ sai hoặc đã thu hồi. "
+                                "Tài khoản Workspace/đại học có thể không cho App Password — thử Gmail cá nhân "
+                                "hoặc hỏi quản trị. Sau đó khởi động lại runserver."
+                            ),
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+                return Response(
+                    {"message": f"Lỗi gửi email: {err_s}. Vui lòng thử lại sau."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-            return Response({
-                "message": f"Liên kết đặt lại mật khẩu đã được gửi đến {email}"
-            }, status=status.HTTP_200_OK)
+            payload = {
+                "message": f"Liên kết đặt lại mật khẩu đã được gửi đến {email}",
+            }
+            if settings.DEBUG and "console" in backend:
+                payload["dev_note"] = (
+                    "EMAIL_BACKEND=console: không có thư trong hộp Gmail — chỉ in ra terminal "
+                    "runserver. Đổi sang smtp + điền Gmail trong .env để gửi thật."
+                )
+                payload["reset_url"] = reset_url
+            return Response(payload, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -190,10 +270,10 @@ class GoogleAuthUrlView(APIView):
         scope = "openid email profile"
         auth_url = (
             f"https://accounts.google.com/o/oauth2/v2/auth?"
-            f"client_id={client_id}&"
-            f"redirect_uri={redirect_uri}&"
+            f"client_id={quote_plus(client_id)}&"
+            f"redirect_uri={quote_plus(redirect_uri)}&"
             f"response_type=code&"
-            f"scope={scope}&"
+            f"scope={quote_plus(scope)}&"
             f"access_type=offline&"
             f"prompt=select_account"
         )
@@ -209,11 +289,28 @@ class GoogleCallbackView(APIView):
     def post(self, request):
         """Exchange authorization code for tokens and authenticate user"""
         code = request.data.get('code')
-
         if not code:
             return Response({
                 "error": "Thiếu mã authorization"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        raw_redirect = (request.data.get("redirect_uri") or "").strip().rstrip("/")
+        allowed = _allowed_google_oauth_redirect_uris()
+        if raw_redirect:
+            if raw_redirect not in allowed:
+                return Response(
+                    {
+                        "error": (
+                            "redirect_uri không khớp cấu hình. Thêm đúng URI vào "
+                            "Google Cloud Console (Authorized redirect URIs), hoặc mở "
+                            "site bằng cùng host với URI đã khai báo (localhost vs 127.0.0.1)."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            redirect_uri = raw_redirect
+        else:
+            redirect_uri = (settings.GOOGLE_REDIRECT_URI or "").strip().rstrip("/")
 
         try:
             # Exchange code for tokens
@@ -223,7 +320,7 @@ class GoogleCallbackView(APIView):
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
                 "code": code,
                 "grant_type": "authorization_code",
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
             }
 
             token_response = requests.post(token_url, data=token_data)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   admin,
   categories,
@@ -148,6 +148,9 @@ export default function AdminProducts() {
   const [warehouseDelta, setWarehouseDelta] = useState("");
   /** Ảnh đang xem trong modal biến thể (khi có nhiều ảnh) */
   const [variantImageIndex, setVariantImageIndex] = useState(0);
+  /** Form sửa biến thể (cuộn + focus sau khi bấm Sửa ở bảng) */
+  const variantFormPanelRef = useRef<HTMLElement | null>(null);
+  const variantColorSelectRef = useRef<HTMLSelectElement | null>(null);
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -355,6 +358,14 @@ export default function AdminProducts() {
       size_id: variant.size.id,
       stock: variant.stock,
     });
+    // Sau khi React cập nhật form: cuộn tới vùng sửa và đưa focus vào ô Màu
+    window.setTimeout(() => {
+      variantFormPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+      variantColorSelectRef.current?.focus({ preventScroll: false });
+    }, 0);
   };
 
   const applyWarehouseDelta = () => {
@@ -873,6 +884,7 @@ export default function AdminProducts() {
 
               {canManageVariantStock && (
               <section
+                ref={variantFormPanelRef}
                 className="variant-modal__panel variant-modal__panel--form"
                 aria-label="Thêm hoặc sửa biến thể"
               >
@@ -892,6 +904,7 @@ export default function AdminProducts() {
                     <div className="form-group">
                       <label htmlFor="vf-color">Màu</label>
                       <select
+                        ref={variantColorSelectRef}
                         id="vf-color"
                         value={variantForm.color_id || ""}
                         onChange={(e) =>

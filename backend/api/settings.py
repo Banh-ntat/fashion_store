@@ -92,7 +92,8 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-_db_engine = os.getenv('DB_ENGINE', 'django.db.backends.postgresql')
+# Mặc định SQLite để chạy local không cần Postgres; production dùng .env (PostgreSQL).
+_db_engine = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
 
 if _db_engine == 'django.db.backends.sqlite3':
     DATABASES = {
@@ -195,9 +196,12 @@ EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.Email
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@fashionstore.com')
+# Gmail App Password hay dán kèm dấu cách "xxxx xxxx ..." — SMTP cần 16 ký tự liền
+EMAIL_HOST_USER = (os.getenv('EMAIL_HOST_USER', '') or '').strip()
+EMAIL_HOST_PASSWORD = ''.join((os.getenv('EMAIL_HOST_PASSWORD', '') or '').split())
+# Gmail thường yêu cầu From trùng tài khoản gửi — nếu .env để trống thì dùng EMAIL_HOST_USER
+_default_from = (os.getenv('DEFAULT_FROM_EMAIL') or '').strip()
+DEFAULT_FROM_EMAIL = _default_from or EMAIL_HOST_USER or 'noreply@fashionstore.com'
 
 # Email templates
 EMAIL_TEMPLATE_DIR = BASE_DIR / 'templates' / 'emails'
@@ -226,7 +230,11 @@ RETURN_REFUND_EMAIL_ENABLED = os.getenv('RETURN_REFUND_EMAIL_ENABLED', '1').lowe
 # Google OAuth2 Configuration
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5173/auth/google/callback')
+# Mặc định theo FRONTEND_ORIGIN — trùng với Vite `${origin}/auth/google/callback`
+GOOGLE_REDIRECT_URI = os.getenv(
+    'GOOGLE_REDIRECT_URI',
+    f'{FRONTEND_ORIGIN}/auth/google/callback',
+)
 
 # Facebook OAuth Configuration
 FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', '1571626650928827')

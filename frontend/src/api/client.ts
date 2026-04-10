@@ -116,13 +116,15 @@ export const auth = {
     const { data } = await api.get("/auth/google/url/");
     return data;
   },
-  googleCallback: async (code: string) => {
+  googleCallback: async (code: string, redirectUri?: string) => {
     try {
+      const body: { code: string; redirect_uri?: string } = { code };
+      if (redirectUri) body.redirect_uri = redirectUri;
       const { data } = await api.post<{
         access?: string;
         refresh?: string;
         error?: string;
-      }>("/auth/google/callback/", { code });
+      }>("/auth/google/callback/", body);
       if (!data?.access) {
         throw new Error(data?.error || "Đăng nhập Google thất bại");
       }

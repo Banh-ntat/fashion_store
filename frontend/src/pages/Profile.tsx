@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { auth, profiles } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, type AuthUser } from "../context/AuthContext";
 import type { Profile } from "../types";
 import "../styles/pages/Profile.css";
 import { parseApiFieldErrors } from "../utils/apiErrors";
@@ -19,6 +19,33 @@ type ProfileWithUser = Omit<Profile, "user"> & {
   facebook_id?: string | null;
   created_at?: string;
 };
+
+/** Điền form / fallback khi API profile trả user thiếu họ tên (header vẫn có từ /auth/user/). */
+function profileFormDefaults(p: ProfileWithUser | null, auth: AuthUser | null) {
+  const af = (auth?.first_name ?? "").trim();
+  const al = (auth?.last_name ?? "").trim();
+  const ae = (auth?.email ?? "").trim();
+  if (!p) {
+    return {
+      first_name: af,
+      last_name: al,
+      email: ae,
+      phone: "",
+      address: "",
+    };
+  }
+  const u = p.user;
+  const pf = (u?.first_name ?? "").trim();
+  const pl = (u?.last_name ?? "").trim();
+  const pe = (u?.email ?? "").trim();
+  return {
+    first_name: pf || af,
+    last_name: pl || al,
+    email: pe || ae,
+    phone: p.phone ?? "",
+    address: p.address ?? "",
+  };
+}
 
 function roleLabelVi(role: string): string {
   const m: Record<string, string> = {
@@ -229,7 +256,7 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
   const [profile, setProfile] = useState<ProfileWithUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ phone: "", address: "" });
+  const [form, setForm] = useState(() => profileFormDefaults(null, null));
 
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -258,7 +285,7 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
         const first = list[0] ?? null;
         setProfile(first);
         if (first) {
-          setForm({ phone: first.phone ?? "", address: first.address ?? "" });
+          setForm(profileFormDefaults(first, authUser));
           // Đồng bộ avatar từ profile về context nếu context chưa có
           if (first.avatar && !authUser.avatar) {
             setUser({ ...authUser, avatar: first.avatar });
@@ -304,13 +331,33 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    if (!profile || !authUser) return;
     try {
-      await profiles.updateMe(profile.id, form);
-      setProfile((p) => (p ? { ...p, ...form } : null));
+      const res = await profiles.updateMe(profile.id, {
+        phone: form.phone,
+        address: form.address,
+        user: {
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          email: form.email.trim(),
+        },
+      });
+      const updated = res.data as ProfileWithUser;
+      setProfile(updated);
+      setForm(profileFormDefaults(updated, authUser));
       setEditing(false);
-    } catch {
-      alert("Cập nhật thất bại.");
+      setUser({
+        ...authUser,
+        email: updated.user?.email ?? authUser.email,
+        first_name: updated.user?.first_name,
+        last_name: updated.user?.last_name,
+      });
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data) {
+        alert(parseApiFieldErrors(err.response.data));
+      } else {
+        alert("Cập nhật thất bại.");
+      }
     }
   };
 
@@ -424,13 +471,21 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
   }
 
   const hasProfile = profile != null;
-  const accountUsername = profile?.user?.username ?? authUser.username ?? "";
-  const u = profile?.user;
+  const apiUser =
+    profile?.user && typeof profile.user === "object" ? profile.user : undefined;
+  const mergedFirst =
+    (apiUser?.first_name ?? "").trim() ||
+    (authUser?.first_name ?? "").trim();
+  const mergedLast =
+    (apiUser?.last_name ?? "").trim() ||
+    (authUser?.last_name ?? "").trim();
+  const accountUsername = apiUser?.username ?? authUser?.username ?? "";
   const displayName =
-    u?.first_name || u?.last_name
-      ? `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim()
+    mergedFirst || mergedLast
+      ? `${mergedLast} ${mergedFirst}`.trim()
       : accountUsername;
-  const showHandleRow = displayName.trim() !== accountUsername.trim();
+  const showHandleRow =
+    displayName.trim().toLowerCase() !== accountUsername.trim().toLowerCase();
   const role = profile?.role ?? authUser.role ?? "customer";
   const memberSince = formatMemberSince(profile?.created_at);
   const linkedGoogle = Boolean(profile?.google_id);
@@ -503,8 +558,9 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                       aria-hidden
                     >
                       {(
-                        profile?.user?.first_name?.[0] ??
-                        authUser.username?.[0] ??
+                        mergedLast?.[0] ??
+                        mergedFirst?.[0] ??
+                        accountUsername?.[0] ??
                         "U"
                       ).toUpperCase()}
                     </div>
@@ -543,7 +599,9 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                   </p>
                 ) : null}
                 <p className="profileEmail">
-                  {profile?.user?.email ?? authUser.email ?? "—"}
+                  {(apiUser?.email ?? "").trim() ||
+                    authUser?.email ||
+                    "—"}
                 </p>
                 <div className="profileMeta profileMeta--summary">
                   <span className="profileRoleBadge">{roleLabelVi(role)}</span>
@@ -588,10 +646,79 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
               {/* Contact & delivery */}
               <div className="profileCard profileCard--secondary profileCard--panel">
                 <h3 className="profileSectionTitle profileSectionTitle--panel">
-                  Liên hệ &amp; giao hàng
+                  Thông tin cá nhân &amp; giao hàng
                 </h3>
                 {hasProfile ? (
                   <form onSubmit={handleSave} className="profileForm">
+                    <label className="profileLabel">
+                      <span className="profileLabelText">Tên đăng nhập</span>
+                      <input
+                        type="text"
+                        value={accountUsername}
+                        readOnly
+                        autoComplete="username"
+                        className="profileInput"
+                        title="Tên đăng nhập không đổi được tại đây"
+                      />
+                    </label>
+                    <div className="profileFormRow2">
+                      <label className="profileLabel">
+                        <span className="profileLabelText">Họ</span>
+                        <input
+                          type="text"
+                          value={form.last_name}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              last_name: e.target.value,
+                            }))
+                          }
+                          className={`profileInput ${editing ? "profileInput--editable" : ""}`}
+                          readOnly={!editing}
+                          autoComplete="family-name"
+                          placeholder={editing ? "Ví dụ: Nguyễn" : undefined}
+                        />
+                      </label>
+                      <label className="profileLabel">
+                        <span className="profileLabelText">Tên</span>
+                        <input
+                          type="text"
+                          value={form.first_name}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              first_name: e.target.value,
+                            }))
+                          }
+                          className={`profileInput ${editing ? "profileInput--editable" : ""}`}
+                          readOnly={!editing}
+                          autoComplete="given-name"
+                          placeholder={editing ? "Ví dụ: Văn A" : undefined}
+                        />
+                      </label>
+                    </div>
+                    <label className="profileLabel">
+                      <span className="profileLabelText">Email</span>
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, email: e.target.value }))
+                        }
+                        className={`profileInput ${editing ? "profileInput--editable" : ""}`}
+                        readOnly={!editing}
+                        autoComplete="email"
+                        placeholder={
+                          editing ? "email@example.com" : undefined
+                        }
+                      />
+                      {editing ? (
+                        <p className="profileFieldHint">
+                          Dùng để đăng nhập (hoặc kèm mật khẩu) và nhận thông báo
+                          liên quan đơn hàng.
+                        </p>
+                      ) : null}
+                    </label>
                     <label className="profileLabel">
                       <span className="profileLabelText">Số điện thoại</span>
                       <input
@@ -602,13 +729,14 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                         }
                         className={`profileInput ${editing ? "profileInput--editable" : ""}`}
                         readOnly={!editing}
+                        autoComplete="tel"
                         placeholder={
                           editing ? "Ví dụ: 09xx xxx xxx" : undefined
                         }
                       />
                     </label>
                     <label className="profileLabel">
-                      <span className="profileLabelText">Địa chỉ</span>
+                      <span className="profileLabelText">Địa chỉ giao hàng</span>
                       <textarea
                         rows={3}
                         value={form.address}
@@ -617,6 +745,7 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                         }
                         className={`profileInput ${editing ? "profileInput--editable" : ""}`}
                         readOnly={!editing}
+                        autoComplete="street-address"
                         placeholder={
                           editing
                             ? "Số nhà, đường, phường/xã, tỉnh/thành"
@@ -632,7 +761,10 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                         <button
                           type="button"
                           className="profileBtn profileBtn--ghost"
-                          onClick={() => setEditing(false)}
+                          onClick={() => {
+                            setForm(profileFormDefaults(profile, authUser));
+                            setEditing(false);
+                          }}
                         >
                           Hủy
                         </button>
@@ -641,7 +773,10 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                       <button
                         type="button"
                         className="profileBtn primary profileBtn--wide"
-                        onClick={() => setEditing(true)}
+                        onClick={() => {
+                          setForm(profileFormDefaults(profile, authUser));
+                          setEditing(true);
+                        }}
                       >
                         Chỉnh sửa thông tin
                       </button>

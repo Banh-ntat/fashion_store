@@ -18,17 +18,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         if not username_or_email or not password:
             raise serializers.ValidationError(
-                {"detail": "Vui lòng nhập tên đăng nhập/email và mật khẩu."}
+                {"detail": "Vui lòng nhập email hoặc tên đăng nhập và mật khẩu."}
             )
 
+        user = None
         if "@" in username_or_email:
-            user = User.objects.filter(email=username_or_email).first()
-        else:
+            user = User.objects.filter(email__iexact=username_or_email).first()
+        if user is None:
             user = User.objects.filter(username=username_or_email).first()
 
         if not user:
             raise serializers.ValidationError(
-                {"detail": "Tên đăng nhập hoặc mật khẩu không đúng."}
+                {
+                    "detail": "Email/tên đăng nhập hoặc mật khẩu không đúng.",
+                }
             )
         if not user.is_active:
             raise serializers.ValidationError(
@@ -36,7 +39,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
         if not user.check_password(password):
             raise serializers.ValidationError(
-                {"detail": "Tên đăng nhập hoặc mật khẩu không đúng."}
+                {
+                    "detail": "Email/tên đăng nhập hoặc mật khẩu không đúng.",
+                }
             )
 
         refresh = RefreshToken.for_user(user)
@@ -56,7 +61,27 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email")
+        fields = ("id", "username", "email", "first_name", "last_name")
+
+
+class ProfileUserSerializer(serializers.ModelSerializer):
+    """User nhúng trong Profile: đọc đủ trường; ghi họ tên + email (username chỉ đọc)."""
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "first_name", "last_name")
+        read_only_fields = ("id", "username")
+
+    def validate_email(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Vui lòng nhập email.")
+        user = self.instance
+        if user is None:
+            return value
+        if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Email đã được sử dụng bởi tài khoản khác.")
+        return value
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -111,9 +136,14 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
+        raw = (value or "").strip()
+        if not raw:
+            raise serializers.ValidationError("Vui lòng nhập email.")
+        # Khớp đăng nhập: không phân biệt hoa/thường (Postgres so sánh email phân biệt hoa thường)
+        user = User.objects.filter(email__iexact=raw).first()
+        if not user:
             raise serializers.ValidationError("Email không tồn tại trong hệ thống")
-        return value
+        return user.email
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -170,13 +200,13 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(required=False)
-    user = UserSerializer(read_only=True)
+    user = ProfileUserSerializer()
     role = serializers.ChoiceField(choices=RoleChoices.CHOICES, required=False)
 
     class Meta:
         model = Profile
         fields = ("id", "user", "phone", "address", "role", "google_id", "facebook_id", "avatar", "created_at", "updated_at")
-        read_only_fields = ("user", "google_id", "facebook_id", "created_at", "updated_at")
+        read_only_fields = ("google_id", "facebook_id", "created_at", "updated_at")
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -191,4 +221,15 @@ class ProfileSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and not can_manage_profile_roles(request.user):
             validated_data.pop("role", None)
-        return super().update(instance, validated_data)
+        user_data = validated_data.pop("user", None)
+        instance = super().update(instance, validated_data)
+        if user_data is not None:
+            user_ser = ProfileUserSerializer(
+                instance=instance.user,
+                data=user_data,
+                partial=True,
+                context=self.context,
+            )
+            user_ser.is_valid(raise_exception=True)
+            user_ser.save()
+        return instance

@@ -537,6 +537,24 @@
   gap: 1rem;
 }
 
+.profileFormRow2 {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 520px) {
+  .profileFormRow2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.profileFieldHint {
+  margin: -0.35rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.35;
+}
+
 .profileLabel {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import { auth } from '../api/client';
+import { parseApiFieldErrors } from '../utils/apiErrors';
 import { useAuth } from '../context/AuthContext';
 import '../styles/pages/AuthPages.css';
 
@@ -8,11 +10,19 @@ interface LoginProps {
   onLoginSuccess?: () => void;
 }
 
-// OAuth configuration
-const GOOGLE_CLIENT_ID = '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com';
+// OAuth — redirect Google phải khớp từng ký tự với Google Cloud Console (localhost ≠ 127.0.0.1)
+const GOOGLE_CLIENT_ID_DEFAULT =
+  '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || GOOGLE_CLIENT_ID_DEFAULT;
 const FACEBOOK_APP_ID = '1571626650928827';
-const GOOGLE_REDIRECT_URI = 'http://localhost:5173/auth/google/callback';
 const FACEBOOK_REDIRECT_URI = 'http://localhost:5173/auth/facebook/callback';
+
+function getGoogleRedirectUri(): string {
+  const fromEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  return `${window.location.origin}/auth/google/callback`;
+}
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const [username, setUsername] = useState('');
@@ -54,7 +64,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setLoading(true);
 
     try {
-      await auth.login(username, password);
+      await auth.login(username.trim(), password);
       const userData = await auth.getCurrentUser();
       if (userData.role) {
         localStorage.setItem('user_role', userData.role);
@@ -77,29 +87,27 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         navigate(redirectTo);
       }
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: { detail?: string } }; message?: string };
-      const errorMessage =
-        (Array.isArray(ax.response?.data?.detail)
-          ? ax.response.data.detail[0]
-          : ax.response?.data?.detail) ||
-        ax.message ||
-        'Tên đăng nhập hoặc mật khẩu không đúng';
-      setError(errorMessage);
+      if (axios.isAxiosError(err) && err.response?.data) {
+        setError(parseApiFieldErrors(err.response.data));
+      } else {
+        setError('Email/tên đăng nhập hoặc mật khẩu không đúng.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
+    const redirectUri = getGoogleRedirectUri();
     const scope = encodeURIComponent('openid email profile');
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account`;
     window.location.href = authUrl;
   };
 
   const handleGoogleCallback = async (code: string) => {
     setGoogleLoading(true);
     try {
-      await auth.googleCallback(code);
+      await auth.googleCallback(code, getGoogleRedirectUri());
       const userData = await auth.getCurrentUser();
       if (userData.role) localStorage.setItem('user_role', userData.role);
       else localStorage.removeItem('user_role');
@@ -183,15 +191,20 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             {error && <div className="auth-error">{error}</div>}
 
             <div className="form-group">
-              <label htmlFor="username">Tên đăng nhập</label>
+              <label htmlFor="username">Email hoặc tên đăng nhập</label>
               <input
                 type="text"
                 id="username"
+                name="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nhập tên đăng nhập"
+                placeholder="you@email.com hoặc tên đăng nhập"
+                autoComplete="username"
                 required
               />
+              <p className="auth-field-hint">
+                Có thể đăng nhập bằng địa chỉ email đã đăng ký (không phân biệt chữ hoa/thường).
+              </p>
             </div>
 
             <div className="form-group">
