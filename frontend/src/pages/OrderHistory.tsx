@@ -45,6 +45,21 @@ const REASON_OPTIONS = [
   { value: "other", label: "Lý do khác" },
 ];
 
+function getPaymentMethodLabel(method?: string) {
+  if (method === "vnpay") return "VNPay";
+  if (method === "momo") return "Ví MoMo";
+  if (method === "cod") return "Thanh toán khi nhận hàng (COD)";
+  return method || "N/A";
+}
+
+function getGatewayStatusLabel(status?: string) {
+  if (status === "paid") return "Đã thanh toán";
+  if (status === "failed") return "Thanh toán thất bại";
+  if (status === "pending") return "Chờ thanh toán";
+  if (status === "none") return "Không qua cổng (COD)";
+  return status || "N/A";
+}
+
 // Phải khớp với RETURN_WINDOW trong orders/constants.py
 // Production: 2 * 24 * 60 * 60 * 1000 (2 ngày)
 // Test:       2 * 60 * 1000            (2 phút)
@@ -430,6 +445,27 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                     >
                       {STATUS_LABEL[order.status] ?? order.status}
                     </span>
+                  </div>
+
+                  <div className="orderPaymentInfo" style={{ marginBottom: "16px", fontSize: "14px", color: "var(--text-secondary)" }}>
+                    <strong>Phương thức:</strong> {getPaymentMethodLabel(order.payment_method)}
+                    {order.payment_method && order.payment_method !== "cod" && (
+                      <span>
+                        {" "}— <strong>Trạng thái cổng:</strong>{" "}
+                        <span
+                          className={`orderStatus orderStatus--${
+                            order.gateway_status === "paid"
+                              ? "completed"
+                              : order.gateway_status === "failed"
+                              ? "cancelled"
+                              : "pending"
+                          }`}
+                          style={{ marginLeft: "4px" }}
+                        >
+                          {getGatewayStatusLabel(order.gateway_status)}
+                        </span>
+                      </span>
+                    )}
                   </div>
 
                   {order.status === "completed" &&
