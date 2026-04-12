@@ -296,32 +296,32 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
       .finally(() => setLoading(false));
   }, [authUser]);
 
-  // Upload avatar
+  const authUserRef = useRef(authUser);
+  useEffect(() => {
+    authUserRef.current = authUser;
+  }, [authUser]);
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !profile || !authUser) return;
-    // Reset input value để có thể chọn lại cùng file
+    if (!file || !profile || !authUserRef.current) return;
     e.target.value = "";
 
-    // Optimistic preview
     const localUrl = URL.createObjectURL(file);
     const prevAvatar = profile.avatar;
     setProfile((p) => (p ? { ...p, avatar: localUrl } : null));
-    setUser({ ...authUser, avatar: localUrl });
+    setUser({ ...authUserRef.current, avatar: localUrl });
 
     setAvatarUploading(true);
     try {
       const formData = new FormData();
       formData.append("avatar", file);
-
       const res = await profiles.updateAvatar(profile.id, formData);
       const serverAvatar = (res.data as { avatar?: string }).avatar ?? localUrl;
       setProfile((p) => (p ? { ...p, avatar: serverAvatar } : null));
-      setUser({ ...authUser, avatar: serverAvatar });
+      setUser({ ...authUserRef.current, avatar: serverAvatar });
     } catch {
-      // Rollback nếu lỗi
       setProfile((p) => (p ? { ...p, avatar: prevAvatar ?? null } : null));
-      setUser({ ...authUser, avatar: prevAvatar ?? null });
+      setUser({ ...authUserRef.current, avatar: prevAvatar ?? null });
       alert("Upload ảnh thất bại. Vui lòng thử lại.");
     } finally {
       setAvatarUploading(false);
@@ -472,13 +472,13 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
 
   const hasProfile = profile != null;
   const apiUser =
-    profile?.user && typeof profile.user === "object" ? profile.user : undefined;
+    profile?.user && typeof profile.user === "object"
+      ? profile.user
+      : undefined;
   const mergedFirst =
-    (apiUser?.first_name ?? "").trim() ||
-    (authUser?.first_name ?? "").trim();
+    (apiUser?.first_name ?? "").trim() || (authUser?.first_name ?? "").trim();
   const mergedLast =
-    (apiUser?.last_name ?? "").trim() ||
-    (authUser?.last_name ?? "").trim();
+    (apiUser?.last_name ?? "").trim() || (authUser?.last_name ?? "").trim();
   const accountUsername = apiUser?.username ?? authUser?.username ?? "";
   const displayName =
     mergedFirst || mergedLast
@@ -506,7 +506,9 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
       )}
       <div
         className={
-          embedded ? "sectionContainer profile-inner customer-account-embedInner" : "sectionContainer profile-inner"
+          embedded
+            ? "sectionContainer profile-inner customer-account-embedInner"
+            : "sectionContainer profile-inner"
         }
       >
         <header
@@ -599,9 +601,7 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                   </p>
                 ) : null}
                 <p className="profileEmail">
-                  {(apiUser?.email ?? "").trim() ||
-                    authUser?.email ||
-                    "—"}
+                  {(apiUser?.email ?? "").trim() || authUser?.email || "—"}
                 </p>
                 <div className="profileMeta profileMeta--summary">
                   <span className="profileRoleBadge">{roleLabelVi(role)}</span>
@@ -708,14 +708,12 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                         className={`profileInput ${editing ? "profileInput--editable" : ""}`}
                         readOnly={!editing}
                         autoComplete="email"
-                        placeholder={
-                          editing ? "email@example.com" : undefined
-                        }
+                        placeholder={editing ? "email@example.com" : undefined}
                       />
                       {editing ? (
                         <p className="profileFieldHint">
-                          Dùng để đăng nhập (hoặc kèm mật khẩu) và nhận thông báo
-                          liên quan đơn hàng.
+                          Dùng để đăng nhập (hoặc kèm mật khẩu) và nhận thông
+                          báo liên quan đơn hàng.
                         </p>
                       ) : null}
                     </label>
@@ -736,7 +734,9 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                       />
                     </label>
                     <label className="profileLabel">
-                      <span className="profileLabelText">Địa chỉ giao hàng</span>
+                      <span className="profileLabelText">
+                        Địa chỉ giao hàng
+                      </span>
                       <textarea
                         rows={3}
                         value={form.address}
@@ -867,111 +867,119 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
 
             {/* Quick links — ẩn khi nhúng trong /dashboard (đã có sidebar) */}
             {!embedded && (
-            <div className="profileCard profileCard--secondary profileCard--flush">
-              <h3 className="profileSectionTitle profileSectionTitle--inCard">
-                Truy cập nhanh
-              </h3>
-              <div className="profileQuickGrid profileQuickGrid--dense">
-                {showAdminEntry ? (
-                  <Link
-                    to="/admin"
-                    className="profileQuickCard profileQuickCard--accent"
-                  >
-                    <IconAdmin />
-                    <span className="profileQuickCard-text">
-                      <span className="profileQuickCard-title">
-                        Trang quản trị
-                      </span>
-                      <span className="profileQuickCard-desc">
-                        Dành cho nhân viên
-                      </span>
-                    </span>
-                    <span className="profileQuickCard-arrow" aria-hidden>
-                      →
-                    </span>
-                  </Link>
-                ) : (
-                  <>
-                    <Link to="/orders" className="profileQuickCard">
-                      <IconOrders />
-                      <span className="profileQuickCard-text">
-                        <span className="profileQuickCard-title">Đơn hàng</span>
-                        <span className="profileQuickCard-desc">
-                          Lịch sử &amp; trạng thái
-                        </span>
-                      </span>
-                      <span className="profileQuickCard-arrow" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                    <Link to="/cart" className="profileQuickCard">
-                      <IconCart />
-                      <span className="profileQuickCard-text">
-                        <span className="profileQuickCard-title">Giỏ hàng</span>
-                        <span className="profileQuickCard-desc">
-                          Sản phẩm đã chọn
-                        </span>
-                      </span>
-                      <span className="profileQuickCard-arrow" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                    <Link to="/wishlist" className="profileQuickCard">
-                      <IconHeart />
+              <div className="profileCard profileCard--secondary profileCard--flush">
+                <h3 className="profileSectionTitle profileSectionTitle--inCard">
+                  Truy cập nhanh
+                </h3>
+                <div className="profileQuickGrid profileQuickGrid--dense">
+                  {showAdminEntry ? (
+                    <Link
+                      to="/admin"
+                      className="profileQuickCard profileQuickCard--accent"
+                    >
+                      <IconAdmin />
                       <span className="profileQuickCard-text">
                         <span className="profileQuickCard-title">
-                          Yêu thích
+                          Trang quản trị
                         </span>
                         <span className="profileQuickCard-desc">
-                          Danh sách wishlist
+                          Dành cho nhân viên
                         </span>
                       </span>
                       <span className="profileQuickCard-arrow" aria-hidden>
                         →
                       </span>
                     </Link>
-                    <Link to="/my-feedback" className="profileQuickCard">
-                      <IconChat />
-                      <span className="profileQuickCard-text">
-                        <span className="profileQuickCard-title">
-                          Đánh giá sản phẩm
+                  ) : (
+                    <>
+                      <Link to="/orders" className="profileQuickCard">
+                        <IconOrders />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Đơn hàng
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Lịch sử &amp; trạng thái
+                          </span>
                         </span>
-                        <span className="profileQuickCard-desc">
-                          Các món đã mua &amp; đánh giá
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
                         </span>
-                      </span>
-                      <span className="profileQuickCard-arrow" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                    <Link to="/products" className="profileQuickCard">
-                      <IconShirt />
-                      <span className="profileQuickCard-text">
-                        <span className="profileQuickCard-title">Sản phẩm</span>
-                        <span className="profileQuickCard-desc">
-                          Xem cửa hàng
+                      </Link>
+                      <Link to="/cart" className="profileQuickCard">
+                        <IconCart />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Giỏ hàng
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Sản phẩm đã chọn
+                          </span>
                         </span>
-                      </span>
-                      <span className="profileQuickCard-arrow" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                    <Link to="/contact" className="profileQuickCard">
-                      <IconPhone />
-                      <span className="profileQuickCard-text">
-                        <span className="profileQuickCard-title">Liên hệ</span>
-                        <span className="profileQuickCard-desc">
-                          Hỗ trợ &amp; câu hỏi
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
                         </span>
-                      </span>
-                      <span className="profileQuickCard-arrow" aria-hidden>
-                        →
-                      </span>
-                    </Link>
-                  </>
-                )}
+                      </Link>
+                      <Link to="/wishlist" className="profileQuickCard">
+                        <IconHeart />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Yêu thích
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Danh sách wishlist
+                          </span>
+                        </span>
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
+                        </span>
+                      </Link>
+                      <Link to="/my-feedback" className="profileQuickCard">
+                        <IconChat />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Đánh giá sản phẩm
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Các món đã mua &amp; đánh giá
+                          </span>
+                        </span>
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
+                        </span>
+                      </Link>
+                      <Link to="/products" className="profileQuickCard">
+                        <IconShirt />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Sản phẩm
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Xem cửa hàng
+                          </span>
+                        </span>
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
+                        </span>
+                      </Link>
+                      <Link to="/contact" className="profileQuickCard">
+                        <IconPhone />
+                        <span className="profileQuickCard-text">
+                          <span className="profileQuickCard-title">
+                            Liên hệ
+                          </span>
+                          <span className="profileQuickCard-desc">
+                            Hỗ trợ &amp; câu hỏi
+                          </span>
+                        </span>
+                        <span className="profileQuickCard-arrow" aria-hidden>
+                          →
+                        </span>
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
             )}
           </div>
         </div>

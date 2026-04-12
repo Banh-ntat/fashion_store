@@ -739,7 +739,20 @@ function ProductDetail() {
                 <div className="review-header">
                   <div className="review-user">
                     <span className="user-avatar">
-                      {review.user.username.charAt(0).toUpperCase()}
+                      {review.user.avatar ? (
+                        <img
+                          src={review.user.avatar}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        review.user.username.charAt(0).toUpperCase()
+                      )}
                     </span>
                     <span className="user-name">{review.user.username}</span>
                   </div>

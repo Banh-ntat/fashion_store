@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { reviews as reviewsApi } from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import type { PurchasableProduct } from '../types';
-import '../styles/pages/MyFeedback.css';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { reviews as reviewsApi } from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import type { PurchasableProduct } from "../types";
+import "../styles/pages/MyFeedback.css";
 
 const FEEDBACK_TYPES = [
-  { value: 'quality', label: 'Chất lượng sản phẩm' },
-  { value: 'price', label: 'Giá cả' },
-  { value: 'shipping', label: 'Giao hàng' },
-  { value: 'size', label: 'Size' },
-  { value: 'service', label: 'Dịch vụ' },
-  { value: 'other', label: 'Khác' },
+  { value: "quality", label: "Chất lượng sản phẩm" },
+  { value: "price", label: "Giá cả" },
+  { value: "shipping", label: "Giao hàng" },
+  { value: "size", label: "Size" },
+  { value: "service", label: "Dịch vụ" },
+  { value: "other", label: "Khác" },
 ];
 
 interface MyReview {
@@ -26,15 +26,25 @@ interface MyReview {
 
 export default function MyFeedback() {
   const { user } = useAuth();
-  const [purchasableProducts, setPurchasableProducts] = useState<PurchasableProduct[]>([]);
+  const [purchasableProducts, setPurchasableProducts] = useState<
+    PurchasableProduct[]
+  >([]);
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<PurchasableProduct | null>(null);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, feedback_type: 'quality', content: '' });
+  const [selectedProduct, setSelectedProduct] =
+    useState<PurchasableProduct | null>(null);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    feedback_type: "quality",
+    content: "",
+  });
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     loadData();
   }, [user]);
 
@@ -55,7 +65,7 @@ export default function MyFeedback() {
 
   const handleOpenReview = (product: PurchasableProduct) => {
     setSelectedProduct(product);
-    setReviewForm({ rating: 5, feedback_type: 'quality', content: '' });
+    setReviewForm({ rating: 5, feedback_type: "quality", content: "" });
     setShowReviewModal(true);
   };
 
@@ -79,7 +89,9 @@ export default function MyFeedback() {
       <div className="my-feedback-page">
         <div className="empty-state">
           <h2>Vui lòng đăng nhập</h2>
-          <Link to="/login" className="btn-primary">Đăng nhập</Link>
+          <Link to="/login" className="btn-primary">
+            Đăng nhập
+          </Link>
         </div>
       </div>
     );
@@ -95,14 +107,21 @@ export default function MyFeedback() {
 
       {purchasableProducts.length > 0 && (
         <section className="feedback-section">
-          <h2 className="section-title">Chờ đánh giá ({purchasableProducts.length})</h2>
+          <h2 className="section-title">
+            Chờ đánh giá ({purchasableProducts.length})
+          </h2>
           {purchasableProducts.map((item) => (
             <div key={item.variant_id} className="purchasable-card">
               <div>
                 <strong>{item.product_name}</strong>
-                <p>{item.variant_info.color.name} - {item.variant_info.size.name}</p>
+                <p>
+                  {item.variant_info.color.name} - {item.variant_info.size.name}
+                </p>
               </div>
-              <button onClick={() => handleOpenReview(item)} className="btn-review-now">
+              <button
+                onClick={() => handleOpenReview(item)}
+                className="btn-review-now"
+              >
                 Đánh giá
               </button>
             </div>
@@ -112,40 +131,61 @@ export default function MyFeedback() {
 
       {purchasableProducts.length === 0 && myReviews.length === 0 && (
         <div className="empty-state">
-        <div className="empty-icon">🛒</div>
+          <div className="empty-icon">🛒</div>
           <p>Bạn chưa có sản phẩm nào để đánh giá</p>
-          <Link to="/products" className="btn-primary">Mua ngay</Link>
+          <Link to="/products" className="btn-primary">
+            Mua ngay
+          </Link>
         </div>
       )}
 
       {myReviews.map((review) => (
         <div key={review.id} className="review-card-compact">
           <div className="review-avatar">
-            {user.username.charAt(0).toUpperCase()}
+            {user.avatar ? (
+              <img
+                src={user.avatar}
+                alt=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              user.username.charAt(0).toUpperCase()
+            )}
           </div>
 
           <div className="review-main">
             <div className="review-top">
               <span className="username">{user.username}</span>
               <span className="date">
-                {new Date(review.created_at).toLocaleDateString('vi-VN')}
+                {new Date(review.created_at).toLocaleDateString("vi-VN")}
               </span>
             </div>
 
             <div className="stars-row">
-              {[1,2,3,4,5].map(s => (
-                <span key={s} className={s <= review.rating ? 'star filled' : 'star'}>★</span>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <span
+                  key={s}
+                  className={s <= review.rating ? "star filled" : "star"}
+                >
+                  ★
+                </span>
               ))}
             </div>
 
-            {review.content && (
-              <p className="review-text">{review.content}</p>
-            )}
+            {review.content && <p className="review-text">{review.content}</p>}
 
             <div className="product-attached">
               <div className="product-name-mini">🛍 {review.product_name}</div>
               <span className="feedback-badge">
-                {FEEDBACK_TYPES.find(t => t.value === review.feedback_type)?.label}
+                {
+                  FEEDBACK_TYPES.find((t) => t.value === review.feedback_type)
+                    ?.label
+                }
               </span>
             </div>
           </div>
@@ -153,25 +193,35 @@ export default function MyFeedback() {
       ))}
 
       {showReviewModal && selectedProduct && (
-        <div className="modal-overlay" onClick={() => setShowReviewModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowReviewModal(false)}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Viết đánh giá</h3>
 
             <div className="modal-product">
               <strong>{selectedProduct.product_name}</strong>
-              <p>{selectedProduct.variant_info.color.name} - {selectedProduct.variant_info.size.name}</p>
+              <p>
+                {selectedProduct.variant_info.color.name} -{" "}
+                {selectedProduct.variant_info.size.name}
+              </p>
             </div>
 
             <form onSubmit={handleSubmitReview}>
               <div className="form-group">
                 <label>Số sao</label>
                 <div className="star-picker">
-                  {[1,2,3,4,5].map(s => (
+                  {[1, 2, 3, 4, 5].map((s) => (
                     <span
                       key={s}
-                      className={s <= reviewForm.rating ? 'active' : ''}
-                      onClick={() => setReviewForm({...reviewForm, rating: s})}
-                    >★</span>
+                      className={s <= reviewForm.rating ? "active" : ""}
+                      onClick={() =>
+                        setReviewForm({ ...reviewForm, rating: s })
+                      }
+                    >
+                      ★
+                    </span>
                   ))}
                 </div>
               </div>
@@ -180,10 +230,17 @@ export default function MyFeedback() {
                 <label>Loại</label>
                 <select
                   value={reviewForm.feedback_type}
-                  onChange={e => setReviewForm({...reviewForm, feedback_type: e.target.value})}
+                  onChange={(e) =>
+                    setReviewForm({
+                      ...reviewForm,
+                      feedback_type: e.target.value,
+                    })
+                  }
                 >
-                  {FEEDBACK_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {FEEDBACK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -192,13 +249,23 @@ export default function MyFeedback() {
                 <label>Nội dung</label>
                 <textarea
                   value={reviewForm.content}
-                  onChange={e => setReviewForm({...reviewForm, content: e.target.value})}
+                  onChange={(e) =>
+                    setReviewForm({ ...reviewForm, content: e.target.value })
+                  }
                 />
               </div>
 
               <div className="modal-actions">
-                <button type="button" onClick={() => setShowReviewModal(false)} className="btn-cancel">Hủy</button>
-                <button type="submit" className="btn-submit">Gửi</button>
+                <button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  className="btn-cancel"
+                >
+                  Hủy
+                </button>
+                <button type="submit" className="btn-submit">
+                  Gửi
+                </button>
               </div>
             </form>
           </div>

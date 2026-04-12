@@ -59,9 +59,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ("id", "username", "email", "first_name", "last_name")
+        fields = ("id", "username", "email", "first_name", "last_name", "avatar")
+        
+    def get_avatar(self, obj):
+        try:
+            avatar = obj.profile.avatar
+            if not avatar:
+                return None
+            request = self.context.get("request")
+            return request.build_absolute_uri(avatar.url) if request else avatar.url
+        except Exception:
+            return None
 
 
 class ProfileUserSerializer(serializers.ModelSerializer):
@@ -216,7 +227,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                     {"role": "Chỉ quản trị viên mới được thay đổi vai trò."}
                 )
         return attrs
-
+    
     def update(self, instance, validated_data):
         request = self.context.get("request")
         if request and not can_manage_profile_roles(request.user):
@@ -224,7 +235,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop("user", None)
         instance = super().update(instance, validated_data)
         if user_data is not None:
-            user_ser = ProfileUserSerializer(
+            user_ser = ProfileUserSerializer(   
                 instance=instance.user,
                 data=user_data,
                 partial=True,

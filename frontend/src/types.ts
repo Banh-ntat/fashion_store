@@ -85,7 +85,7 @@ export interface PurchasableProduct {
 
 export interface Review {
   id: number;
-  user: { id: number; username: string };
+  user: { id: number; username: string; avatar?: string | null };
   product: number;
   product_name: string;
   variant_info: { color: { id: number; name: string; code: string }; size: { id: number; name: string } } | null;

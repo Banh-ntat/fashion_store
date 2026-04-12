@@ -86,6 +86,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         role: userData.role,
         can_access_admin: userData.can_access_admin,
         is_admin: userData.is_admin,
+        avatar: userData.avatar ?? null,
       });
       if (onLoginSuccess) {
         onLoginSuccess();
@@ -126,6 +127,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         role: userData.role,
         can_access_admin: userData.can_access_admin,
         is_admin: userData.is_admin,
+        avatar: userData.avatar ?? null,
       });
       window.history.replaceState({}, '', '/login');
       if (onLoginSuccess) {
@@ -167,6 +169,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         role: userData.role,
         can_access_admin: userData.can_access_admin,
         is_admin: userData.is_admin,
+        avatar: userData.avatar ?? null,
       });
       window.history.replaceState({}, '', '/login');
       if (onLoginSuccess) {
