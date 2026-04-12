@@ -114,11 +114,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "total_price",
             "status",
             "confirmed_by_user",
+            "completed_at",
             "created_at",
             "items",
             "shipping",
         )
-        read_only_fields = ("user", "created_at", "items", "shipping", "discount_code", "confirmed_by_user")
+        read_only_fields = ("user", "created_at", "items", "shipping", "discount_code", "confirmed_by_user", "completed_at")
 
     def validate_status(self, value: str) -> str:
         if not self.instance:

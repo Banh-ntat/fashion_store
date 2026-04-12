@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import DiscountCode, Order, OrderItem, Shipping
+from .models import DiscountCode, Order, OrderItem, ReturnRequest, Shipping
 
 
 @admin.register(DiscountCode)
@@ -34,6 +34,8 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "created_at")
     search_fields = ("user__username", "discount_code_snapshot")
+    # confirmed_by_user và completed_at do API tự set, không cho sửa tay
+    readonly_fields = ("confirmed_by_user", "completed_at", "created_at")
 
 
 @admin.register(OrderItem)
@@ -45,3 +47,11 @@ class OrderItemAdmin(admin.ModelAdmin):
 class ShippingAdmin(admin.ModelAdmin):
     list_display = ("order", "name", "phone")
     search_fields = ("name", "phone")
+
+
+@admin.register(ReturnRequest)
+class ReturnRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "order", "user", "reason", "status", "created_at", "updated_at")
+    list_filter = ("status", "reason", "created_at")
+    search_fields = ("user__username", "order__id")
+    readonly_fields = ("order", "user", "reason", "description", "created_at", "updated_at")

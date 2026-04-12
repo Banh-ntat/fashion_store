@@ -1,6 +1,10 @@
 from django.db import models
 from decimal import Decimal
 
+from django.utils import timezone
+from datetime import timedelta
+from .constants import RETURN_WINDOW
+
 from django.db import transaction
 from django.db.models import F
 from rest_framework import permissions, status, viewsets
@@ -37,7 +41,6 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="active", permission_classes=[AllowAny])
     def active(self, request):
-        from django.utils import timezone
         today = timezone.localdate()
         codes = DiscountCode.objects.filter(
             is_active=True,
@@ -71,7 +74,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         order.status = "completed"
         order.confirmed_by_user = True
-        order.save(update_fields=["status", "confirmed_by_user"])
+        order.completed_at = timezone.now()
+        order.save(update_fields=["status", "confirmed_by_user", "completed_at"])
         return Response(self.get_serializer(order).data)
 
     @action(detail=True, methods=["post"], url_path="cancel")
@@ -417,6 +421,13 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
                 {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đang giao hoặc đã hoàn thành."},
                 status=400,
             )
+        
+        if order.status == "completed" and order.confirmed_by_user:
+            if timezone.now() > order.completed_at + RETURN_WINDOW:
+                return Response(
+                    {"detail": "Đã quá thời hạn hoàn trả, không thể gửi yêu cầu."},
+                    status=400,
+                )
 
         if ReturnRequest.objects.filter(order=order, user=request.user).exists():
             return Response(
