@@ -62,6 +62,7 @@ urlpatterns = [
     path('api/contact/', include('contact.urls')),
     path('api/core/', include('core.api_urls')),
     path('api/wishlist/', include('wishlist.urls')),
+    path('api/payments/', include('payments.urls')),
 ]
 
 if settings.DEBUG:

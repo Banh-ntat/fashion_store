@@ -171,7 +171,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return list(dict.fromkeys(normalized_ids))
 
     def _load_cart_items(self, user, *, lock: bool = False, cart_item_ids=None):
-        cart_qs = Cart.objects.filter(user=user)
+        # Trùng với CartViewSet: giỏ mới nhất — tránh .first() không order_by (lệch giỏ so với API /cart/carts/).
+        cart_qs = Cart.objects.filter(user=user).order_by("-created_at")
         if lock:
             cart_qs = cart_qs.select_for_update()
         cart = cart_qs.first()
@@ -271,6 +272,11 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        allowed_payment = {c[0] for c in Order.PAYMENT_METHOD_CHOICES}
+        raw_payment = (request.data.get("payment_method") or "cod").strip().lower()
+        payment_method = raw_payment if raw_payment in allowed_payment else "cod"
+        gateway_status = "pending" if payment_method in ("vnpay", "momo") else "none"
+
         with transaction.atomic():
             try:
                 cart, cart_items = self._load_cart_items(user, lock=True, cart_item_ids=cart_item_ids)
@@ -336,6 +342,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 discount_amount=discount_amount,
                 shipping_fee=shipping_fee,
                 total_price=total_price,
+                payment_method=payment_method,
+                gateway_status=gateway_status,
+                inventory_deducted=True,
             )
             for cart_item, variant, unit in line_build:
                 OrderItem.objects.create(
@@ -352,10 +361,37 @@ class OrderViewSet(viewsets.ModelViewSet):
             CartItem.objects.filter(cart=cart, id__in=[cart_item.id for cart_item, _variant, _unit in line_build]).delete()
 
             order_id_for_email = order.id
-            transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
+            if payment_method == "cod":
+                transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
 
         serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        payload = dict(serializer.data)
+        if payment_method == "vnpay":
+            from payments import vnpay as vnpay_mod
+
+            try:
+                payload["payment_url"] = vnpay_mod.build_payment_url(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif payment_method == "momo":
+            from payments import momo as momo_mod
+
+            try:
+                payload["payment_url"] = momo_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class OrderItemViewSet(viewsets.ModelViewSet):

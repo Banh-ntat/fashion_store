@@ -63,6 +63,9 @@ export interface Order {
   discount_amount?: string;
   shipping_fee?: string;
   total_price: string;
+  payment_method?: string;
+  gateway_status?: string;
+  inventory_deducted?: boolean;
   status: string;
   created_at: string;
   items: OrderItem[];

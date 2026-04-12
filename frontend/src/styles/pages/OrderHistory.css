@@ -26,6 +26,12 @@
   line-height: 1.45;
 }
 
+.orderPlacedBanner--warn {
+  background: rgba(245, 85, 84, 0.08);
+  border-color: rgba(245, 85, 84, 0.35);
+  color: #9f2b2a;
+}
+
 .orderLoginHint {
   font-size: 1rem;
   color: var(--color-text-muted);

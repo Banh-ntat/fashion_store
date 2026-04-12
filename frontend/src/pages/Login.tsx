@@ -15,13 +15,19 @@ const GOOGLE_CLIENT_ID_DEFAULT =
   '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com';
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || GOOGLE_CLIENT_ID_DEFAULT;
-const FACEBOOK_APP_ID = '1571626650928827';
-const FACEBOOK_REDIRECT_URI = 'http://localhost:5173/auth/facebook/callback';
+const FACEBOOK_APP_ID =
+  import.meta.env.VITE_FACEBOOK_APP_ID?.trim() || '1571626650928827';
 
 function getGoogleRedirectUri(): string {
   const fromEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
   return `${window.location.origin}/auth/google/callback`;
+}
+
+function getFacebookRedirectUri(): string {
+  const fromEnv = import.meta.env.VITE_FACEBOOK_REDIRECT_URI?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  return `${window.location.origin}/auth/facebook/callback`;
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
@@ -139,15 +145,16 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const handleFacebookLogin = () => {
     // Chỉ dùng public_profile để tránh lỗi "Invalid Scopes: email" (email lấy từ backend nếu có)
     const scope = encodeURIComponent('public_profile');
+    const redirectUri = getFacebookRedirectUri();
     // Dùng v21.0 ổn định; redirect_uri phải khớp chính xác với cấu hình trong Facebook App
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(FACEBOOK_REDIRECT_URI)}&scope=${scope}&response_type=code&state=facebook`;
+    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=facebook`;
     window.location.href = authUrl;
   };
 
   const handleFacebookCallback = async (code: string) => {
     setFacebookLoading(true);
     try {
-      await auth.facebookCallback(code);
+      await auth.facebookCallback(code, getFacebookRedirectUri());
       const userData = await auth.getCurrentUser();
       if (userData.role) localStorage.setItem('user_role', userData.role);
       else localStorage.removeItem('user_role');

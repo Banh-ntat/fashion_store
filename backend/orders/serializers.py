@@ -112,6 +112,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "discount_amount",
             "shipping_fee",
             "total_price",
+            "payment_method",
+            "gateway_status",
+            "gateway_transaction_id",
+            "inventory_deducted",
             "status",
             "confirmed_by_user",
             "completed_at",
@@ -119,7 +123,19 @@ class OrderSerializer(serializers.ModelSerializer):
             "items",
             "shipping",
         )
-        read_only_fields = ("user", "created_at", "items", "shipping", "discount_code", "confirmed_by_user", "completed_at")
+        read_only_fields = (
+            "user",
+            "created_at",
+            "items",
+            "shipping",
+            "discount_code",
+            "confirmed_by_user",
+            "completed_at",
+            "payment_method",
+            "gateway_status",
+            "gateway_transaction_id",
+            "inventory_deducted",
+        )
 
     def validate_status(self, value: str) -> str:
         if not self.instance:

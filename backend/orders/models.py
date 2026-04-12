@@ -86,6 +86,37 @@ class Order(models.Model):
     confirmed_by_user = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    PAYMENT_METHOD_CHOICES = (
+        ("cod", "Thanh toán khi nhận hàng (COD)"),
+        ("vnpay", "VNPay"),
+        ("momo", "Ví MoMo"),
+    )
+    payment_method = models.CharField(
+        max_length=24,
+        choices=PAYMENT_METHOD_CHOICES,
+        default="cod",
+    )
+    gateway_transaction_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Mã giao dịch cổng (VNPay / MoMo)",
+    )
+
+    GATEWAY_STATUS_CHOICES = (
+        ("none", "Không qua cổng (COD)"),
+        ("pending", "Chờ thanh toán"),
+        ("paid", "Đã thanh toán"),
+        ("failed", "Thanh toán thất bại"),
+    )
+    gateway_status = models.CharField(
+        max_length=24,
+        choices=GATEWAY_STATUS_CHOICES,
+        default="none",
+    )
+    # True khi tồn kho đã trừ tại checkout (luồng hiện tại trừ stock trước khi INSERT đơn)
+    inventory_deducted = models.BooleanField(default=True)
+
     def __str__(self):
         return f"Order {self.id}"
 

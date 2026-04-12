@@ -1,9 +1,27 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { orders, reviews, returns } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Order, PurchasableProduct } from "../types";
 import "../styles/pages/OrderHistory.css";
+
+/** Gợi ý theo mã VNPay (một phần — khớp backend payments/vnpay.py) */
+const VNPAY_FAIL_HINTS: Record<string, string> = {
+  "00": "Giao dịch thành công.",
+  "07": "Giao dịch bị nghi ngờ (kiểm tra thêm tại ngân hàng).",
+  "09": "Thẻ/chưa đăng ký Internet Banking.",
+  "10": "OTP không đúng.",
+  "11": "Hết hạn OTP.",
+  "12": "Thẻ bị khóa.",
+  "13": "Sai mật khẩu thanh toán quá số lần.",
+  "24": "Giao dịch đã hủy.",
+  "51": "Không đủ số dư.",
+  "65": "Vượt hạn mức trong ngày.",
+  "75": "Ngân hàng đang bảo trì.",
+  "79": "Sai mật khẩu thanh toán quá số lần.",
+  "15": "Hết thời gian chờ thanh toán — thử lại và hoàn tất ngay trên cổng VNPay.",
+  "70": "Sai chữ ký cổng thanh toán. Kiểm tra cấu hình VNPay (TMN/Secret), thử không ép VNPAYQR.",
+};
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Chờ xử lý",
@@ -53,6 +71,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const shellClass = embedded
     ? "order-history-page order-history-page--embed"
     : "pageSection order-history-page";
@@ -72,6 +91,10 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   );
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
+  const [paymentRedirectNotice, setPaymentRedirectNotice] = useState<
+    "success" | "failed" | null
+  >(null);
+  const [vnpayFailHint, setVnpayFailHint] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
   const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
@@ -97,6 +120,20 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    const p = searchParams.get("payment");
+    const vnpRc = searchParams.get("vnp_rc");
+    if (p === "success" || p === "failed") {
+      setPaymentRedirectNotice(p);
+      if (p === "failed" && vnpRc) {
+        setVnpayFailHint(VNPAY_FAIL_HINTS[vnpRc] ?? null);
+      } else {
+        setVnpayFailHint(null);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!user) {
@@ -302,6 +339,21 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
         {showOrderPlacedBanner && (
           <div className="orderPlacedBanner" role="status">
             Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại cửa hàng.
+          </div>
+        )}
+
+        {paymentRedirectNotice === "success" && (
+          <div className="orderPlacedBanner" role="status">
+            Thanh toán thành công. Đơn hàng đã được ghi nhận.
+          </div>
+        )}
+        {paymentRedirectNotice === "failed" && (
+          <div
+            className="orderPlacedBanner orderPlacedBanner--warn"
+            role="status"
+          >
+            {vnpayFailHint ??
+              "Thanh toán chưa hoàn tất hoặc đã hủy. Kiểm tra đơn trong danh sách bên dưới."}
           </div>
         )}
 

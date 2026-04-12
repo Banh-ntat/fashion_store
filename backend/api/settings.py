@@ -15,10 +15,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Đọc .env: ưu tiên backend/.env; nếu thiếu biến có thể bổ sung từ .env ở thư mục gốc repo
+_repo_root = BASE_DIR.parent
+load_dotenv(_repo_root / '.env', override=False)
+load_dotenv(BASE_DIR / '.env', override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -56,6 +59,7 @@ INSTALLED_APPS = [
     'contact',
     'core',
     'wishlist',
+    'payments',
 ]
 
 MIDDLEWARE = [
@@ -237,6 +241,49 @@ GOOGLE_REDIRECT_URI = os.getenv(
 )
 
 # Facebook OAuth Configuration
-FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID')
-FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET')
-FACEBOOK_REDIRECT_URI = os.getenv('FACEBOOK_REDIRECT_URI', 'http://localhost:5173/auth/facebook/callback')
+# DEBUG: nếu chưa có trong .env, dùng cùng App ID mặc định như frontend (Login.tsx / VITE_FACEBOOK_APP_ID)
+FACEBOOK_APP_ID = (os.getenv('FACEBOOK_APP_ID') or '').strip() or (
+    '1571626650928827' if DEBUG else None
+)
+# Bỏ khoảng trắng đầu/cuối (lỗi thường gặp khi copy từ Meta)
+FACEBOOK_APP_SECRET = (os.getenv('FACEBOOK_APP_SECRET') or '').strip() or None
+FACEBOOK_REDIRECT_URI = os.getenv(
+    'FACEBOOK_REDIRECT_URI',
+    f'{FRONTEND_ORIGIN}/auth/facebook/callback',
+)
+
+# Public URL của backend (dùng cho VNPay/MoMo return & IPN). Local: http://127.0.0.1:8000
+BACKEND_PUBLIC_BASE = (os.getenv('BACKEND_PUBLIC_BASE') or '').strip().rstrip('/')
+
+# VNPay — https://sandbox.vnpayment.vn/ (sandbox) hoặc production URL; IPN cần URL công khai (ngrok) giống MoMo
+VNP_TMN_CODE = (os.getenv('VNP_TMN_CODE') or '').strip()
+VNP_HASH_SECRET = (os.getenv('VNP_HASH_SECRET') or '').strip()
+VNP_PAYMENT_URL = (os.getenv('VNP_PAYMENT_URL') or '').strip() or 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'
+VNP_RETURN_PATH = os.getenv('VNP_RETURN_PATH', '/api/payments/vnpay/return/')
+VNP_IPN_PATH = os.getenv('VNP_IPN_PATH', '/api/payments/vnpay/ipn/')
+try:
+    _vnp_exp = int((os.getenv('VNP_EXPIRE_MINUTES') or '30').strip())
+except ValueError:
+    _vnp_exp = 30
+VNP_EXPIRE_MINUTES = max(5, min(_vnp_exp, 180))
+# Thanh toán QR VNPAY-QR (quét app ngân hàng); để trống = khách chọn trên cổng — xem tài liệu vnp_BankCode
+VNP_BANK_CODE = (os.getenv('VNP_BANK_CODE') or '').strip()
+VNP_API_URL = (os.getenv('VNP_API_URL') or '').strip() or 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'
+# True = gửi vnp_ExpireDate (tài liệu mới); False = giống vnpay_python.zip — tránh lệch checksum sandbox/demo
+VNP_SEND_EXPIRE_DATE = os.getenv('VNP_SEND_EXPIRE_DATE', 'false').lower() in ('1', 'true', 'yes', 'on')
+
+# MoMo — https://developers.momo.vn/ (test endpoint mặc định)
+# Dev: đặt MOMO_* sandbox trong .env; BACKEND_PUBLIC_BASE=http://127.0.0.1:8000 khi frontend Vite proxy /api.
+# IPN từ MoMo không tới được localhost — chỉ return trình duyệt hoạt động; test IPN đầy đủ cần ngrok + BACKEND_PUBLIC_BASE https.
+MOMO_PARTNER_CODE = (os.getenv('MOMO_PARTNER_CODE') or '').strip()
+MOMO_ACCESS_KEY = (os.getenv('MOMO_ACCESS_KEY') or '').strip()
+MOMO_SECRET_KEY = (os.getenv('MOMO_SECRET_KEY') or '').strip()
+MOMO_PARTNER_NAME = os.getenv('MOMO_PARTNER_NAME', 'FashionStore')
+MOMO_STORE_ID = os.getenv('MOMO_STORE_ID', 'FashionStore')
+MOMO_ENDPOINT = (os.getenv('MOMO_ENDPOINT') or '').strip() or 'https://test-payment.momo.vn/v2/gateway/api/create'
+MOMO_RETURN_PATH = os.getenv('MOMO_RETURN_PATH', '/api/payments/momo/return/')
+MOMO_IPN_PATH = os.getenv('MOMO_IPN_PATH', '/api/payments/momo/notify/')
+# payWithMethod = collection link (chọn phương thức trên MoMo); captureWallet = ví MoMo trực tiếp
+MOMO_REQUEST_TYPE = (os.getenv('MOMO_REQUEST_TYPE') or 'payWithMethod').strip()
+MOMO_AUTO_CAPTURE = os.getenv('MOMO_AUTO_CAPTURE', 'true').lower() in ('1', 'true', 'yes', 'on')
+MOMO_ORDER_GROUP_ID = (os.getenv('MOMO_ORDER_GROUP_ID') or '').strip()

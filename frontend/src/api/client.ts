@@ -158,13 +158,15 @@ export const auth = {
     const { data } = await api.get("/auth/facebook/url/");
     return data;
   },
-  facebookCallback: async (code: string) => {
+  facebookCallback: async (code: string, redirectUri?: string) => {
     try {
+      const body: { code: string; redirect_uri?: string } = { code };
+      if (redirectUri) body.redirect_uri = redirectUri;
       const { data } = await api.post<{
         access?: string;
         refresh?: string;
         error?: string;
-      }>("/auth/facebook/callback/", { code });
+      }>("/auth/facebook/callback/", body);
       if (!data?.access) {
         throw new Error(data?.error || "Đăng nhập Facebook thất bại");
       }
@@ -284,7 +286,15 @@ export const orders = {
     note?: string;
     discount_code?: string;
     cart_item_ids?: number[];
-  }) => api.post("/orders/orders/checkout/", data),
+    payment_method?: "cod" | "vnpay" | "momo";
+  }) =>
+    api.post<{
+      id: number;
+      payment_url?: string;
+      gateway_status?: string;
+      payment_method?: string;
+      [key: string]: unknown;
+    }>("/orders/orders/checkout/", data),
 };
 
 export const reviews = {

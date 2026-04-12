@@ -130,6 +130,9 @@ export default function Checkout() {
     null,
   );
   const [step, setStep] = useState<"shipping" | "confirm">("shipping");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "vnpay" | "momo">(
+    "cod",
+  );
   const [selectionNotice, setSelectionNotice] = useState("");
   const discountFromUrl =
     searchParams.get("discount")?.trim().toUpperCase() ?? "";
@@ -310,14 +313,23 @@ export default function Checkout() {
 
     setSubmitting(true);
     try {
-      await orders.checkout({
+      const res = await orders.checkout({
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
         note: form.note.trim() || undefined,
         discount_code: appliedDiscountCode || undefined,
         cart_item_ids: selectedCartItemIds,
+        payment_method: paymentMethod,
       });
+      const data = res.data;
+      const payUrl =
+        typeof data.payment_url === "string" ? data.payment_url : "";
+      if (payUrl) {
+        notifyCartUpdated();
+        window.location.href = payUrl;
+        return;
+      }
       setForm({ name: "", phone: "", address: "", note: "" });
       setDiscountCode("");
       setPricingPreview(null);
@@ -564,6 +576,50 @@ export default function Checkout() {
                   </button>
                 </div>
 
+                <div className="checkout-summary-section checkout-payment-section">
+                  <h3>Phương thức thanh toán</h3>
+                  <div className="checkout-payment-options" role="radiogroup">
+                    <label className="checkout-payment-option">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => setPaymentMethod("cod")}
+                      />
+                      <span>
+                        <strong>Thanh toán khi nhận hàng (COD)</strong>
+                        <small>Trả tiền mặt lúc giao hàng</small>
+                      </span>
+                    </label>
+                    <label className="checkout-payment-option">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === "vnpay"}
+                        onChange={() => setPaymentMethod("vnpay")}
+                      />
+                      <span>
+                        <strong>VNPay</strong>
+                        <small>
+                          Cổng VNPay: thẻ ATM, QR VNPAY (app ngân hàng), thẻ quốc tế — sandbox
+                        </small>
+                      </span>
+                    </label>
+                    <label className="checkout-payment-option">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === "momo"}
+                        onChange={() => setPaymentMethod("momo")}
+                      />
+                      <span>
+                        <strong>Ví MoMo</strong>
+                        <small>Quét QR hoặc thanh toán trong app MoMo</small>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="checkout-summary-section">
                   <h3>Sản phẩm đã chọn — {items.length} món</h3>
                   <ul className="checkout-product-list">
@@ -624,7 +680,9 @@ export default function Checkout() {
                   >
                     {submitting
                       ? "Đang xử lý..."
-                      : `Đặt hàng — ${formatCurrency(pricing.total)}`}
+                      : paymentMethod === "cod"
+                        ? `Đặt hàng — ${formatCurrency(pricing.total)}`
+                        : `Thanh toán — ${formatCurrency(pricing.total)}`}
                   </button>
                 </div>
               </div>

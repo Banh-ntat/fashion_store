@@ -58,6 +58,27 @@ def _allowed_google_oauth_redirect_uris():
     return expanded
 
 
+def _allowed_facebook_redirect_uris():
+    """redirect_uri khi đổi code — phải khớp Valid OAuth Redirect URIs trong Facebook App."""
+    uris = set()
+    primary = (getattr(settings, "FACEBOOK_REDIRECT_URI", "") or "").strip().rstrip("/")
+    fe = (getattr(settings, "FRONTEND_ORIGIN", "") or "").strip().rstrip("/")
+    if primary:
+        uris.add(primary)
+    if fe:
+        uris.add(f"{fe}/auth/facebook/callback")
+    expanded = set()
+    for u in uris:
+        if not u:
+            continue
+        expanded.add(u)
+        if "//localhost" in u:
+            expanded.add(u.replace("//localhost", "//127.0.0.1", 1))
+        if "//127.0.0.1" in u:
+            expanded.add(u.replace("//127.0.0.1", "//localhost", 1))
+    return expanded
+
+
 def _facebook_profile_picture_url(userinfo: dict) -> str:
     """
     Graph API có thể trả picture: null hoặc cấu trúc khác — không dùng chuỗi .get lồng trực tiếp
@@ -525,6 +546,39 @@ class FacebookCallbackView(APIView):
                 "error": "Thiếu mã authorization"
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        if not settings.FACEBOOK_APP_SECRET:
+            return Response({
+                "error": (
+                    "Chưa cấu hình FACEBOOK_APP_SECRET trên server. "
+                    "Trong thư mục backend, tạo hoặc sửa file .env và thêm: "
+                    "FACEBOOK_APP_SECRET=<App Secret từ developers.facebook.com> "
+                    "(cùng app với App ID đang dùng để đăng nhập)."
+                ),
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        if not settings.FACEBOOK_APP_ID:
+            return Response({
+                "error": "Chưa cấu hình FACEBOOK_APP_ID (bắt buộc khi DEBUG=False).",
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        raw_redirect = (request.data.get("redirect_uri") or "").strip().rstrip("/")
+        allowed = _allowed_facebook_redirect_uris()
+        if raw_redirect:
+            if raw_redirect not in allowed:
+                return Response(
+                    {
+                        "error": (
+                            "redirect_uri không khớp cấu hình. Thêm đúng URI vào "
+                            "Facebook App (Valid OAuth Redirect URIs), hoặc mở site bằng "
+                            "cùng host với URI đã khai báo (localhost vs 127.0.0.1)."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            redirect_uri = raw_redirect
+        else:
+            redirect_uri = (settings.FACEBOOK_REDIRECT_URI or "").strip().rstrip("/")
+
         try:
             # Exchange code for access token (redirect_uri phải khớp chính xác với Facebook App)
             token_url = "https://graph.facebook.com/v21.0/oauth/access_token"
@@ -532,7 +586,7 @@ class FacebookCallbackView(APIView):
                 "client_id": settings.FACEBOOK_APP_ID,
                 "client_secret": settings.FACEBOOK_APP_SECRET,
                 "code": code,
-                "redirect_uri": settings.FACEBOOK_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
             }
 
             token_response = requests.get(token_url, params=token_params)

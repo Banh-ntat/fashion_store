@@ -29,13 +29,16 @@ class OrderAdmin(admin.ModelAdmin):
         "discount_amount",
         "shipping_fee",
         "total_price",
+        "payment_method",
+        "gateway_status",
+        "inventory_deducted",
         "status",
         "created_at",
     )
-    list_filter = ("status", "created_at")
+    list_filter = ("status", "payment_method", "gateway_status", "created_at")
     search_fields = ("user__username", "discount_code_snapshot")
     # confirmed_by_user và completed_at do API tự set, không cho sửa tay
-    readonly_fields = ("confirmed_by_user", "completed_at", "created_at")
+    readonly_fields = ("confirmed_by_user", "completed_at", "created_at", "gateway_transaction_id")
 
 
 @admin.register(OrderItem)
