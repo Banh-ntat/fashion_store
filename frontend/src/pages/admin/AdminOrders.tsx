@@ -38,8 +38,9 @@ interface Order {
 }
 
 const STATUS_CHOICES = [
-  { value: 'pending', label: 'Chờ xác nhận' },
+  { value: 'pending', label: 'Chờ xử lý' },
   { value: 'shipping', label: 'Đang giao hàng' },
+  { value: 'awaiting_confirmation', label: 'Chờ xác nhận' },
   { value: 'returning', label: 'Đã hoàn trả' },
   { value: 'completed', label: 'Hoàn thành' },
   { value: 'cancelled', label: 'Đã hủy' },
@@ -132,6 +133,7 @@ export default function AdminOrders() {
     const statusMap: Record<string, string> = {
       pending: 'status-pending',
       shipping: 'status-shipping',
+      awaiting_confirmation: 'status-awaiting',
       returning: 'status-returning',
       completed: 'status-completed',
       cancelled: 'status-cancelled',

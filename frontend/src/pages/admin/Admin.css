@@ -440,6 +440,11 @@
   color: #3a6090;
 }
 
+.status-awaiting {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
 .status-returning {
   background: #fef3c7;
   color: #92400e;

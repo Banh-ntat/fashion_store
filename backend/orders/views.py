@@ -67,9 +67,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 {"detail": "Bạn không có quyền thực hiện thao tác này."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if order.status != "shipping":
+        if order.status != "awaiting_confirmation":
             return Response(
-                {"detail": "Chỉ có thể xác nhận nhận hàng khi đơn đang được giao."},
+                {"detail": "Chỉ có thể xác nhận nhận hàng khi đơn đang chờ xác nhận."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order.status = "completed"
@@ -109,6 +109,12 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        import datetime
+        cutoff = timezone.now() - datetime.timedelta(days=2)
+        Order.objects.filter(
+            status="awaiting_confirmation",
+            updated_at__lte=cutoff,
+        ).update(status="completed")
         if is_staff(user):
             qs = Order.objects.select_related("user", "discount_code").prefetch_related("shipping").all()
         else:
@@ -452,7 +458,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         except Order.DoesNotExist:
             return Response({"detail": "Đơn hàng không tồn tại."}, status=400)
 
-        if order.status not in ("shipping", "completed"):
+        if order.status not in ("shipping", "awaiting_confirmation", "completed"):
             return Response(
                 {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đang giao hoặc đã hoàn thành."},
                 status=400,
@@ -460,10 +466,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         
         if order.status == "completed" and order.confirmed_by_user:
             if timezone.now() > order.completed_at + RETURN_WINDOW:
-                return Response(
-                    {"detail": "Đã quá thời hạn hoàn trả, không thể gửi yêu cầu."},
-                    status=400,
-                )
+                return Response({"detail": "Đã quá thời hạn hoàn trả, không thể gửi yêu cầu."}, status=400)
 
         if ReturnRequest.objects.filter(order=order, user=request.user).exists():
             return Response(
@@ -488,7 +491,10 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
             obj.status = "approved"
             obj.admin_note = request.data.get("admin_note", "")
             obj.save(update_fields=["status", "admin_note", "updated_at"])
-            Order.objects.filter(pk=obj.order_id, status="shipping").update(status="returning")
+            Order.objects.filter(
+                pk=obj.order_id,
+                status__in=["shipping", "awaiting_confirmation"]
+            ).update(status="returning")
         return Response(self.get_serializer(obj).data)
 
     @action(detail=True, methods=["post"], url_path="reject")
@@ -502,7 +508,10 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
             obj.status = "rejected"
             obj.admin_note = request.data.get("admin_note", "")
             obj.save(update_fields=["status", "admin_note", "updated_at"])
-            Order.objects.filter(pk=obj.order_id, status="shipping").update(status="completed")
+            Order.objects.filter(
+                pk=obj.order_id,
+                status__in=["shipping", "awaiting_confirmation"]
+            ).update(status="completed")
         return Response(self.get_serializer(obj).data)
 
     @action(detail=True, methods=["post"], url_path="complete")

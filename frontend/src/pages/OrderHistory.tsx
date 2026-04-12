@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { orders, reviews, returns } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Order, PurchasableProduct } from "../types";
@@ -26,6 +31,7 @@ const VNPAY_FAIL_HINTS: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: "Chờ xử lý",
   shipping: "Đang giao",
+  awaiting_confirmation: "Chờ xác nhận",
   returning: "Đã hoàn trả",
   completed: "Hoàn thành",
   cancelled: "Đã hủy",
@@ -474,8 +480,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                     </div>
                   )}
 
-                  {/* Đang giao: nút xác nhận nhận hàng + hoàn trả */}
-                  {order.status === "shipping" &&
+                  {order.status === "awaiting_confirmation" &&
                     !returnedOrderIds.has(order.id) && (
                       <div className="orderShippingActions">
                         {showReturnFormId === order.id ? (
@@ -529,37 +534,11 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                       </div>
                     )}
 
-                  {/* Đã hoàn thành: còn trong window → cho hoàn trả; hết hạn → thông báo */}
+                  {/* Đã hoàn thành: nếu user đã xác nhận → không cho hoàn trả */}
                   {order.status === "completed" &&
+                    order.confirmed_by_user &&
                     !returnedOrderIds.has(order.id) &&
-                    (windowOpen ? (
-                      <div className="orderShippingActions">
-                        {timeLabel && (
-                          <p className="orderReturnDeadlineHint">
-                            ⏱ Còn {timeLabel} để gửi yêu cầu hoàn trả.
-                          </p>
-                        )}
-                        {showReturnFormId === order.id ? (
-                          renderReturnForm(order.id)
-                        ) : (
-                          <button
-                            type="button"
-                            className="orderReturnBtn"
-                            onClick={() => {
-                              setShowReturnFormId(order.id);
-                              setReturnError("");
-                              setReturnForm({ reason: "", description: "" });
-                            }}
-                          >
-                            ↩ Yêu cầu hoàn trả
-                          </button>
-                        )}
-                      </div>
-                    ) : order.confirmed_by_user ? (
-                      <p className="orderReturnExpired">
-                        Đã hết thời hạn hoàn trả (2 ngày kể từ khi nhận hàng).
-                      </p>
-                    ) : null)}
+                    null}
 
                   <div className="orderTotal">
                     {order.subtotal != null && order.shipping_fee != null && (
