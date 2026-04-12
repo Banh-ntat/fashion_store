@@ -33,6 +33,9 @@ interface Order {
   total_price: string;
   status: string;
   created_at: string;
+  payment_method?: string;
+  gateway_status?: string;
+  gateway_transaction_id?: string;
   items: OrderItemRow[];
   shipping: ShippingInfo | null;
 }
@@ -54,6 +57,21 @@ function formatVnd(value: string | number) {
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (Number.isNaN(n)) return String(value);
   return `${new Intl.NumberFormat('vi-VN').format(n)} đ`;
+}
+
+function getPaymentMethodLabel(method?: string) {
+  if (method === 'vnpay') return 'VNPay';
+  if (method === 'momo') return 'Ví MoMo';
+  if (method === 'cod') return 'Thanh toán khi nhận hàng (COD)';
+  return method || 'N/A';
+}
+
+function getGatewayStatusLabel(status?: string) {
+  if (status === 'paid') return 'Đã thanh toán';
+  if (status === 'failed') return 'Thanh toán thất bại';
+  if (status === 'pending') return 'Chờ thanh toán';
+  if (status === 'none') return 'Không qua cổng (COD)';
+  return status || 'N/A';
 }
 
 const PAGE_SIZE = 20;
@@ -302,6 +320,12 @@ export default function AdminOrders() {
                     </p>
                     <p>
                       <strong>Ngày tạo:</strong> {new Date(detail.created_at).toLocaleString('vi-VN')}
+                    </p>
+                    <p>
+                      <strong>Phương thức:</strong> {getPaymentMethodLabel(detail.payment_method)}
+                      {detail.payment_method && detail.payment_method !== 'cod' && (
+                        <span> — <strong>Trạng thái cổng:</strong> <span className={detail.gateway_status === 'paid' ? 'status-completed' : detail.gateway_status === 'failed' ? 'status-cancelled' : 'status-pending'} style={{padding: '2px 6px', borderRadius: '4px', fontSize: '13px'}}>{getGatewayStatusLabel(detail.gateway_status)}</span></span>
+                      )}
                     </p>
                     {detail.shipping && (
                       <>
