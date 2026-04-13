@@ -92,5 +92,6 @@ export interface Review {
   rating: number;
   feedback_type: string;
   content: string;
+  is_visible?: boolean;
   created_at: string;
 }

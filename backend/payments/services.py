@@ -32,10 +32,11 @@ def mark_order_paid(order_id: int, gateway_txn_id: str = "") -> bool:
             return False
 
         order.gateway_status = "paid"
+        order.status = "shipping"
         if gateway_txn_id:
             tid = gateway_txn_id[:128]
             order.gateway_transaction_id = tid
-        order.save(update_fields=["gateway_status", "gateway_transaction_id"])
+        order.save(update_fields=["gateway_status", "status", "gateway_transaction_id"])
 
     transaction.on_commit(lambda: send_order_confirmation_email(order_id))
     return True

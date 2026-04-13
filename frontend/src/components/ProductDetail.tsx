@@ -128,7 +128,7 @@ function ProductDetail() {
           reviewsApi.getByProduct(productId),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
-        setReviewsList((reviewsRes?.data ?? []) as Review[]);
+        setReviewsList(((reviewsRes?.data ?? []) as Review[]).filter((r) => r.is_visible !== false));
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
@@ -298,7 +298,7 @@ function ProductDetail() {
       notify("Cảm ơn bạn đã đánh giá!", "success");
       setShowReviewModal(false);
       const reviewsRes = await reviewsApi.getByProduct(Number(id));
-      setReviewsList((reviewsRes?.data ?? []) as Review[]);
+      setReviewsList(((reviewsRes?.data ?? []) as Review[]).filter((r) => r.is_visible !== false));
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
