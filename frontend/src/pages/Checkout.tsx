@@ -178,6 +178,53 @@ export default function Checkout() {
     note: "",
   });
 
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<number | "">("");
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<number | "">("");
+  const [selectedWardCode, setSelectedWardCode] = useState<number | "">("");
+
+  const [selectedProvinceName, setSelectedProvinceName] = useState("");
+  const [selectedDistrictName, setSelectedDistrictName] = useState("");
+  const [selectedWardName, setSelectedWardName] = useState("");
+
+  const [addressLine, setAddressLine] = useState("");
+
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/p/")
+      .then((res) => res.json())
+      .then((data) => setProvinces(data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProvinceCode) {
+      setDistricts([]);
+      setSelectedDistrictCode("");
+      setSelectedDistrictName("");
+      return;
+    }
+    fetch(`https://provinces.open-api.vn/api/p/${selectedProvinceCode}?depth=2`)
+      .then((res) => res.json())
+      .then((data) => setDistricts(data.districts || []))
+      .catch(console.error);
+  }, [selectedProvinceCode]);
+
+  useEffect(() => {
+    if (!selectedDistrictCode) {
+      setWards([]);
+      setSelectedWardCode("");
+      setSelectedWardName("");
+      return;
+    }
+    fetch(`https://provinces.open-api.vn/api/d/${selectedDistrictCode}?depth=2`)
+      .then((res) => res.json())
+      .then((data) => setWards(data.wards || []))
+      .catch(console.error);
+  }, [selectedDistrictCode]);
+
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -242,10 +289,12 @@ export default function Checkout() {
   const hasAppliedDiscount = !!appliedDiscountCode;
 
   const handleContinueToConfirm = () => {
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
+    if (!form.name.trim() || !form.phone.trim() || !addressLine.trim() || !selectedProvinceName || !selectedDistrictName || !selectedWardName) {
       alert("Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ.");
       return;
     }
+    const fullAddress = `${addressLine.trim()}, ${selectedWardName}, ${selectedDistrictName}, ${selectedProvinceName}`;
+    setForm((f) => ({ ...f, address: fullAddress }));
     setStep("confirm");
   };
 
@@ -502,20 +551,76 @@ export default function Checkout() {
                       required
                     />
                   </div>
+                  <div className="checkout-field" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', alignItems: 'start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label htmlFor="province">Tỉnh/Thành phố *</label>
+                      <select
+                        id="province"
+                        className="checkout-input"
+                        value={selectedProvinceCode}
+                        onChange={(e) => {
+                          const code = Number(e.target.value) || "";
+                          setSelectedProvinceCode(code);
+                          setSelectedProvinceName(e.target.options[e.target.selectedIndex].text);
+                        }}
+                        required
+                      >
+                        <option value="" disabled>-- Chọn Tỉnh --</option>
+                        {provinces.map((p) => (
+                          <option key={p.code} value={p.code}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label htmlFor="district">Quận/Huyện *</label>
+                      <select
+                        id="district"
+                        className="checkout-input"
+                        value={selectedDistrictCode}
+                        onChange={(e) => {
+                          const code = Number(e.target.value) || "";
+                          setSelectedDistrictCode(code);
+                          setSelectedDistrictName(e.target.options[e.target.selectedIndex].text);
+                        }}
+                        disabled={!selectedProvinceCode}
+                        required
+                      >
+                        <option value="" disabled>-- Chọn Huyện --</option>
+                        {districts.map((d) => (
+                          <option key={d.code} value={d.code}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label htmlFor="ward">Phường/Xã *</label>
+                      <select
+                        id="ward"
+                        className="checkout-input"
+                        value={selectedWardCode}
+                        onChange={(e) => {
+                          const code = Number(e.target.value) || "";
+                          setSelectedWardCode(code);
+                          setSelectedWardName(e.target.options[e.target.selectedIndex].text);
+                        }}
+                        disabled={!selectedDistrictCode}
+                        required
+                      >
+                        <option value="" disabled>-- Chọn Xã --</option>
+                        {wards.map((w) => (
+                          <option key={w.code} value={w.code}>{w.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <div className="checkout-field">
-                    <label htmlFor="address">Địa chỉ nhận hàng *</label>
+                    <label htmlFor="addressLine">Địa chỉ cụ thể (số nhà, ngõ, đường) *</label>
                     <textarea
-                      id="address"
+                      id="addressLine"
                       className="checkout-input checkout-textarea"
-                      placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                      rows={3}
-                      value={form.address}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          address: event.target.value,
-                        }))
-                      }
+                      placeholder="Ví dụ: Số nhà 70, đường Tô Ký..."
+                      rows={2}
+                      value={addressLine}
+                      onChange={(event) => setAddressLine(event.target.value)}
                       required
                     />
                   </div>
