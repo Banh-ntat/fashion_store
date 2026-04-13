@@ -8,6 +8,7 @@ import {
 import { orders, reviews, returns } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Order, PurchasableProduct } from "../types";
+import { getAddressProvince, getEstimatedDeliveryTime, shouldShowDeliveryEstimate } from "../utils/delivery";
 import "../styles/pages/OrderHistory.css";
 
 /** Gợi ý theo mã VNPay (một phần — khớp backend payments/vnpay.py) */
@@ -487,6 +488,11 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           {getGatewayStatusLabel(order.gateway_status)}
                         </span>
                       </span>
+                    )}
+                    {shouldShowDeliveryEstimate(order.status) && order.shipping?.address && (
+                      <div style={{ marginTop: "6px", color: "var(--success-color, #22c55e)" }}>
+                        <strong>Dự kiến nhận hàng:</strong> {getEstimatedDeliveryTime(getAddressProvince(order.shipping.address), order.created_at)}
+                      </div>
                     )}
                   </div>
 

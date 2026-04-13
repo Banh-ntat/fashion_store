@@ -71,6 +71,12 @@ export interface Order {
   items: OrderItem[];
   confirmed_by_user?: boolean;
   completed_at?: string | null;
+  shipping?: {
+    name: string;
+    phone: string;
+    address: string;
+    note?: string;
+  };
 }
 
 export interface PurchasableProduct {

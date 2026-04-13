@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { admin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
+import { getAddressProvince, getEstimatedDeliveryTime, shouldShowDeliveryEstimate } from '../../utils/delivery';
 import './Admin.css';
 
 interface OrderUser {
@@ -335,6 +336,11 @@ export default function AdminOrders() {
                         </p>
                         <p>{detail.shipping.address}</p>
                         {detail.shipping.note ? <p className="admin-muted">Ghi chú: {detail.shipping.note}</p> : null}
+                        {shouldShowDeliveryEstimate(detail.status) && (
+                          <p style={{ color: "var(--success-color, #22c55e)" }}>
+                            <strong>Dự kiến nhận hàng:</strong> {getEstimatedDeliveryTime(getAddressProvince(detail.shipping.address), detail.created_at)}
+                          </p>
+                        )}
                       </>
                     )}
                     <h4>Sản phẩm</h4>

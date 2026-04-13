@@ -903,6 +903,14 @@ export default function Checkout() {
                     </span>
                   </div>
                 )}
+                {selectedProvinceName && (
+                  <div className="checkout-summary-row checkout-summary-row--delivery" style={{ marginTop: '12px', fontSize: '0.9rem' }}>
+                    <span>Dự kiến nhận hàng</span>
+                    <span style={{ fontWeight: 500, color: 'var(--success-color, #22c55e)' }}>
+                      {getEstimatedDeliveryTime(selectedProvinceName)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="checkout-summary-total">
