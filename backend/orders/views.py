@@ -102,6 +102,62 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(order)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="retry-payment")
+    def retry_payment(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "pending":
+            return Response(
+                {"detail": "Chỉ có thể thanh toán lại cho đơn hàng đang chờ xử lý."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.gateway_status == "paid":
+            return Response(
+                {"detail": "Đơn hàng này đã được thanh toán."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw_payment = (request.data.get("payment_method") or order.payment_method).strip().lower()
+        if raw_payment not in {"vnpay", "momo"}:
+            return Response(
+                {"detail": "Phương thức thanh toán không hỗ trợ thanh toán lại."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if raw_payment != order.payment_method:
+            order.payment_method = raw_payment
+            order.save(update_fields=["payment_method"])
+
+        payload = {"status": "ok"}
+        if raw_payment == "vnpay":
+            from payments import vnpay as vnpay_mod
+            try:
+                payload["payment_url"] = vnpay_mod.build_payment_url(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif raw_payment == "momo":
+            from payments import momo as momo_mod
+            try:
+                payload["payment_url"] = momo_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(payload, status=status.HTTP_200_OK)
+
     def get_permissions(self):
         if self.action in ("update", "partial_update", "destroy"):
             return [permissions.IsAuthenticated(), IsOrderStaff()]

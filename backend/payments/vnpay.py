@@ -73,7 +73,8 @@ def build_payment_url(request, order_id: int, amount_vnd: Decimal, order_info: s
     if not tmn or not secret:
         raise ValueError("VNPay chưa cấu hình (VNP_TMN_CODE, VNP_HASH_SECRET).")
 
-    txn_ref = f"FS{order_id}"
+    import time
+    txn_ref = f"FS{order_id}_{int(time.time())}"
     base = _backend_base(request)
     return_path = getattr(settings, "VNP_RETURN_PATH", "/api/payments/vnpay/return/")
     return_url = f"{base}{return_path}"
@@ -151,8 +152,12 @@ def verify_callback(query_dict) -> tuple[bool, dict[str, Any]]:
     if not received:
         txn_ref_early = str(query_dict.get("vnp_TxnRef") or "")
         oid_early = None
-        if txn_ref_early.startswith("FS") and txn_ref_early[2:].isdigit():
-            oid_early = int(txn_ref_early[2:])
+        if txn_ref_early.startswith("FS"):
+            s2 = txn_ref_early[2:]
+            if "_" in s2:
+                s2 = s2.split("_")[0]
+            if s2.isdigit():
+                oid_early = int(s2)
         return False, {"reason": "missing_hash", "order_id": oid_early}
 
     sorted_keys = sorted(data.keys())
@@ -166,8 +171,12 @@ def verify_callback(query_dict) -> tuple[bool, dict[str, Any]]:
     expected = _hmac_sha512(secret, sign_data)
     txn_ref_early = str(data.get("vnp_TxnRef") or query_dict.get("vnp_TxnRef") or "")
     oid_early = None
-    if txn_ref_early.startswith("FS") and txn_ref_early[2:].isdigit():
-        oid_early = int(txn_ref_early[2:])
+    if txn_ref_early.startswith("FS"):
+        s2 = txn_ref_early[2:]
+        if "_" in s2:
+            s2 = s2.split("_")[0]
+        if s2.isdigit():
+            oid_early = int(s2)
     if not hmac.compare_digest(expected.lower(), received.lower()):
         return False, {
             "reason": "bad_signature",
@@ -178,8 +187,12 @@ def verify_callback(query_dict) -> tuple[bool, dict[str, Any]]:
     txn_ref = str(data.get("vnp_TxnRef") or "")
     response_code = str(data.get("vnp_ResponseCode") or "")
     order_id = None
-    if txn_ref.startswith("FS") and txn_ref[2:].isdigit():
-        order_id = int(txn_ref[2:])
+    if txn_ref.startswith("FS"):
+        s2 = txn_ref[2:]
+        if "_" in s2:
+            s2 = s2.split("_")[0]
+        if s2.isdigit():
+            order_id = int(s2)
 
     ok = response_code == "00"
     return ok, {

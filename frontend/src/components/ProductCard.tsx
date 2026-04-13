@@ -95,12 +95,12 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             {product.promotion ? (
               <>
                 <span className="productCardCurrentPrice">
-                  {discountedPrice(product.price, product.promotion.discount_percent)}đ
+                  {Number(discountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
                 </span>
-                <span className="productCardOldPrice">{product.price}đ</span>
+                <span className="productCardOldPrice">{Number(product.price).toLocaleString('vi-VN')}đ</span>
               </>
             ) : (
-              <span className="productCardCurrentPrice">{product.price}đ</span>
+              <span className="productCardCurrentPrice">{Number(product.price).toLocaleString('vi-VN')}đ</span>
             )}
           </div>
 

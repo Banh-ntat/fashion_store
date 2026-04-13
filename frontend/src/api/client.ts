@@ -273,6 +273,8 @@ export const orders = {
   get: (id: number) => api.get(`/orders/orders/${id}/`),
   create: (data: Record<string, unknown>) => api.post("/orders/orders/", data),
   cancel: (id: number) => api.post(`/orders/orders/${id}/cancel/`),
+  retryPayment: (id: number, data?: { payment_method?: string }) =>
+    api.post(`/orders/orders/${id}/retry-payment/`, data),
   confirmReceived: (id: number) =>
     api.post(`/orders/orders/${id}/confirm-received/`),
   discountPreview: (data: {

@@ -45,7 +45,8 @@ def create_payment(request, order_id: int, amount_vnd: Decimal, order_info: str)
     ipn_url = f"{base}{ipn_path}"
 
     request_id = str(uuid.uuid4())
-    order_id_str = f"FS{order_id}"
+    import time
+    order_id_str = f"FS{order_id}_{int(time.time())}"
     amount = int(amount_vnd.quantize(Decimal("1")))
     extra_data = ""
     order_info_s = (order_info or f"Thanh toan don hang #{order_id}")[:255]
@@ -169,6 +170,10 @@ def verify_notify_signature(body: dict[str, Any]) -> bool:
 
 def parse_order_id_from_momo(order_id_str: str) -> int | None:
     s = str(order_id_str or "")
-    if s.startswith("FS") and s[2:].isdigit():
-        return int(s[2:])
+    if s.startswith("FS"):
+        s2 = s[2:]
+        if "_" in s2:
+            s2 = s2.split("_")[0]
+        if s2.isdigit():
+            return int(s2)
     return None

@@ -116,6 +116,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
     "success" | "failed" | null
   >(null);
   const [vnpayFailHint, setVnpayFailHint] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
   const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
@@ -259,6 +260,27 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
       setCancelErrorMsg(detail ?? "Không thể hủy đơn hàng. Vui lòng thử lại.");
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const handleRetryPayment = async (order: Order) => {
+    setCancelErrorId(null);
+    setCancelErrorMsg("");
+    setRetryingId(order.id);
+    try {
+      const res = await orders.retryPayment(order.id);
+      const data = res.data as { payment_url?: string };
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error("Không lấy được đường dẫn thanh toán.");
+      }
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail;
+      setCancelErrorId(order.id);
+      setCancelErrorMsg(detail ?? "Không thể tạo lại thanh toán. Vui lòng thử lại.");
+      setRetryingId(null);
     }
   };
 
@@ -504,7 +526,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           )}
                         </div>
                         <span className="orderItemQty">x{item.quantity}</span>
-                        <span className="orderItemPrice">{item.price}đ</span>
+                        <span className="orderItemPrice">{Number(item.price).toLocaleString('vi-VN')}đ</span>
                       </li>
                     ))}
                   </ul>
@@ -579,13 +601,13 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                   <div className="orderTotal">
                     {order.subtotal != null && order.shipping_fee != null && (
                       <div className="orderTotalBreakdown">
-                        Tạm tính: {order.subtotal}đ · Phí ship:{" "}
-                        {order.shipping_fee}đ
+                        Tạm tính: {Number(order.subtotal).toLocaleString('vi-VN')}đ · Phí ship:{" "}
+                        {Number(order.shipping_fee).toLocaleString('vi-VN')}đ
                         {order.discount_amount &&
                           Number(order.discount_amount) > 0 && (
                             <>
                               {" "}
-                              · Giảm: {order.discount_amount}đ
+                              · Giảm: {Number(order.discount_amount).toLocaleString('vi-VN')}đ
                               {order.discount_code
                                 ? ` (${order.discount_code})`
                                 : ""}
@@ -593,7 +615,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           )}
                       </div>
                     )}
-                    Tổng: <strong>{order.total_price}đ</strong>
+                    Tổng: <strong>{Number(order.total_price).toLocaleString('vi-VN')}đ</strong>
                   </div>
 
                   {order.status === "pending" && (
@@ -626,16 +648,36 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           </div>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          className="orderCancelBtn"
-                          disabled={cancellingId === order.id}
-                          onClick={() => handleCancelRequest(order.id)}
-                        >
-                          {cancellingId === order.id
-                            ? "Đang hủy..."
-                            : "Hủy đơn hàng"}
-                        </button>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          {order.payment_method &&
+                            ["vnpay", "momo"].includes(order.payment_method) &&
+                            order.gateway_status !== "paid" && (
+                              <button
+                                type="button"
+                                className="orderCancelBtn"
+                                style={{
+                                  backgroundColor: "var(--primary-color, #E24B4A)",
+                                  color: "white",
+                                  border: "none",
+                                }}
+                                disabled={cancellingId === order.id || retryingId === order.id}
+                                onClick={() => handleRetryPayment(order)}
+                              >
+                                {retryingId === order.id ? "Đang xử lý..." : "Thanh toán lại"}
+                              </button>
+                            )}
+
+                          <button
+                            type="button"
+                            className="orderCancelBtn"
+                            disabled={cancellingId === order.id || retryingId === order.id}
+                            onClick={() => handleCancelRequest(order.id)}
+                          >
+                            {cancellingId === order.id
+                              ? "Đang hủy..."
+                              : "Hủy đơn hàng"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

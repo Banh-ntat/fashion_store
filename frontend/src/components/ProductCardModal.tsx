@@ -184,11 +184,11 @@ export default function ProductCardModal({ isOpen, onClose, product }: ProductCa
                 <div className="productCardPrice" style={{ marginTop: '5px' }}>
                   {product.promotion ? (
                     <>
-                      <span className="productCardCurrentPrice">{discountedPrice(product.price, product.promotion.discount_percent)}đ</span>
-                      <span className="productCardOldPrice" style={{ marginLeft: '8px' }}>{product.price}đ</span>
+                      <span className="productCardCurrentPrice">{Number(discountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ</span>
+                      <span className="productCardOldPrice" style={{ marginLeft: '8px' }}>{Number(product.price).toLocaleString('vi-VN')}đ</span>
                     </>
                   ) : (
-                    <span className="productCardCurrentPrice">{product.price}đ</span>
+                    <span className="productCardCurrentPrice">{Number(product.price).toLocaleString('vi-VN')}đ</span>
                   )}
                 </div>
               </div>
