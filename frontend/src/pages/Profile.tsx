@@ -18,6 +18,7 @@ type ProfileWithUser = Omit<Profile, "user"> & {
   google_id?: string | null;
   facebook_id?: string | null;
   created_at?: string;
+  birth_date?: string | null;
 };
 
 /** Điền form / fallback khi API profile trả user thiếu họ tên (header vẫn có từ /auth/user/). */
@@ -32,6 +33,7 @@ function profileFormDefaults(p: ProfileWithUser | null, auth: AuthUser | null) {
       email: ae,
       phone: "",
       address: "",
+      birth_date: "",
     };
   }
   const u = p.user;
@@ -44,6 +46,9 @@ function profileFormDefaults(p: ProfileWithUser | null, auth: AuthUser | null) {
     email: pe || ae,
     phone: p.phone ?? "",
     address: p.address ?? "",
+    birth_date: (p as ProfileWithUser).birth_date
+      ? String((p as ProfileWithUser).birth_date).slice(0, 10)
+      : "",
   };
 }
 
@@ -336,6 +341,7 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
       const res = await profiles.updateMe(profile.id, {
         phone: form.phone,
         address: form.address,
+        birth_date: form.birth_date.trim() || null,
         user: {
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
@@ -714,6 +720,28 @@ export default function ProfilePage({ embedded = false }: ProfilePageProps) {
                         <p className="profileFieldHint">
                           Dùng để đăng nhập (hoặc kèm mật khẩu) và nhận thông
                           báo liên quan đơn hàng.
+                        </p>
+                      ) : null}
+                    </label>
+                    <label className="profileLabel">
+                      <span className="profileLabelText">Ngày sinh</span>
+                      <input
+                        type="date"
+                        value={form.birth_date}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            birth_date: e.target.value,
+                          }))
+                        }
+                        className={`profileInput ${editing ? "profileInput--editable" : ""}`}
+                        readOnly={!editing}
+                        autoComplete="bday"
+                      />
+                      {editing ? (
+                        <p className="profileFieldHint">
+                          Dùng để nhận email nhắc sinh nhật (trước 1 ngày) kèm ưu đãi
+                          nếu cửa hàng bật chương trình.
                         </p>
                       ) : null}
                     </label>

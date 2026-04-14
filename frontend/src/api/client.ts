@@ -568,6 +568,13 @@ export const admin = {
       api.put(`/orders/discount-codes/${id}/`, data),
     delete: (id: number) => api.delete(`/orders/discount-codes/${id}/`),
   },
+  birthdayEmail: {
+    get: () => api.get("/accounts/birthday-email-template/"),
+    update: (data: Record<string, unknown>) =>
+      api.patch("/accounts/birthday-email-template/", data),
+    preview: (data: Record<string, unknown>) =>
+      api.post("/accounts/birthday-email-template/preview/", data),
+  },
   // Users/Profiles
   users: {
     list: () => api.get("/accounts/profiles/"),
