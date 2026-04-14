@@ -1,6 +1,10 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import mixins, permissions, viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
@@ -12,9 +16,13 @@ import requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
-from core.permissions import is_admin, is_staff, RoleChoices
-from .models import Profile
+from core.permissions import is_admin, is_staff, RoleChoices, IsAdminOrStaff
+from orders.models import DiscountCode
+
+from .birthday_reminder import build_birthday_template_context, render_birthday_email_bodies
+from .models import BirthdayEmailTemplate, Profile
 from .serializers import (
+    BirthdayEmailTemplateSerializer,
     ProfileSerializer,
     RegisterSerializer,
     PasswordResetRequestSerializer,
@@ -97,6 +105,55 @@ class ProfileViewSet(
         return Profile.objects.filter(user=user)
 
 
+class BirthdayEmailTemplateAdminView(RetrieveUpdateAPIView):
+    """GET/PATCH mẫu email sinh nhật (pk=1) — staff/admin."""
+
+    serializer_class = BirthdayEmailTemplateSerializer
+    permission_classes = [IsAdminOrStaff]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        return BirthdayEmailTemplate.get_solo()
+
+
+class BirthdayEmailPreviewView(APIView):
+    """POST xem trước HTML/text (không lưu). Body giống PATCH + preview_display_name."""
+
+    permission_classes = [IsAdminOrStaff]
+
+    def post(self, request):
+        base = BirthdayEmailTemplate.get_solo()
+        d = request.data
+        subject_t = d.get("email_subject", base.email_subject)
+        intro = d.get("intro_text", base.intro_text)
+        cta = d.get("cta_button_label", base.cta_button_label)
+        foot = d.get("footer_text", base.footer_text)
+        dc = base.discount_code
+        if "discount_code" in d:
+            raw = d.get("discount_code")
+            if raw in (None, ""):
+                dc = None
+            else:
+                dc = DiscountCode.objects.filter(pk=raw).first()
+        env_fb = (getattr(settings, "BIRTHDAY_VOUCHER_CODE", "") or "").strip()
+        display = (d.get("preview_display_name") or "Khách hàng thân mến").strip()
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        subject, ctx = build_birthday_template_context(
+            display_name=display,
+            birthday_date=tomorrow,
+            email_subject=subject_t,
+            intro_text=intro,
+            cta_button_label=cta,
+            footer_text=foot,
+            discount_code_obj=dc,
+            env_voucher_fallback=env_fb if dc is None else "",
+        )
+        text_body, html_body = render_birthday_email_bodies(ctx, subject)
+        return Response(
+            {"subject": subject, "html": html_body, "text": text_body}
+        )
+
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -151,6 +208,7 @@ class CurrentUserView(APIView):
             "last_name": user.last_name,
             "phone": profile.phone,
             "address": profile.address,
+            "birth_date": profile.birth_date.isoformat() if profile.birth_date else None,
             "role": profile.role,
             "can_access_admin": is_staff(request.user),
             "is_admin": is_admin(request.user),

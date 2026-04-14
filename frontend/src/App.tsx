@@ -28,6 +28,7 @@ import AdminReviews from "./pages/admin/AdminReviews";
 import AdminContacts from "./pages/admin/AdminContacts";
 import AdminFeedbacks from "./pages/admin/AdminFeedbacks";
 import AdminPolicies from "./pages/admin/AdminPolicies";
+import AdminBirthdayEmail from "./pages/admin/AdminBirthdayEmail";
 import AdminRoute from "./components/admin/AdminRoute";
 import MyReturns from "./pages/MyReturns";
 import CustomerAccountRoute from "./components/account/CustomerAccountRoute";
@@ -98,6 +99,7 @@ function App() {
             <Route path="contacts" element={<AdminContacts />} />
             <Route path="feedbacks" element={<AdminFeedbacks />} />
             <Route path="policies" element={<AdminPolicies />} />
+            <Route path="birthday-email" element={<AdminBirthdayEmail />} />
             <Route path="returns" element={<AdminReturns />} />
           </Route>
         </Routes>

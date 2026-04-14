@@ -45,6 +45,8 @@ export interface Profile {
   address: string;
   role: string;
   avatar?: string | null;
+  /** YYYY-MM-DD từ API; khách có thể để trống */
+  birth_date?: string | null;
 }
 
 export interface OrderItem {

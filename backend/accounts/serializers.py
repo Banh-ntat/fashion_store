@@ -5,7 +5,9 @@ from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Profile
+from orders.models import DiscountCode
+
+from .models import BirthdayEmailTemplate, Profile
 from core.permissions import RoleChoices, can_manage_profile_roles
 
 
@@ -216,7 +218,19 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ("id", "user", "phone", "address", "role", "google_id", "facebook_id", "avatar", "created_at", "updated_at")
+        fields = (
+            "id",
+            "user",
+            "phone",
+            "address",
+            "birth_date",
+            "role",
+            "google_id",
+            "facebook_id",
+            "avatar",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("google_id", "facebook_id", "created_at", "updated_at")
 
     def validate(self, attrs):
@@ -232,6 +246,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and not can_manage_profile_roles(request.user):
             validated_data.pop("role", None)
+        new_bd = validated_data.get("birth_date", serializers.empty)
+        if new_bd is not serializers.empty:
+            if new_bd != instance.birth_date:
+                validated_data["birthday_reminder_sent_for_year"] = None
         user_data = validated_data.pop("user", None)
         instance = super().update(instance, validated_data)
         if user_data is not None:
@@ -244,3 +262,31 @@ class ProfileSerializer(serializers.ModelSerializer):
             user_ser.is_valid(raise_exception=True)
             user_ser.save()
         return instance
+
+
+class BirthdayEmailTemplateSerializer(serializers.ModelSerializer):
+    discount_code_detail = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = BirthdayEmailTemplate
+        fields = (
+            "id",
+            "email_subject",
+            "intro_text",
+            "cta_button_label",
+            "footer_text",
+            "discount_code",
+            "discount_code_detail",
+        )
+        read_only_fields = ("id",)
+
+    def get_discount_code_detail(self, obj):
+        dc = obj.discount_code
+        if dc is None:
+            return None
+        return {
+            "id": dc.id,
+            "code": dc.code,
+            "name": dc.name,
+            "discount_percent": dc.discount_percent,
+        }

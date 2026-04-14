@@ -95,6 +95,15 @@ const IconPercent = () => (
   </svg>
 );
 
+const IconGift = () => (
+  <svg viewBox="0 0 24 24" className="icon">
+    <path d="M4 11h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9z" />
+    <path d="M12 11V22" />
+    <path d="M4 11V8a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 0 5 0H16a2 2 0 0 1 2 2v3" />
+    <path d="M9.5 6A2.5 2.5 0 0 1 12 3.5v0A2.5 2.5 0 0 1 14.5 6" />
+  </svg>
+);
+
 const IconLogout = () => (
   <svg viewBox="0 0 24 24" className="icon">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -128,6 +137,11 @@ const menuItems: MenuItem[] = [
   { path: "/admin/contacts", label: "Liên hệ", icon: <IconMail /> },
   { path: "/admin/feedbacks", label: "Góp ý", icon: <IconMessageSquare /> },
   { path: "/admin/policies", label: "Chính sách", icon: <IconFileText /> },
+  {
+    path: "/admin/birthday-email",
+    label: "Email sinh nhật",
+    icon: <IconGift />,
+  },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {

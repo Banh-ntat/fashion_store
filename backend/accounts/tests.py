@@ -1,9 +1,18 @@
+from datetime import date
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from accounts.birthday_reminder import (
+    _is_anniversary_birthday,
+    iter_profiles_birthday_tomorrow,
+    send_birthday_reminder_emails,
+)
 from accounts.models import Profile
 from core.permissions import RoleChoices
 
@@ -153,6 +162,18 @@ class ProfileRolePermissionTests(TestCase):
         r = self.client.get("/api/core/dashboard/customer/")
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_staff_can_get_birthday_email_template(self):
+        self.client.force_authenticate(user=self.staff_user)
+        res = self.client.get("/api/accounts/birthday-email-template/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("email_subject", res.data)
+        self.assertIn("intro_text", res.data)
+
+    def test_customer_cannot_get_birthday_email_template(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.get("/api/accounts/birthday-email-template/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class PasswordResetConfirmTests(TestCase):
     def setUp(self):
@@ -193,3 +214,59 @@ class PasswordResetConfirmTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("OldSecret12345"))
+
+
+class BirthdayReminderTests(TestCase):
+    def test_anniversary_feb29_non_leap_observed_feb28(self):
+        birth = date(2000, 2, 29)
+        self.assertTrue(_is_anniversary_birthday(birth, date(2027, 2, 28)))
+        self.assertFalse(_is_anniversary_birthday(birth, date(2027, 3, 1)))
+
+    def test_anniversary_feb29_leap_year(self):
+        birth = date(2000, 2, 29)
+        self.assertTrue(_is_anniversary_birthday(birth, date(2028, 2, 29)))
+
+    @patch("accounts.birthday_reminder._tomorrow_local", return_value=date(2026, 6, 1))
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_HOST_USER="sender@example.com",
+        DEFAULT_FROM_EMAIL="FashionStore <sender@example.com>",
+        BIRTHDAY_REMINDER_EMAIL_ENABLED=True,
+        BIRTHDAY_VOUCHER_CODE="SN2026",
+    )
+    def test_send_reminder_once_and_marks_year(self, _mock_tomorrow):
+        user = User.objects.create_user(
+            username="bday_user",
+            email="bday@example.com",
+            password="secret12345",
+        )
+        p = Profile.objects.get(user=user)
+        p.birth_date = date(1995, 6, 1)
+        p.save(update_fields=["birth_date"])
+
+        mail.outbox.clear()
+        sent, _ = send_birthday_reminder_emails()
+        self.assertEqual(sent, 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("SN2026", mail.outbox[0].body)
+
+        p.refresh_from_db()
+        self.assertEqual(p.birthday_reminder_sent_for_year, 2026)
+
+        mail.outbox.clear()
+        sent2, _ = send_birthday_reminder_emails()
+        self.assertEqual(sent2, 0)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("accounts.birthday_reminder._tomorrow_local", return_value=date(2026, 6, 1))
+    def test_iter_skips_staff(self, _mock_tomorrow):
+        user = User.objects.create_user(
+            username="staff_bday",
+            email="st@example.com",
+            password="secret12345",
+        )
+        p = Profile.objects.get(user=user)
+        p.role = RoleChoices.STAFF
+        p.birth_date = date(1990, 6, 1)
+        p.save(update_fields=["role", "birth_date"])
+        self.assertEqual(iter_profiles_birthday_tomorrow(), [])
