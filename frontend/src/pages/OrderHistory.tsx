@@ -9,6 +9,7 @@ import { orders, reviews, returns } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Order, PurchasableProduct } from "../types";
 import { getAddressProvince, getEstimatedDeliveryTime, shouldShowDeliveryEstimate } from "../utils/delivery";
+import ZaloPayQrModal from "../components/ZaloPayQrModal";
 import "../styles/pages/OrderHistory.css";
 
 /** Gợi ý theo mã VNPay (một phần — khớp backend payments/vnpay.py) */
@@ -49,6 +50,7 @@ const REASON_OPTIONS = [
 function getPaymentMethodLabel(method?: string) {
   if (method === "vnpay") return "VNPay";
   if (method === "momo") return "Ví MoMo";
+  if (method === "zalopay") return "ZaloPay";
   if (method === "cod") return "Thanh toán khi nhận hàng (COD)";
   return method || "N/A";
 }
@@ -60,32 +62,6 @@ function getGatewayStatusLabel(status?: string) {
   if (status === "none") return "Không qua cổng (COD)";
   return status || "N/A";
 }
-
-// Phải khớp với RETURN_WINDOW trong orders/constants.py
-// Production: 2 * 24 * 60 * 60 * 1000 (2 ngày)
-// Test:       2 * 60 * 1000            (2 phút)
-const RETURN_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
-
-const isReturnWindowOpen = (order: Order): boolean => {
-  if (!order.confirmed_by_user) return true;
-  if (!order.completed_at) return false;
-  return Date.now() - new Date(order.completed_at).getTime() < RETURN_WINDOW_MS;
-};
-
-/** Số phút còn lại trong cửa sổ hoàn trả */
-const minutesRemaining = (order: Order): number => {
-  if (!order.completed_at) return 0;
-  const ms =
-    new Date(order.completed_at).getTime() + RETURN_WINDOW_MS - Date.now();
-  return Math.max(0, Math.ceil(ms / (1000 * 60)));
-};
-
-/** Label hiển thị thời gian còn lại, ví dụ "3 phút" hoặc "5 giờ" */
-const remainingLabel = (order: Order): string | null => {
-  const mins = minutesRemaining(order);
-  if (mins <= 0 || mins > 24 * 60) return null;
-  return mins < 60 ? `${mins} phút` : `${Math.ceil(mins / 60)} giờ`;
-};
 
 type OrderHistoryProps = { embedded?: boolean };
 
@@ -114,10 +90,15 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
   const [paymentRedirectNotice, setPaymentRedirectNotice] = useState<
-    "success" | "failed" | null
+    "success" | "failed" | "pending" | null
   >(null);
   const [vnpayFailHint, setVnpayFailHint] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [zalopayModal, setZalopayModal] = useState<{
+    open: boolean;
+    url: string | null;
+    orderId?: number;
+  }>({ open: false, url: null });
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
   const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
@@ -147,7 +128,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   useEffect(() => {
     const p = searchParams.get("payment");
     const vnpRc = searchParams.get("vnp_rc");
-    if (p === "success" || p === "failed") {
+    if (p === "success" || p === "failed" || p === "pending") {
       setPaymentRedirectNotice(p);
       if (p === "failed" && vnpRc) {
         setVnpayFailHint(VNPAY_FAIL_HINTS[vnpRc] ?? null);
@@ -271,6 +252,15 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
     try {
       const res = await orders.retryPayment(order.id);
       const data = res.data as { payment_url?: string };
+      if (data.payment_url && order.payment_method === "zalopay") {
+        setZalopayModal({
+          open: true,
+          url: data.payment_url,
+          orderId: order.id,
+        });
+        setRetryingId(null);
+        return;
+      }
       if (data.payment_url) {
         window.location.href = data.payment_url;
       } else {
@@ -400,6 +390,12 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
               "Thanh toán chưa hoàn tất hoặc đã hủy. Kiểm tra đơn trong danh sách bên dưới."}
           </div>
         )}
+        {paymentRedirectNotice === "pending" && (
+          <div className="orderPlacedBanner" role="status">
+            Bạn vừa quay lại từ ZaloPay. Nếu đã thanh toán, trạng thái đơn sẽ cập nhật sau vài
+            giây — vui lòng làm mới trang nếu vẫn hiển thị trạng thái chờ thanh toán.
+          </div>
+        )}
 
         <div className="orderReviewHub">
           <div>
@@ -448,12 +444,6 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
         ) : (
           <ul className="orderList">
             {list.map((order) => {
-              const windowOpen = isReturnWindowOpen(order);
-              const timeLabel =
-                windowOpen && order.confirmed_by_user
-                  ? remainingLabel(order)
-                  : null;
-
               return (
                 <li key={order.id} className="orderCard">
                   <div className="orderCardHeader">
@@ -656,7 +646,9 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                       ) : (
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                           {order.payment_method &&
-                            ["vnpay", "momo"].includes(order.payment_method) &&
+                            ["vnpay", "momo", "zalopay"].includes(
+                              order.payment_method,
+                            ) &&
                             order.gateway_status !== "paid" && (
                               <button
                                 type="button"
@@ -693,6 +685,27 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
           </ul>
         )}
       </div>
+      <ZaloPayQrModal
+        open={zalopayModal.open}
+        orderUrl={zalopayModal.url}
+        orderId={zalopayModal.orderId}
+        onClose={() => {
+          const oid = zalopayModal.orderId;
+          setZalopayModal({ open: false, url: null });
+          const base = embedded ? "/dashboard/orders" : "/orders";
+          navigate(
+            `${base}?payment=pending${oid != null ? `&order_id=${String(oid)}` : ""}`,
+          );
+        }}
+        onDone={() => {
+          const oid = zalopayModal.orderId;
+          setZalopayModal({ open: false, url: null });
+          const base = embedded ? "/dashboard/orders" : "/orders";
+          navigate(
+            `${base}?payment=pending${oid != null ? `&order_id=${String(oid)}` : ""}`,
+          );
+        }}
+      />
     </section>
   );
 }

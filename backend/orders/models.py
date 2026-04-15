@@ -92,6 +92,7 @@ class Order(models.Model):
         ("cod", "Thanh toán khi nhận hàng (COD)"),
         ("vnpay", "VNPay"),
         ("momo", "Ví MoMo"),
+        ("zalopay", "Ví ZaloPay"),
     )
     payment_method = models.CharField(
         max_length=24,
@@ -102,7 +103,7 @@ class Order(models.Model):
         max_length=128,
         blank=True,
         default="",
-        help_text="Mã giao dịch cổng (VNPay / MoMo)",
+        help_text="Mã giao dịch cổng (VNPay / MoMo / ZaloPay)",
     )
 
     GATEWAY_STATUS_CHOICES = (

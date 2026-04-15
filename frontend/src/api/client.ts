@@ -288,7 +288,7 @@ export const orders = {
     note?: string;
     discount_code?: string;
     cart_item_ids?: number[];
-    payment_method?: "cod" | "vnpay" | "momo";
+    payment_method?: "cod" | "vnpay" | "momo" | "zalopay";
   }) =>
     api.post<{
       id: number;
