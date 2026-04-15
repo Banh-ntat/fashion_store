@@ -264,8 +264,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     def _build_pricing_payload(self, cart_items, discount_code=None):
         subtotal = Decimal("0")
         for cart_item in cart_items:
-            subtotal += unit_price_vnd(cart_item.product.product) * cart_item.quantity
-
+            subtotal += unit_price_vnd(cart_item.product) * cart_item.quantity
+        
         shipping_fee, discount_amount, total = build_order_totals(subtotal, discount_code)
         return {
             "subtotal": subtotal,
@@ -369,7 +369,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                         {"detail": f"Không đủ hàng: {label}. Còn {variant.stock}, cần {cart_item.quantity}."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                unit = unit_price_vnd(variant.product)
+                unit = unit_price_vnd(variant)
                 subtotal += unit * cart_item.quantity
                 line_build.append((cart_item, variant, unit))
 

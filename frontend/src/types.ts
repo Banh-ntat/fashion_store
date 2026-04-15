@@ -23,6 +23,8 @@ export interface ProductVariant {
   color: { id: number; name: string; code: string };
   size: { id: number; name: string };
   stock: number;
+  price?: number | null;
+  effective_price?: number;
 }
 
 export interface ApiProduct {

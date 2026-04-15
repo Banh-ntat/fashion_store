@@ -44,6 +44,8 @@ interface Variant {
   color: Color;
   size: Size;
   stock: number;
+  price: number | null;
+  effective_price?: number;
 }
 
 interface ProductFormData {
@@ -59,6 +61,7 @@ interface VariantFormData {
   color_id: number;
   size_id: number;
   stock: number;
+  price: number | null;
 }
 
 function getApiErrorMessage(
@@ -118,7 +121,6 @@ export default function AdminProducts() {
     { id: number; name: string; discount_percent: number; is_active: boolean }[]
   >([]);
 
-  // Product Modal
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductFormData>({
@@ -130,7 +132,6 @@ export default function AdminProducts() {
     upload_images: [],
   });
 
-  // Variant Modal
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productVariants, setProductVariants] = useState<Variant[]>([]);
@@ -139,11 +140,22 @@ export default function AdminProducts() {
     color_id: 0,
     size_id: 0,
     stock: 0,
+    price: null,
   });
   const [warehouseDelta, setWarehouseDelta] = useState("");
   const [variantImageIndex, setVariantImageIndex] = useState(0);
   const variantFormPanelRef = useRef<HTMLElement | null>(null);
   const variantColorSelectRef = useRef<HTMLSelectElement | null>(null);
+
+  const [showQuickAddColor, setShowQuickAddColor] = useState(false);
+  const [showQuickAddSize, setShowQuickAddSize] = useState(false);
+  const [quickAddColorName, setQuickAddColorName] = useState("");
+  const [quickAddColorCode, setQuickAddColorCode] = useState("#000000");
+  const [quickAddSizeName, setQuickAddSizeName] = useState("");
+  const [quickAddColorLoading, setQuickAddColorLoading] = useState(false);
+  const [quickAddSizeLoading, setQuickAddSizeLoading] = useState(false);
+  const [quickAddColorError, setQuickAddColorError] = useState("");
+  const [quickAddSizeError, setQuickAddSizeError] = useState("");
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -277,10 +289,17 @@ export default function AdminProducts() {
 
   const openVariantModal = async (product: Product) => {
     setEditingVariant(null);
-    setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+    setVariantForm({ color_id: 0, size_id: 0, stock: 0, price: null });
     setWarehouseDelta("");
     setSelectedProduct(product);
     setVariantImageIndex(0);
+    setShowQuickAddColor(false);
+    setShowQuickAddSize(false);
+    setQuickAddColorName("");
+    setQuickAddColorCode("#000000");
+    setQuickAddSizeName("");
+    setQuickAddColorError("");
+    setQuickAddSizeError("");
 
     try {
       const [detailRes, varRes] = await Promise.all([
@@ -303,31 +322,77 @@ export default function AdminProducts() {
     setShowVariantModal(true);
   };
 
+  const handleQuickAddColor = async () => {
+    const name = quickAddColorName.trim();
+    if (!name) {
+      setQuickAddColorError("Vui lòng nhập tên màu.");
+      return;
+    }
+    setQuickAddColorError("");
+    setQuickAddColorLoading(true);
+    try {
+      await admin.colors.create({ name, code: quickAddColorCode });
+      const res = await colorsApi.list();
+      setColorsList(res.data.results || res.data);
+      setQuickAddColorName("");
+      setQuickAddColorCode("#000000");
+      setShowQuickAddColor(false);
+    } catch (error) {
+      setQuickAddColorError(getApiErrorMessage(error, "Không thể thêm màu."));
+    } finally {
+      setQuickAddColorLoading(false);
+    }
+  };
+
+  const handleQuickAddSize = async () => {
+    const name = quickAddSizeName.trim();
+    if (!name) {
+      setQuickAddSizeError("Vui lòng nhập tên size.");
+      return;
+    }
+    setQuickAddSizeError("");
+    setQuickAddSizeLoading(true);
+    try {
+      await admin.sizes.create({ name });
+      const res = await sizesApi.list();
+      setSizesList(res.data.results || res.data);
+      setQuickAddSizeName("");
+      setShowQuickAddSize(false);
+    } catch (error) {
+      setQuickAddSizeError(getApiErrorMessage(error, "Không thể thêm size."));
+    } finally {
+      setQuickAddSizeLoading(false);
+    }
+  };
+
   const handleSubmitVariant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
     if (!canManageVariantStock) return;
 
+    const variantPayload = {
+      product_id: selectedProduct.id,
+      color_id: variantForm.color_id,
+      size_id: variantForm.size_id,
+      stock: variantForm.stock,
+      price: variantForm.price,
+    };
+
     try {
       if (editingVariant) {
-        await admin.variants.update(editingVariant.id, {
-          product_id: selectedProduct.id,
-          ...variantForm,
-        });
+        await admin.variants.update(editingVariant.id, variantPayload);
       } else {
-        await admin.variants.create({
-          product_id: selectedProduct.id,
-          ...variantForm,
-        });
+        await admin.variants.create(variantPayload);
       }
 
       const res = await variantsApi.list({ product: selectedProduct.id });
       setProductVariants(res.data.results || res.data);
 
-      setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+      setVariantForm({ color_id: 0, size_id: 0, stock: 0, price: null });
       setWarehouseDelta("");
       setEditingVariant(null);
     } catch (error: unknown) {
+      console.error("Variant error:", (error as any)?.response?.data);
       const msg = (error as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail;
       alert(msg || "Có lỗi xảy ra!");
@@ -341,6 +406,7 @@ export default function AdminProducts() {
       color_id: variant.color.id,
       size_id: variant.size.id,
       stock: variant.stock,
+      price: variant.price ?? null,
     });
     window.setTimeout(() => {
       variantFormPanelRef.current?.scrollIntoView({
@@ -359,7 +425,10 @@ export default function AdminProducts() {
       alert("Nhập số hợp lệ (có thể âm khi điều chỉnh giảm).");
       return;
     }
-    setVariantForm((f) => ({ ...f, stock: Math.max(0, Math.round(f.stock + d)) }));
+    setVariantForm((f) => ({
+      ...f,
+      stock: Math.max(0, Math.round(f.stock + d)),
+    }));
     setWarehouseDelta("");
   };
 
@@ -378,41 +447,6 @@ export default function AdminProducts() {
       } catch {
         alert("Có lỗi xảy ra!");
       }
-    }
-  };
-
-  const [showQuickAddColor, setShowQuickAddColor] = useState(false);
-  const [showQuickAddSize, setShowQuickAddSize] = useState(false);
-  const [quickAddColorName, setQuickAddColorName] = useState("");
-  const [quickAddColorCode, setQuickAddColorCode] = useState("#000000");
-  const [quickAddSizeName, setQuickAddSizeName] = useState("");
-
-  const handleQuickAddColor = async () => {
-    if (!quickAddColorName.trim()) return;
-    try {
-      await admin.colors.create({
-        name: quickAddColorName.trim(),
-        code: quickAddColorCode,
-      });
-      const res = await colorsApi.list();
-      setColorsList(res.data.results || res.data);
-      setQuickAddColorName("");
-      setShowQuickAddColor(false);
-    } catch {
-      alert("Có lỗi xảy ra!");
-    }
-  };
-
-  const handleQuickAddSize = async () => {
-    if (!quickAddSizeName.trim()) return;
-    try {
-      await admin.sizes.create({ name: quickAddSizeName.trim() });
-      const res = await sizesApi.list();
-      setSizesList(res.data.results || res.data);
-      setQuickAddSizeName("");
-      setShowQuickAddSize(false);
-    } catch {
-      alert("Có lỗi xảy ra!");
     }
   };
 
@@ -440,14 +474,14 @@ export default function AdminProducts() {
               {canManageVariantStock ? (
                 <>
                   Tồn kho theo màu &amp; size không hiện trên bảng — bấm nút tím{" "}
-                  <strong className="page-header-desc-em">Biến thể</strong> trên từng sản phẩm để
-                  nhập kho / chỉnh số lượng trong cửa sổ.
+                  <strong className="page-header-desc-em">Biến thể</strong> trên
+                  từng sản phẩm để nhập kho / chỉnh số lượng trong cửa sổ.
                 </>
               ) : (
                 <>
-                  Bấm <strong className="page-header-desc-em">Biến thể</strong> để{" "}
-                  <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ xem; nhập kho do quản trị
-                  viên).
+                  Bấm <strong className="page-header-desc-em">Biến thể</strong>{" "}
+                  để <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ
+                  xem; nhập kho do quản trị viên).
                 </>
               )}
             </p>
@@ -502,7 +536,9 @@ export default function AdminProducts() {
                     className="btn-variant"
                     onClick={() => openVariantModal(product)}
                   >
-                    <span className="btn-variant__icon" aria-hidden>◎</span>
+                    <span className="btn-variant__icon" aria-hidden>
+                      ◎
+                    </span>
                     <span className="btn-variant__text">Biến thể</span>
                     <span className="btn-variant__count">
                       {product.variants?.length ?? 0}
@@ -510,10 +546,16 @@ export default function AdminProducts() {
                   </button>
                 </td>
                 <td>
-                  <button className="btn-edit" onClick={() => handleEditProduct(product)}>
+                  <button
+                    className="btn-edit"
+                    onClick={() => handleEditProduct(product)}
+                  >
                     Sửa
                   </button>
-                  <button className="btn-delete" onClick={() => handleDeleteProduct(product.id)}>
+                  <button
+                    className="btn-delete"
+                    onClick={() => handleDeleteProduct(product.id)}
+                  >
                     Xóa
                   </button>
                 </td>
@@ -533,7 +575,9 @@ export default function AdminProducts() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -541,7 +585,9 @@ export default function AdminProducts() {
                   <label>Mô tả</label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -551,7 +597,9 @@ export default function AdminProducts() {
                     type="number"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -560,13 +608,18 @@ export default function AdminProducts() {
                   <select
                     value={formData.category_id}
                     onChange={(e) =>
-                      setFormData({ ...formData, category_id: Number(e.target.value) })
+                      setFormData({
+                        ...formData,
+                        category_id: Number(e.target.value),
+                      })
                     }
                     required
                   >
                     <option value="">Chọn danh mục</option>
                     {categoriesList.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -577,13 +630,17 @@ export default function AdminProducts() {
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        promotion_id: e.target.value ? Number(e.target.value) : null,
+                        promotion_id: e.target.value
+                          ? Number(e.target.value)
+                          : null,
                       })
                     }
                   >
                     <option value="">Không có khuyến mãi</option>
                     {promotionsList
-                      .filter((p) => p.is_active || p.id === formData.promotion_id)
+                      .filter(
+                        (p) => p.is_active || p.id === formData.promotion_id,
+                      )
                       .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} (-{p.discount_percent}%)
@@ -594,17 +651,26 @@ export default function AdminProducts() {
                 </div>
                 <div className="form-group">
                   <label>Hình ảnh sản phẩm</label>
-                  <input type="file" accept="image/*" multiple onChange={handleImageUpload} />
-                  {formData.upload_images && formData.upload_images.length > 0 && (
-                    <div className="image-preview-list">
-                      {formData.upload_images.map((file, index) => (
-                        <div key={index} className="image-preview-item">
-                          <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} />
-                          <span>{file.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                  />
+                  {formData.upload_images &&
+                    formData.upload_images.length > 0 && (
+                      <div className="image-preview-list">
+                        {formData.upload_images.map((file, index) => (
+                          <div key={index} className="image-preview-item">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index}`}
+                            />
+                            <span>{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
                 <div className="form-actions">
                   <button
@@ -614,7 +680,9 @@ export default function AdminProducts() {
                   >
                     Hủy
                   </button>
-                  <button type="submit" className="btn-primary">Lưu</button>
+                  <button type="submit" className="btn-primary">
+                    Lưu
+                  </button>
                 </div>
               </form>
             </div>
@@ -637,15 +705,18 @@ export default function AdminProducts() {
               aria-labelledby="variant-modal-title"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* ── Layout hàng ngang: ảnh trái | nội dung phải ── */}
               <div className="variant-modal__layout">
-
                 {/* Cột trái — ảnh + thumbnail */}
                 <aside className="variant-modal__media">
                   {variantMainSrc ? (
                     <>
                       <div className="variant-modal__preview-main">
-                        <img src={variantMainSrc} alt="" loading="lazy" decoding="async" />
+                        <img
+                          src={variantMainSrc}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
                       {variantGallery.length > 1 && (
                         <div
@@ -678,30 +749,31 @@ export default function AdminProducts() {
 
                 {/* Cột phải — header + body cuộn */}
                 <div className="variant-modal__content">
-
-                  {/* Header gọn */}
                   <div className="variant-modal__header">
                     <div>
                       <h3 id="variant-modal-title">
-                        {canManageVariantStock ? "Biến thể & nhập kho" : "Biến thể (chỉ xem tồn)"}
+                        {canManageVariantStock
+                          ? "Biến thể & nhập kho"
+                          : "Biến thể (chỉ xem tồn)"}
                       </h3>
-                      <p className="variant-modal__product-name">{selectedProduct.name}</p>
+                      <p className="variant-modal__product-name">
+                        {selectedProduct.name}
+                      </p>
                     </div>
                     <span className="variant-modal__badge" title="Số biến thể">
                       {productVariants.length} SKU
                     </span>
                   </div>
 
-                  {/* Body cuộn */}
                   <div className="variant-modal__body">
-
                     {!canManageVariantStock && (
                       <div
                         className="admin-banner variant-modal__staff-readonly-banner"
                         role="status"
                       >
-                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp; size. Thêm/sửa/xóa biến thể
-                        và nhập kho do <strong>quản trị viên</strong> thực hiện.
+                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp;
+                        size. Thêm/sửa/xóa biến thể và nhập kho do{" "}
+                        <strong>quản trị viên</strong> thực hiện.
                       </div>
                     )}
 
@@ -710,14 +782,22 @@ export default function AdminProducts() {
                         className="variant-modal__panel variant-modal__panel--quick"
                         aria-label="Thêm nhanh màu và size"
                       >
-                        <h4 className="variant-modal__panel-title">Mở rộng danh mục dùng chung</h4>
+                        <h4 className="variant-modal__panel-title">
+                          Mở rộng danh mục dùng chung
+                        </h4>
                         <p className="variant-modal__hint">
-                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp dụng cho toàn cửa hàng).
+                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp
+                          dụng cho toàn cửa hàng).
                         </p>
                         <div className="variant-quick-grid">
+                          {/* Quick-add màu */}
                           <div className="variant-quick-card">
                             <div className="variant-quick-card__label">
-                              <span className="variant-quick-card__dot" style={{ background: "#6366f1" }} aria-hidden />
+                              <span
+                                className="variant-quick-card__dot"
+                                style={{ background: "#6366f1" }}
+                                aria-hidden
+                              />
                               Màu sắc
                             </div>
                             {!showQuickAddColor ? (
@@ -734,7 +814,10 @@ export default function AdminProducts() {
                                   type="text"
                                   placeholder="Tên màu (vd: Đỏ đô)"
                                   value={quickAddColorName}
-                                  onChange={(e) => setQuickAddColorName(e.target.value)}
+                                  onChange={(e) => {
+                                    setQuickAddColorName(e.target.value);
+                                    setQuickAddColorError("");
+                                  }}
                                   aria-label="Tên màu"
                                 />
                                 <label className="variant-quick-card__colorPick">
@@ -742,21 +825,55 @@ export default function AdminProducts() {
                                   <input
                                     type="color"
                                     value={quickAddColorCode}
-                                    onChange={(e) => setQuickAddColorCode(e.target.value)}
+                                    onChange={(e) =>
+                                      setQuickAddColorCode(e.target.value)
+                                    }
                                     title="Chọn màu"
                                   />
                                 </label>
+                                {quickAddColorError && (
+                                  <p
+                                    style={{
+                                      color: "var(--color-danger, #ef4444)",
+                                      fontSize: "12px",
+                                      margin: "4px 0 0",
+                                    }}
+                                  >
+                                    {quickAddColorError}
+                                  </p>
+                                )}
                                 <div className="variant-quick-card__actions">
-                                  <button type="button" className="btn-primary btn-sm" onClick={handleQuickAddColor}>Lưu</button>
-                                  <button type="button" className="btn-secondary btn-sm" onClick={() => setShowQuickAddColor(false)}>Hủy</button>
+                                  <button
+                                    type="button"
+                                    className="btn-primary btn-sm"
+                                    onClick={handleQuickAddColor}
+                                    disabled={quickAddColorLoading}
+                                  >
+                                    {quickAddColorLoading ? "Đang lưu…" : "Lưu"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-secondary btn-sm"
+                                    onClick={() => {
+                                      setShowQuickAddColor(false);
+                                      setQuickAddColorError("");
+                                    }}
+                                  >
+                                    Hủy
+                                  </button>
                                 </div>
                               </div>
                             )}
                           </div>
 
+                          {/* Quick-add size */}
                           <div className="variant-quick-card">
                             <div className="variant-quick-card__label">
-                              <span className="variant-quick-card__dot" style={{ background: "#0ea5e9" }} aria-hidden />
+                              <span
+                                className="variant-quick-card__dot"
+                                style={{ background: "#0ea5e9" }}
+                                aria-hidden
+                              />
                               Kích thước
                             </div>
                             {!showQuickAddSize ? (
@@ -773,12 +890,42 @@ export default function AdminProducts() {
                                   type="text"
                                   placeholder="Tên size (vd: M, 42)"
                                   value={quickAddSizeName}
-                                  onChange={(e) => setQuickAddSizeName(e.target.value)}
+                                  onChange={(e) => {
+                                    setQuickAddSizeName(e.target.value);
+                                    setQuickAddSizeError("");
+                                  }}
                                   aria-label="Tên size"
                                 />
+                                {quickAddSizeError && (
+                                  <p
+                                    style={{
+                                      color: "var(--color-danger, #ef4444)",
+                                      fontSize: "12px",
+                                      margin: "4px 0 0",
+                                    }}
+                                  >
+                                    {quickAddSizeError}
+                                  </p>
+                                )}
                                 <div className="variant-quick-card__actions">
-                                  <button type="button" className="btn-primary btn-sm" onClick={handleQuickAddSize}>Lưu</button>
-                                  <button type="button" className="btn-secondary btn-sm" onClick={() => setShowQuickAddSize(false)}>Hủy</button>
+                                  <button
+                                    type="button"
+                                    className="btn-primary btn-sm"
+                                    onClick={handleQuickAddSize}
+                                    disabled={quickAddSizeLoading}
+                                  >
+                                    {quickAddSizeLoading ? "Đang lưu…" : "Lưu"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-secondary btn-sm"
+                                    onClick={() => {
+                                      setShowQuickAddSize(false);
+                                      setQuickAddSizeError("");
+                                    }}
+                                  >
+                                    Hủy
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -794,14 +941,19 @@ export default function AdminProducts() {
                         aria-label="Thêm hoặc sửa biến thể"
                       >
                         <h4 className="variant-modal__panel-title">
-                          {editingVariant ? "Cập nhật biến thể & tồn" : "Thêm biến thể mới"}
+                          {editingVariant
+                            ? "Cập nhật biến thể & tồn"
+                            : "Thêm biến thể mới"}
                         </h4>
                         <p className="variant-stock-workflow-hint">
                           {editingVariant
                             ? "Chọn đúng màu/size của SKU, chỉnh « Tồn kho » trực tiếp hoặc « Nhập thêm » rồi Lưu."
                             : "Chọn màu, size và tồn ban đầu; sau này mở lại đây để nhập thêm hàng."}
                         </p>
-                        <form onSubmit={handleSubmitVariant} className="variant-form-compact">
+                        <form
+                          onSubmit={handleSubmitVariant}
+                          className="variant-form-compact"
+                        >
                           <div className="variant-form-compact__grid">
                             <div className="form-group">
                               <label htmlFor="vf-color">Màu</label>
@@ -810,13 +962,20 @@ export default function AdminProducts() {
                                 id="vf-color"
                                 value={variantForm.color_id || ""}
                                 onChange={(e) =>
-                                  setVariantForm({ ...variantForm, color_id: Number(e.target.value) })
+                                  setVariantForm({
+                                    ...variantForm,
+                                    color_id: Number(e.target.value),
+                                  })
                                 }
                                 required
                               >
-                                <option value="" disabled>Chọn màu</option>
+                                <option value="" disabled>
+                                  Chọn màu
+                                </option>
                                 {colorsList.map((c) => (
-                                  <option key={c.id} value={c.id}>{c.name}</option>
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
                                 ))}
                               </select>
                             </div>
@@ -826,19 +985,28 @@ export default function AdminProducts() {
                                 id="vf-size"
                                 value={variantForm.size_id || ""}
                                 onChange={(e) =>
-                                  setVariantForm({ ...variantForm, size_id: Number(e.target.value) })
+                                  setVariantForm({
+                                    ...variantForm,
+                                    size_id: Number(e.target.value),
+                                  })
                                 }
                                 required
                               >
-                                <option value="" disabled>Chọn size</option>
+                                <option value="" disabled>
+                                  Chọn size
+                                </option>
                                 {sizesList.map((s) => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                  <option key={s.id} value={s.id}>
+                                    {s.name}
+                                  </option>
                                 ))}
                               </select>
                             </div>
                             <div className="form-group form-group--stock">
                               <label htmlFor="vf-stock">
-                                {editingVariant ? "Tồn kho (sau cập nhật)" : "Tồn kho ban đầu"}
+                                {editingVariant
+                                  ? "Tồn kho (sau cập nhật)"
+                                  : "Tồn kho ban đầu"}
                               </label>
                               <input
                                 id="vf-stock"
@@ -849,13 +1017,22 @@ export default function AdminProducts() {
                                 onChange={(e) =>
                                   setVariantForm({
                                     ...variantForm,
-                                    stock: Math.max(0, Number(e.target.value) || 0),
+                                    stock: Math.max(
+                                      0,
+                                      Number(e.target.value) || 0,
+                                    ),
                                   })
                                 }
                                 required
                               />
-                              <div className="variant-stock-quick" role="group" aria-label="Cộng nhanh vào tồn">
-                                <span className="variant-stock-quick__label">Cộng nhanh:</span>
+                              <div
+                                className="variant-stock-quick"
+                                role="group"
+                                aria-label="Cộng nhanh vào tồn"
+                              >
+                                <span className="variant-stock-quick__label">
+                                  Cộng nhanh:
+                                </span>
                                 {[1, 5, 10, 50, 100].map((n) => (
                                   <button
                                     key={n}
@@ -868,7 +1045,9 @@ export default function AdminProducts() {
                                 ))}
                               </div>
                               <div className="variant-stock-inbound">
-                                <label htmlFor="vf-warehouse-delta">Nhập thêm vào kho</label>
+                                <label htmlFor="vf-warehouse-delta">
+                                  Nhập thêm vào kho
+                                </label>
                                 <div className="variant-stock-inbound__row">
                                   <input
                                     id="vf-warehouse-delta"
@@ -876,7 +1055,9 @@ export default function AdminProducts() {
                                     inputMode="numeric"
                                     placeholder="VD: 20 hoặc -3"
                                     value={warehouseDelta}
-                                    onChange={(e) => setWarehouseDelta(e.target.value)}
+                                    onChange={(e) =>
+                                      setWarehouseDelta(e.target.value)
+                                    }
                                   />
                                   <button
                                     type="button"
@@ -887,13 +1068,55 @@ export default function AdminProducts() {
                                   </button>
                                 </div>
                                 <p className="variant-stock-inbound__hint">
-                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm kê). Bấm Áp dụng để cộng vào ô tồn phía trên, rồi Lưu.
+                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm
+                                  kê). Bấm Áp dụng để cộng vào ô tồn phía trên,
+                                  rồi Lưu.
                                 </p>
                               </div>
                             </div>
+                            <div className="form-group">
+                              <label htmlFor="vf-price">
+                                Giá riêng cho size này
+                              </label>
+                              <p
+                                style={{
+                                  fontSize: "12px",
+                                  color: "var(--text-muted)",
+                                  margin: "4px 0 8px",
+                                }}
+                              >
+                                Để trống = dùng giá sản phẩm (
+                                {Number(selectedProduct.price).toLocaleString(
+                                  "vi-VN",
+                                )}
+                                đ). Nhập số để override giá cho size/màu này.
+                              </p>
+                              <input
+                                id="vf-price"
+                                type="number"
+                                min="0"
+                                inputMode="numeric"
+                                placeholder={`Mặc định: ${Number(selectedProduct.price).toLocaleString("vi-VN")}đ`}
+                                value={variantForm.price ?? ""}
+                                onChange={(e) =>
+                                  setVariantForm({
+                                    ...variantForm,
+                                    price:
+                                      e.target.value === ""
+                                        ? null
+                                        : Math.max(0, Number(e.target.value)),
+                                  })
+                                }
+                              />
+                            </div>
                             <div className="variant-form-compact__submit">
-                              <button type="submit" className="btn-primary variant-form-compact__btn-main">
-                                {editingVariant ? "Lưu thay đổi" : "Thêm biến thể"}
+                              <button
+                                type="submit"
+                                className="btn-primary variant-form-compact__btn-main"
+                              >
+                                {editingVariant
+                                  ? "Lưu thay đổi"
+                                  : "Thêm biến thể"}
                               </button>
                               {editingVariant && (
                                 <button
@@ -902,7 +1125,12 @@ export default function AdminProducts() {
                                   onClick={() => {
                                     setEditingVariant(null);
                                     setWarehouseDelta("");
-                                    setVariantForm({ color_id: 0, size_id: 0, stock: 0 });
+                                    setVariantForm({
+                                      color_id: 0,
+                                      size_id: 0,
+                                      stock: 0,
+                                      price: null,
+                                    });
                                   }}
                                 >
                                   Hủy sửa
@@ -914,16 +1142,27 @@ export default function AdminProducts() {
                       </section>
                     )}
 
-                    <section className="variant-modal__panel" aria-label="Danh sách biến thể">
+                    <section
+                      className="variant-modal__panel"
+                      aria-label="Danh sách biến thể"
+                    >
                       <div className="variant-modal__list-head">
                         <h4 className="variant-modal__panel-title variant-modal__panel-title--inline">
-                          {canManageVariantStock ? "Danh sách" : "Danh sách (màu · size · tồn)"}
+                          {canManageVariantStock
+                            ? "Danh sách"
+                            : "Danh sách (màu · size · tồn)"}
                         </h4>
                         <p className="variant-modal__legend">
                           Ô tồn:{" "}
-                          <span className="variant-legend-tag variant-legend-tag--ok">đủ</span>
-                          <span className="variant-legend-tag variant-legend-tag--low">thấp ≤5</span>
-                          <span className="variant-legend-tag variant-legend-tag--empty">hết</span>
+                          <span className="variant-legend-tag variant-legend-tag--ok">
+                            đủ
+                          </span>
+                          <span className="variant-legend-tag variant-legend-tag--low">
+                            thấp ≤5
+                          </span>
+                          <span className="variant-legend-tag variant-legend-tag--empty">
+                            hết
+                          </span>
                         </p>
                       </div>
                       <div className="variant-table-wrap">
@@ -932,18 +1171,23 @@ export default function AdminProducts() {
                             <tr>
                               <th>Màu</th>
                               <th>Size</th>
+                              <th>Giá riêng</th>
                               <th>Tồn</th>
                               {canManageVariantStock && (
-                                <th className="variant-table__actions">Thao tác</th>
+                                <th className="variant-table__actions">
+                                  Thao tác
+                                </th>
                               )}
                             </tr>
                           </thead>
                           <tbody>
                             {productVariants.length === 0 ? (
                               <tr>
-                                <td colSpan={canManageVariantStock ? 4 : 3}>
+                                <td colSpan={canManageVariantStock ? 5 : 4}>
                                   <div className="variant-empty">
-                                    <p className="variant-empty__title">Chưa có biến thể</p>
+                                    <p className="variant-empty__title">
+                                      Chưa có biến thể
+                                    </p>
                                     <p className="variant-empty__text">
                                       {canManageVariantStock
                                         ? "Chọn màu, size và tồn kho ở form phía trên rồi bấm « Thêm biến thể »."
@@ -959,17 +1203,38 @@ export default function AdminProducts() {
                                     <div className="variant-cell-color">
                                       <span
                                         className="color-dot color-dot--lg"
-                                        style={{ backgroundColor: v.color.code }}
+                                        style={{
+                                          backgroundColor: v.color.code,
+                                        }}
                                         title={v.color.name}
                                       />
                                       <span>{v.color.name}</span>
                                     </div>
                                   </td>
                                   <td>
-                                    <span className="variant-size-pill">{v.size.name}</span>
+                                    <span className="variant-size-pill">
+                                      {v.size.name}
+                                    </span>
                                   </td>
                                   <td>
-                                    <span className={`variant-stock variant-stock--${variantStockTone(v.stock)}`}>
+                                    {v.price != null ? (
+                                      Number(v.price).toLocaleString("vi-VN") +
+                                      "đ"
+                                    ) : (
+                                      <span
+                                        style={{
+                                          color: "var(--text-muted, #9ca3af)",
+                                          fontSize: "12px",
+                                        }}
+                                      >
+                                        = giá SP
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`variant-stock variant-stock--${variantStockTone(v.stock)}`}
+                                    >
                                       {v.stock}
                                     </span>
                                   </td>
@@ -985,7 +1250,9 @@ export default function AdminProducts() {
                                       <button
                                         type="button"
                                         className="btn-delete btn-delete--compact"
-                                        onClick={() => handleDeleteVariant(v.id)}
+                                        onClick={() =>
+                                          handleDeleteVariant(v.id)
+                                        }
                                       >
                                         Xóa
                                       </button>
@@ -998,10 +1265,9 @@ export default function AdminProducts() {
                         </table>
                       </div>
                     </section>
-
-                  </div>{/* /variant-modal__body */}
-                </div>{/* /variant-modal__content */}
-              </div>{/* /variant-modal__layout */}
+                  </div>
+                </div>
+              </div>
 
               <div className="variant-modal__footer">
                 <button

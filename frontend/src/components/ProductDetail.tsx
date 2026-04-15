@@ -128,7 +128,11 @@ function ProductDetail() {
           reviewsApi.getByProduct(productId),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
-        setReviewsList(((reviewsRes?.data ?? []) as Review[]).filter((r) => r.is_visible !== false));
+        setReviewsList(
+          ((reviewsRes?.data ?? []) as Review[]).filter(
+            (r) => r.is_visible !== false,
+          ),
+        );
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
@@ -235,6 +239,35 @@ function ProductDetail() {
     }
   };
 
+  const getDisplayPrice = (
+    product: Product,
+    selectedVariant?: ProductVariant,
+  ): { current: number; original: number | null } => {
+    if (selectedVariant) {
+      // effective_price đã bao gồm promotion (tính ở backend)
+      const current =
+        selectedVariant.effective_price ??
+        selectedVariant.price ??
+        Number(product.price);
+      // Giá gốc của variant (trước promotion)
+      const basePrice = selectedVariant.price ?? Number(product.price);
+      const hasPromo = product.promotion != null;
+      return {
+        current,
+        original: hasPromo && current !== basePrice ? basePrice : null,
+      };
+    }
+    // Không có variant → dùng giá sản phẩm
+    if (product.promotion) {
+      const current = Math.round(
+        parseFloat(product.price) *
+          (1 - product.promotion.discount_percent / 100),
+      );
+      return { current, original: Number(product.price) };
+    }
+    return { current: Number(product.price), original: null };
+  };
+
   const calculateDiscountedPrice = (price: string, discountPercent: number) => {
     const priceNum = parseFloat(price);
     return (priceNum - (priceNum * discountPercent) / 100).toFixed(2);
@@ -298,7 +331,11 @@ function ProductDetail() {
       notify("Cảm ơn bạn đã đánh giá!", "success");
       setShowReviewModal(false);
       const reviewsRes = await reviewsApi.getByProduct(Number(id));
-      setReviewsList(((reviewsRes?.data ?? []) as Review[]).filter((r) => r.is_visible !== false));
+      setReviewsList(
+        ((reviewsRes?.data ?? []) as Review[]).filter(
+          (r) => r.is_visible !== false,
+        ),
+      );
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
@@ -475,9 +512,7 @@ function ProductDetail() {
             <span className="sep">/</span>
             <span>{product.name}</span>
           </nav>
-
           <h1>{product.name}</h1>
-
           <div className="product-rating">
             <div className="rating-stars">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -495,32 +530,47 @@ function ProductDetail() {
                 : "Chưa có đánh giá"}
             </span>
           </div>
+          {(() => {
+            const { current, original } = getDisplayPrice(
+              product,
+              selectedVariant,
+            );
 
-          <div className="product-price">
-            {product.promotion ? (
-              <>
-                <span className="current-price">
-                  {Number(
-                    calculateDiscountedPrice(
-                      product.price,
-                      product.promotion.discount_percent,
-                    ),
-                  ).toLocaleString("vi-VN")}
-                  đ
-                </span>
-                <span className="original-price">
-                  {Number(product.price).toLocaleString("vi-VN")}đ
-                </span>
-                <span className="discount-tag">
-                  -{product.promotion.discount_percent}%
-                </span>
-              </>
-            ) : (
-              <span className="current-price">
-                {Number(product.price).toLocaleString("vi-VN")}đ
-              </span>
-            )}
-          </div>
+            const vs = product.variants ?? [];
+            const allPrices = vs.map(
+              (v) => v.effective_price ?? v.price ?? Number(product.price),
+            );
+            const minP = Math.min(...allPrices);
+            const maxP = Math.max(...allPrices);
+            const hasRange = vs.length > 0 && minP !== maxP && !selectedVariant;
+
+            return (
+              <div className="product-price">
+                {hasRange ? (
+                  <span className="current-price">
+                    {minP.toLocaleString("vi-VN")}đ –{" "}
+                    {maxP.toLocaleString("vi-VN")}đ
+                  </span>
+                ) : (
+                  <span className="current-price">
+                    {current.toLocaleString("vi-VN")}đ
+                  </span>
+                )}
+                {original && !hasRange && (
+                  <>
+                    <span className="original-price">
+                      {original.toLocaleString("vi-VN")}đ
+                    </span>
+                    {product.promotion && (
+                      <span className="discount-tag">
+                        -{product.promotion.discount_percent}%
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="product-options">
             {colors.length > 0 && (
               <div className="option-group color-selection">
@@ -633,7 +683,6 @@ function ProductDetail() {
               </div>
             </div>
           </div>
-
           <div className="product-actions">
             {!user?.can_access_admin && (
               <>
@@ -664,7 +713,6 @@ function ProductDetail() {
               </>
             )}
           </div>
-
           <div className="product-trust-badges">
             <div className="trust-badge">
               <div className="trust-badge-text">

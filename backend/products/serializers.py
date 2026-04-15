@@ -89,10 +89,19 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         source="product", queryset=Product.objects.all(), write_only=True
     )
+    effective_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock")
+        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock", "price", "effective_price",)
+
+    def get_effective_price(self, obj) -> int:
+        from decimal import Decimal, ROUND_HALF_UP
+        base = Decimal(obj.get_price())
+        promo = obj.product.promotion
+        if promo and promo.is_active:
+            base = base * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100)
+        return int(base.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
     def validate(self, attrs):
         product = attrs.get("product")
@@ -226,17 +235,27 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_variants(self, obj: Product) -> list:
-        """Lấy danh sách variants với màu sắc, kích thước và tồn kho"""
         variants = ProductVariant.objects.filter(product=obj).select_related('color', 'size')
-        return [
-            {
+        promo = obj.promotion if (obj.promotion and obj.promotion.is_active) else None
+        result = []
+        for v in variants:
+            base_price = v.get_price()
+            effective = base_price
+            if promo:
+                from decimal import Decimal, ROUND_HALF_UP
+                effective = int(
+                    (Decimal(base_price) * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100))
+                    .quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                )
+            result.append({
                 "id": v.id,
                 "color": {"id": v.color.id, "name": v.color.name, "code": v.color.code},
                 "size": {"id": v.size.id, "name": normalize_size_name(v.size.name)},
                 "stock": v.stock,
-            }
-            for v in variants
-        ]
+                "price": base_price,
+                "effective_price": effective,
+            })
+        return result
         
     def to_representation(self, instance):
         data = super().to_representation(instance)
