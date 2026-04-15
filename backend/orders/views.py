@@ -122,7 +122,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         raw_payment = (request.data.get("payment_method") or order.payment_method).strip().lower()
-        if raw_payment not in {"vnpay", "momo"}:
+        if raw_payment not in {"vnpay", "momo", "zalopay"}:
             return Response(
                 {"detail": "Phương thức thanh toán không hỗ trợ thanh toán lại."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -152,6 +152,18 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.id,
                     order.total_price,
                     f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif raw_payment == "zalopay":
+            from payments import zalopay as zalopay_mod
+            try:
+                payload["payment_url"] = zalopay_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                    str(request.user.pk),
                 )
             except ValueError as exc:
                 return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -337,7 +349,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         allowed_payment = {c[0] for c in Order.PAYMENT_METHOD_CHOICES}
         raw_payment = (request.data.get("payment_method") or "cod").strip().lower()
         payment_method = raw_payment if raw_payment in allowed_payment else "cod"
-        gateway_status = "pending" if payment_method in ("vnpay", "momo") else "none"
+        gateway_status = "pending" if payment_method in ("vnpay", "momo", "zalopay") else "none"
 
         with transaction.atomic():
             try:
@@ -449,6 +461,19 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.id,
                     order.total_price,
                     f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif payment_method == "zalopay":
+            from payments import zalopay as zalopay_mod
+
+            try:
+                payload["payment_url"] = zalopay_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                    str(user.pk),
                 )
             except ValueError as exc:
                 return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

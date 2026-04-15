@@ -8,6 +8,8 @@ import {
 import { cart, orders } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { notifyCartUpdated } from "../utils/cartEvents";
+import { getEstimatedDeliveryTime } from "../utils/delivery";
+import ZaloPayQrModal from "../components/ZaloPayQrModal";
 import "../styles/pages/Checkout.css";
 
 const PLACEHOLDER_IMAGE = "https://via.placeholder.com/80x100?text=SP";
@@ -130,9 +132,14 @@ export default function Checkout() {
     null,
   );
   const [step, setStep] = useState<"shipping" | "confirm">("shipping");
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "vnpay" | "momo">(
-    "cod",
-  );
+  const [paymentMethod, setPaymentMethod] = useState<
+    "cod" | "vnpay" | "momo" | "zalopay"
+  >("cod");
+  const [zalopayModal, setZalopayModal] = useState<{
+    open: boolean;
+    url: string | null;
+    orderId?: number;
+  }>({ open: false, url: null });
   const [selectionNotice, setSelectionNotice] = useState("");
   const discountFromUrl =
     searchParams.get("discount")?.trim().toUpperCase() ?? "";
@@ -374,6 +381,24 @@ export default function Checkout() {
       const data = res.data;
       const payUrl =
         typeof data.payment_url === "string" ? data.payment_url : "";
+      const pm =
+        typeof (data as { payment_method?: string }).payment_method ===
+        "string"
+          ? (data as { payment_method: string }).payment_method
+          : "";
+      if (payUrl && pm === "zalopay") {
+        notifyCartUpdated();
+        setForm({ name: "", phone: "", address: "", note: "" });
+        setDiscountCode("");
+        setPricingPreview(null);
+        setDiscountMessage("");
+        const oid =
+          typeof (data as { id?: number }).id === "number"
+            ? (data as { id: number }).id
+            : undefined;
+        setZalopayModal({ open: true, url: payUrl, orderId: oid });
+        return;
+      }
       if (payUrl) {
         notifyCartUpdated();
         window.location.href = payUrl;
@@ -722,6 +747,20 @@ export default function Checkout() {
                         <small>Quét QR hoặc thanh toán trong app MoMo</small>
                       </span>
                     </label>
+                    <label className="checkout-payment-option">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === "zalopay"}
+                        onChange={() => setPaymentMethod("zalopay")}
+                      />
+                      <span>
+                        <strong>ZaloPay</strong>
+                        <small>
+                          Cổng ZaloPay: ví ZaloPay, thẻ, VietQR — cần cấu hình sandbox
+                        </small>
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -921,6 +960,29 @@ export default function Checkout() {
           </aside>
         </div>
       </div>
+      <ZaloPayQrModal
+        open={zalopayModal.open}
+        orderUrl={zalopayModal.url}
+        orderId={zalopayModal.orderId}
+        onClose={() => {
+          const oid = zalopayModal.orderId;
+          setZalopayModal({ open: false, url: null });
+          navigate(
+            oid != null
+              ? `/orders?payment=pending&order_id=${String(oid)}`
+              : "/orders?payment=pending",
+          );
+        }}
+        onDone={() => {
+          const oid = zalopayModal.orderId;
+          setZalopayModal({ open: false, url: null });
+          navigate(
+            oid != null
+              ? `/orders?payment=pending&order_id=${String(oid)}`
+              : "/orders?payment=pending",
+          );
+        }}
+      />
     </section>
   );
 }

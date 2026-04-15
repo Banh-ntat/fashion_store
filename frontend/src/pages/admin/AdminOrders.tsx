@@ -63,6 +63,7 @@ function formatVnd(value: string | number) {
 function getPaymentMethodLabel(method?: string) {
   if (method === 'vnpay') return 'VNPay';
   if (method === 'momo') return 'Ví MoMo';
+  if (method === 'zalopay') return 'ZaloPay';
   if (method === 'cod') return 'Thanh toán khi nhận hàng (COD)';
   return method || 'N/A';
 }

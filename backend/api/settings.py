@@ -296,3 +296,12 @@ MOMO_IPN_PATH = os.getenv('MOMO_IPN_PATH', '/api/payments/momo/notify/')
 MOMO_REQUEST_TYPE = (os.getenv('MOMO_REQUEST_TYPE') or 'payWithMethod').strip()
 MOMO_AUTO_CAPTURE = os.getenv('MOMO_AUTO_CAPTURE', 'true').lower() in ('1', 'true', 'yes', 'on')
 MOMO_ORDER_GROUP_ID = (os.getenv('MOMO_ORDER_GROUP_ID') or '').strip()
+
+# ZaloPay — https://docs.zalopay.vn/ (sandbox: sb-openapi.zalopay.vn). Callback cần URL công khai (ngrok) + BACKEND_PUBLIC_BASE https.
+ZALOPAY_APP_ID = (os.getenv('ZALOPAY_APP_ID') or '').strip()
+ZALOPAY_KEY1 = (os.getenv('ZALOPAY_KEY1') or '').strip()
+ZALOPAY_KEY2 = (os.getenv('ZALOPAY_KEY2') or '').strip()
+ZALOPAY_CREATE_ENDPOINT = (os.getenv('ZALOPAY_CREATE_ENDPOINT') or '').strip() or (
+    'https://sb-openapi.zalopay.vn/v2/create'
+)
+ZALOPAY_CALLBACK_PATH = os.getenv('ZALOPAY_CALLBACK_PATH', '/api/payments/zalopay/callback/')

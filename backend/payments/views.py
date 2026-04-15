@@ -1,4 +1,4 @@
-"""Return / IPN / Notify cho VNPay và MoMo."""
+"""Return / IPN / Notify cho VNPay, MoMo và ZaloPay."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ import logging
 from urllib.parse import urlencode
 
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
-from . import momo, vnpay
+from . import momo, vnpay, zalopay
 from .services import mark_order_paid, mark_order_payment_failed
 
 logger = logging.getLogger(__name__)
@@ -201,3 +201,64 @@ class MomoReturnView(View):
 
         mark_order_payment_failed(oid)
         return HttpResponseRedirect(_frontend_orders_url(payment="failed", order_id=oid))
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ZalopayCallbackView(View):
+    """Webhook ZaloPay (POST JSON: data, mac)."""
+
+    def post(self, request):
+        from decimal import Decimal
+
+        from orders.models import Order
+
+        body: dict
+        try:
+            raw = request.body.decode("utf-8") or "{}"
+            body = json.loads(raw) if raw.strip().startswith("{") else {}
+        except json.JSONDecodeError:
+            body = {}
+        if not body and request.POST:
+            body = {"data": request.POST.get("data"), "mac": request.POST.get("mac")}
+
+        data_str = body.get("data")
+        recv_mac = body.get("mac")
+        if not isinstance(data_str, str) or not recv_mac:
+            return JsonResponse({"return_code": 2, "return_message": "Missing data or mac"})
+
+        if not zalopay.verify_callback_mac(data_str, str(recv_mac)):
+            logger.warning("ZaloPay callback bad mac")
+            return JsonResponse({"return_code": 2, "return_message": "Invalid MAC"})
+
+        try:
+            inner = zalopay.parse_callback_payload(data_str)
+        except json.JSONDecodeError:
+            return JsonResponse({"return_code": 2, "return_message": "Invalid data"})
+
+        app_trans_id = zalopay.callback_inner_get(inner, "app_trans_id", "apptransid")
+        oid = zalopay.parse_order_id_from_app_trans_id(str(app_trans_id or ""))
+        if not oid:
+            return JsonResponse({"return_code": 2, "return_message": "Bad app_trans_id"})
+
+        try:
+            order = Order.objects.get(pk=oid)
+        except Order.DoesNotExist:
+            logger.warning("ZaloPay callback unknown order=%s", oid)
+            return JsonResponse({"return_code": 2, "return_message": "Order not found"})
+
+        if order.payment_method != "zalopay":
+            logger.warning("ZaloPay callback payment_method mismatch order=%s", oid)
+            return JsonResponse({"return_code": 2, "return_message": "Reject"})
+
+        raw_amt = zalopay.callback_inner_get(inner, "amount")
+        if raw_amt is not None and str(raw_amt).strip() != "":
+            try:
+                if int(raw_amt) != int(order.total_price.quantize(Decimal("1"))):
+                    logger.warning("ZaloPay callback amount mismatch order=%s", oid)
+                    return JsonResponse({"return_code": 2, "return_message": "Amount mismatch"})
+            except (TypeError, ValueError):
+                pass
+
+        zp = str(zalopay.callback_inner_get(inner, "zp_trans_id", "zptransid") or "")
+        mark_order_paid(oid, zp)
+        return JsonResponse({"return_code": 1, "return_message": "success"})
