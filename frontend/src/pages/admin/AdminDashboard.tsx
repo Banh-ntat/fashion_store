@@ -294,12 +294,12 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
               <p>Doanh thu hôm nay</p>
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-info">
-              <h3>{formatVnd(stats.revenue_week)}</h3>
-              <p>Doanh thu 7 ngày</p>
-            </div>
-          </div>
+         <div className="stat-card stat-card--week">
+          <div className="stat-info">
+             <h3>{formatVnd(stats.revenue_week)}</h3>
+             <p>Doanh thu 7 ngày</p>
+           </div>
+         </div>
           <div className="stat-card">
             <div className="stat-info">
               <h3>{formatVnd(stats.revenue_month)}</h3>
