@@ -53,7 +53,7 @@ urlpatterns = [
     path('api/auth/facebook/callback/', FacebookCallbackView.as_view(), name='facebook_callback'),
     path('api/auth/facebook/login/', FacebookLoginView.as_view(), name='facebook_login'),
 
-    # App endpoints
+    # App endpointsc
     path('api/accounts/', include('accounts.urls')),
     path('api/products/', include('products.urls')),
     path('api/cart/', include('cart.urls')),
@@ -63,6 +63,9 @@ urlpatterns = [
     path('api/core/', include('core.api_urls')),
     path('api/wishlist/', include('wishlist.urls')),
     path('api/payments/', include('payments.urls')),
+
+    # Wallet endpoints
+    path('api/wallets/', include('wallets.urls')),
 ]
 
 if settings.DEBUG:
