@@ -16,6 +16,7 @@ export default function Products() {
   const query = searchParams.get('search') ?? '';
 
   const { items: products, loading, error } = useProducts({ categoryId });
+  console.log(products);
   const { items: categories } = useCategories();
 
   const [sort, setSort] = useState('default');
@@ -40,6 +41,8 @@ export default function Products() {
     if (sort === 'price-asc')  list.sort((a, b) => Number(a.price) - Number(b.price));
     if (sort === 'price-desc') list.sort((a, b) => Number(b.price) - Number(a.price));
     if (sort === 'name-asc')   list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === 'popular') list.sort((a, b) =>Number(b.sold_count ?? b.review_count ?? 0) -Number(a.sold_count ?? a.review_count ?? 0));
+    if (sort === 'rating') list.sort((a, b) =>Number(b.rating ?? 0) - Number(a.rating ?? 0));
 
     return list;
   }, [products, query, sort]);
@@ -102,6 +105,8 @@ export default function Products() {
                 { value: 'price-asc',  label: 'Giá tăng dần' },
                 { value: 'price-desc', label: 'Giá giảm dần' },
                 { value: 'name-asc',   label: 'Tên A → Z' },
+                { value: 'popular',    label: 'Phổ biến nhất' },
+                { value: 'rating',     label: 'Đánh giá cao nhất' },
               ] as const).map(opt => (
                 <button
                   key={opt.value}

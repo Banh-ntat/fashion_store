@@ -105,3 +105,12 @@ export interface Review {
   is_visible?: boolean;
   created_at: string;
 }
+
+export interface Product {
+  id: number;
+  name: string;
+  price: string;
+  sold_count?: number;
+  review_count?: number;
+  rating?: number;
+}
