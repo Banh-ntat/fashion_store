@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from accounts.models import BirthdayEmailTemplate, Profile
 from core.permissions import RoleChoices
+from orders.models import DiscountCode
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +120,13 @@ def birthday_email_from_template(
     display_name: str,
     birthday_date: date,
     template: BirthdayEmailTemplate | None = None,
+    custom_discount: Any | None = None,
 ) -> tuple[str, str, str]:
     tmpl = template or BirthdayEmailTemplate.get_solo()
     env_fb = (getattr(settings, "BIRTHDAY_VOUCHER_CODE", "") or "").strip()
-    dc = tmpl.discount_code if getattr(tmpl, "discount_code_id", None) else None
+    
+    dc = custom_discount if custom_discount else (tmpl.discount_code if getattr(tmpl, "discount_code_id", None) else None)
+    
     subject, ctx = build_birthday_template_context(
         display_name=display_name,
         birthday_date=birthday_date,
@@ -131,7 +135,7 @@ def birthday_email_from_template(
         cta_button_label=tmpl.cta_button_label,
         footer_text=tmpl.footer_text,
         discount_code_obj=dc,
-        env_voucher_fallback=env_fb if not getattr(tmpl, "discount_code_id", None) else "",
+        env_voucher_fallback=env_fb if not dc else "",
     )
     text_body, html_body = render_birthday_email_bodies(ctx, subject)
     return subject, text_body, html_body
@@ -183,11 +187,42 @@ def send_birthday_reminder_emails(explain: list[str] | None = None) -> tuple[int
             continue
 
         display_name = (user.get_full_name() or "").strip() or user.username
+        
+        email_prefix = to_email.split('@')[0].upper()
+        voucher_code = f"HBD_{email_prefix}"
+        
+        discount_percent = 10
+        if getattr(tmpl, "discount_code_id", None) and tmpl.discount_code:
+            discount_percent = tmpl.discount_code.discount_percent
+            
+        discount_code_obj, created = DiscountCode.objects.get_or_create(
+            code=voucher_code,
+            defaults={
+                "name": f"Sinh nhật {display_name}",
+                "discount_percent": discount_percent,
+                "min_order_value": 0,
+                "start_date": tomorrow,
+                "end_date": tomorrow,
+                "usage_limit": 1,
+                "is_active": True,
+                "used_count": 0,
+            }
+        )
+        if not created:
+            if discount_code_obj.start_date != tomorrow or discount_code_obj.end_date != tomorrow:
+                discount_code_obj.start_date = tomorrow
+                discount_code_obj.end_date = tomorrow
+                discount_code_obj.used_count = 0
+                discount_code_obj.usage_limit = 1
+                discount_code_obj.is_active = True
+                discount_code_obj.save(update_fields=["start_date", "end_date", "used_count", "usage_limit", "is_active"])
+
         try:
             subject, text_body, html_body = birthday_email_from_template(
                 display_name=display_name,
                 birthday_date=tomorrow,
                 template=tmpl,
+                custom_discount=discount_code_obj,
             )
         except Exception:
             logger.exception("birthday reminder: render template thất bại")
