@@ -1,4 +1,4 @@
-"""Gửi email nhắc sinh nhật (trước 1 ngày). Đặt cron: 0 8 * * * cd ... && python manage.py send_birthday_reminders"""
+"""Gửi email nhắc sinh nhật (trước 1 ngày). Đặt cron: 0 0,7,14,21,23 * * * cd ... && python manage.py send_birthday_reminders"""
 
 from django.core.management.base import BaseCommand
 

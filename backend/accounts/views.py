@@ -104,6 +104,15 @@ class ProfileViewSet(
             return Profile.objects.all()
         return Profile.objects.filter(user=user)
 
+    def perform_update(self, serializer):
+        serializer.save()
+        
+        # Method 2: Gửi ngay định kì sinh nhật sau khu cập nhật (nếu thoả điều kiện). 
+        # Chạy trong luồng phụ (thread) để không làm chậm lúc người dùng lưu form.
+        from accounts.birthday_reminder import send_birthday_reminder_emails
+        import threading
+        threading.Thread(target=send_birthday_reminder_emails, daemon=True).start()
+
 
 class BirthdayEmailTemplateAdminView(RetrieveUpdateAPIView):
     """GET/PATCH mẫu email sinh nhật (pk=1) — staff/admin."""
@@ -161,6 +170,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+
+            # Method 2: Khách hàng khai báo sinh nhật ngay lúc đăng ký trùng khớp -> gửi ưu đãi ngay lập tức.
+            from accounts.birthday_reminder import send_birthday_reminder_emails
+            import threading
+            threading.Thread(target=send_birthday_reminder_emails, daemon=True).start()
+
             return Response({
                 "message": "Đăng ký thành công!",
                 "user": {
