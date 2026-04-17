@@ -30,7 +30,9 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     price = models.IntegerField()
     promotion = models.ForeignKey(Promotion, on_delete=models.SET_NULL, null=True, blank=True)
-
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    sold_count = models.IntegerField(default=0)
+    
     class Meta:
         # Tránh UnorderedObjectListWarning khi phân trang; thứ tự ổn định giữa các request
         ordering = ["-id"]

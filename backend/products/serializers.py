@@ -181,6 +181,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "promotion",
             "promotion_id",
             "variants",
+            "rating",
+            "sold_count",
         )
 
     def create(self, validated_data):

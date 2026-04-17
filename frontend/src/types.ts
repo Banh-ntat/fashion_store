@@ -16,6 +16,9 @@ export interface Product {
   category: { id: number; name: string };
   promotion: { id: number; name: string; discount_percent: number } | null;
   variants?: ProductVariant[];
+  rating?: number;
+  sold_count?: number;
+  review_count?: number;
 }
 
 export interface ProductVariant {
@@ -38,6 +41,9 @@ export interface ApiProduct {
   old_price?: string | null;
   stock?: number;
   variants?: ProductVariant[];
+  rating?: number;
+  sold_count?: number;
+  review_count?: number;
 }
 
 export interface Profile {
@@ -106,11 +112,3 @@ export interface Review {
   created_at: string;
 }
 
-export interface Product {
-  id: number;
-  name: string;
-  price: string;
-  sold_count?: number;
-  review_count?: number;
-  rating?: number;
-}
