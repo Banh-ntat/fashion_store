@@ -19,7 +19,7 @@ export default function Products() {
   console.log(products);
   const { items: categories } = useCategories();
 
-  const [sort, setSort] = useState('default');
+  const [sort, setSort] = useState(() => searchParams.get('sort') ?? 'default');
 
   const currentCategory = categories.find(c => c.id === categoryId);
 
@@ -38,11 +38,16 @@ export default function Products() {
       );
     }
 
-    if (sort === 'price-asc')  list.sort((a, b) => Number(a.price) - Number(b.price));
-    if (sort === 'price-desc') list.sort((a, b) => Number(b.price) - Number(a.price));
-    if (sort === 'name-asc')   list.sort((a, b) => a.name.localeCompare(b.name));
+    const effectivePrice = (p: typeof list[0]) => {
+      const base = Number(p.price);
+      const disc = p.promotion?.discount_percent ?? 0;
+      return base * (1 - disc / 100);
+    };
+    if (sort === 'price-asc')  list.sort((a, b) => effectivePrice(a) - effectivePrice(b));
+    if (sort === 'price-desc') list.sort((a, b) => effectivePrice(b) - effectivePrice(a));
+    if (sort === 'name-asc')   list.sort((a, b) => a.name.trim()[0].localeCompare(b.name.trim()[0], 'vi'));
     if (sort === 'popular') list.sort((a, b) =>Number(b.sold_count ?? b.review_count ?? 0) -Number(a.sold_count ?? a.review_count ?? 0));
-    if (sort === 'rating') list.sort((a, b) =>Number(b.rating ?? 0) - Number(a.rating ?? 0));
+    if (sort === 'discount') list.sort((a, b) => (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0));
 
     return list;
   }, [products, query, sort]);
@@ -105,8 +110,8 @@ export default function Products() {
                 { value: 'price-asc',  label: 'Giá tăng dần' },
                 { value: 'price-desc', label: 'Giá giảm dần' },
                 { value: 'name-asc',   label: 'Tên A → Z' },
-                { value: 'popular',    label: 'Phổ biến nhất' },
-                { value: 'rating',     label: 'Đánh giá cao nhất' },
+                { value: 'popular',    label: 'Phổ biến' },
+                { value: 'discount',   label: 'Giảm giá lớn' },
               ] as const).map(opt => (
                 <button
                   key={opt.value}

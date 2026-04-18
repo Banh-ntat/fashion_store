@@ -172,6 +172,14 @@ export default function ProductCard({
             )}
           </div>
 
+          <div className="productCardMeta">
+            <span className="productCardRating">
+              ⭐ {Number(product.rating ?? 0).toFixed(1)}
+            </span>
+            <span className="productCardSold">
+              Đã bán {(product.sold_count ?? 0).toLocaleString("vi-VN")}
+            </span>
+          </div>
           {!isAdmin && (
             <button
               className="productCardAddBtn"

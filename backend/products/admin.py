@@ -24,7 +24,7 @@ class ProductImageInline(admin.TabularInline):
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
     extra = 1
-    fields = ('color', 'size', 'stock')
+    fields = ('color', 'size', 'stock', 'price')
 
 
 @admin.register(Product)
