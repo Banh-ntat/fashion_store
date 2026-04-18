@@ -57,7 +57,7 @@ class ColorSerializer(serializers.ModelSerializer):
 class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
-        fields = ("id", "name")
+        fields = ("id", "name", "order")
         
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -183,7 +183,17 @@ class ProductSerializer(serializers.ModelSerializer):
             "variants",
             "rating",
             "sold_count",
+            "size_chart",
         )
+        
+    size_chart = serializers.SerializerMethodField()
+
+    def get_size_chart(self, obj: Product) -> str | None:
+        if not obj.size_chart:
+            return None
+        request = self.context.get("request")
+        url = obj.size_chart.url
+        return request.build_absolute_uri(url) if request else url
 
     def create(self, validated_data):
         upload_images = validated_data.pop('upload_images', [])
@@ -237,7 +247,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_variants(self, obj: Product) -> list:
-        variants = ProductVariant.objects.filter(product=obj).select_related('color', 'size')
+        variants = ProductVariant.objects.filter(product=obj).select_related("color", "size").order_by("size__order", "size__name")
         promo = obj.promotion if (obj.promotion and obj.promotion.is_active) else None
         result = []
         for v in variants:
@@ -252,7 +262,8 @@ class ProductSerializer(serializers.ModelSerializer):
             result.append({
                 "id": v.id,
                 "color": {"id": v.color.id, "name": v.color.name, "code": v.color.code},
-                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name)},
+                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name),
+                "order": v.size.order},
                 "stock": v.stock,
                 "price": base_price,
                 "effective_price": effective,

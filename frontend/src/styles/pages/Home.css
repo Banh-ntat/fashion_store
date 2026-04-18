@@ -98,7 +98,8 @@
   display: grid;
   grid-template-columns: 1fr 400px;
   align-items: center;
-  gap: 64px;
+  justify-content: center;
+  gap: 150px;
   padding: 80px 0;
   width: 100%;
 }

@@ -20,6 +20,7 @@ interface Product {
   variants?: Variant[];
   image?: string;
   images?: { id: number; image: string | null }[];
+  size_chart?: string | null;
 }
 
 interface Category {
@@ -34,9 +35,11 @@ interface Color {
   code: string;
 }
 
+// ✅ FIX: Thêm field `order` vào Size interface
 interface Size {
   id: number;
   name: string;
+  order: number;
 }
 
 interface Variant {
@@ -55,6 +58,9 @@ interface ProductFormData {
   category_id: number;
   promotion_id: number | null;
   upload_images?: File[];
+  size_chart?: File | null;
+  clear_size_chart?: boolean;
+  delete_image_ids?: number[];
 }
 
 interface VariantFormData {
@@ -130,6 +136,7 @@ export default function AdminProducts() {
     category_id: 0,
     promotion_id: null,
     upload_images: [],
+    size_chart: null,
   });
 
   const [showVariantModal, setShowVariantModal] = useState(false);
@@ -147,15 +154,25 @@ export default function AdminProducts() {
   const variantFormPanelRef = useRef<HTMLElement | null>(null);
   const variantColorSelectRef = useRef<HTMLSelectElement | null>(null);
 
+  // ✅ State cho quick-add màu
   const [showQuickAddColor, setShowQuickAddColor] = useState(false);
-  const [showQuickAddSize, setShowQuickAddSize] = useState(false);
   const [quickAddColorName, setQuickAddColorName] = useState("");
   const [quickAddColorCode, setQuickAddColorCode] = useState("#000000");
-  const [quickAddSizeName, setQuickAddSizeName] = useState("");
   const [quickAddColorLoading, setQuickAddColorLoading] = useState(false);
-  const [quickAddSizeLoading, setQuickAddSizeLoading] = useState(false);
   const [quickAddColorError, setQuickAddColorError] = useState("");
+
+  // ✅ State cho quick-add size (tách riêng với order)
+  const [showQuickAddSize, setShowQuickAddSize] = useState(false);
+  const [quickAddSizeName, setQuickAddSizeName] = useState("");
+  const [quickAddSizeOrder, setQuickAddSizeOrder] = useState(0);
+  const [quickAddSizeLoading, setQuickAddSizeLoading] = useState(false);
   const [quickAddSizeError, setQuickAddSizeError] = useState("");
+
+  // ✅ State cho chỉnh thứ tự size inline
+  const [editingOrders, setEditingOrders] = useState<Record<number, number>>(
+    {},
+  );
+  const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -180,7 +197,10 @@ export default function AdminProducts() {
           setProducts(pdata.results || (productsRes.data as Product[]) || []);
           setCategoriesList(categoriesRes.data.results || categoriesRes.data);
           setColorsList(colorsRes.data.results || colorsRes.data);
-          setSizesList(sizesRes.data.results || sizesRes.data);
+          const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
+          setSizesList(
+            [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+          );
           const prom = promotionsRes.data as
             | { results?: typeof promotionsList }
             | typeof promotionsList;
@@ -222,11 +242,31 @@ export default function AdminProducts() {
           formDataToSend.append("upload_images", file);
         });
       }
+      if (formData.size_chart) {
+        formDataToSend.append("size_chart", formData.size_chart);
+      }
+      if (formData.clear_size_chart && !formData.size_chart) {
+        formDataToSend.append("clear_size_chart", "true");
+      }
+
       if (editingProduct) {
+        if (formData.delete_image_ids && formData.delete_image_ids.length > 0) {
+          await Promise.all(
+            formData.delete_image_ids.map((imgId) =>
+              fetch(`/api/products/images/${imgId}/`, {
+                method: "DELETE",
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+                },
+              }),
+            ),
+          );
+        }
         await admin.products.update(editingProduct.id, formDataToSend);
       } else {
         await admin.products.create(formDataToSend);
       }
+
       setShowProductModal(false);
       setEditingProduct(null);
       setFormData({
@@ -236,14 +276,15 @@ export default function AdminProducts() {
         category_id: 0,
         promotion_id: null,
         upload_images: [],
+        size_chart: null,
+        clear_size_chart: false,
+        delete_image_ids: [],
       });
       loadData();
     } catch (error) {
       alert(getApiErrorMessage(error));
-      return;
     }
   };
-
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setFormData({
@@ -252,8 +293,18 @@ export default function AdminProducts() {
       price: product.price,
       category_id: product.category.id,
       promotion_id: product.promotion?.id || null,
+      upload_images: [],
+      size_chart: null,
+      clear_size_chart: false,
+      delete_image_ids: [],
     });
     setShowProductModal(true);
+  };
+
+  const handleSizeChartUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setFormData((prev) => ({ ...prev, size_chart: e.target.files![0] }));
+    }
   };
 
   const handleDeleteProduct = async (id: number) => {
@@ -276,6 +327,9 @@ export default function AdminProducts() {
       category_id: 0,
       promotion_id: null,
       upload_images: [],
+      size_chart: null,
+      clear_size_chart: false,
+      delete_image_ids: [],
     });
     setShowProductModal(true);
   };
@@ -298,8 +352,10 @@ export default function AdminProducts() {
     setQuickAddColorName("");
     setQuickAddColorCode("#000000");
     setQuickAddSizeName("");
+    setQuickAddSizeOrder(0);
     setQuickAddColorError("");
     setQuickAddSizeError("");
+    setEditingOrders({});
 
     try {
       const [detailRes, varRes] = await Promise.all([
@@ -344,6 +400,7 @@ export default function AdminProducts() {
     }
   };
 
+  // ✅ FIX: handleQuickAddSize giờ gửi cả `order`
   const handleQuickAddSize = async () => {
     const name = quickAddSizeName.trim();
     if (!name) {
@@ -353,15 +410,41 @@ export default function AdminProducts() {
     setQuickAddSizeError("");
     setQuickAddSizeLoading(true);
     try {
-      await admin.sizes.create({ name });
+      await admin.sizes.create({ name, order: quickAddSizeOrder });
       const res = await sizesApi.list();
-      setSizesList(res.data.results || res.data);
+      const rawSizes: Size[] = res.data.results || res.data;
+      setSizesList(
+        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      );
       setQuickAddSizeName("");
+      setQuickAddSizeOrder(0);
       setShowQuickAddSize(false);
     } catch (error) {
       setQuickAddSizeError(getApiErrorMessage(error, "Không thể thêm size."));
     } finally {
       setQuickAddSizeLoading(false);
+    }
+  };
+
+  // ✅ Lưu thứ tự size ngay khi blur hoặc bấm Enter
+  const handleSaveOrder = async (s: Size, newOrder: number) => {
+    setSavingOrderId(s.id);
+    try {
+      await admin.sizes.update(s.id, { name: s.name, order: newOrder });
+      const res = await sizesApi.list();
+      const rawSizes: Size[] = res.data.results || res.data;
+      setSizesList(
+        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      );
+      setEditingOrders((prev) => {
+        const next = { ...prev };
+        delete next[s.id];
+        return next;
+      });
+    } catch {
+      alert("Không thể lưu thứ tự size.");
+    } finally {
+      setSavingOrderId(null);
     }
   };
 
@@ -529,7 +612,7 @@ export default function AdminProducts() {
                 <td>{product.id}</td>
                 <td>{product.name}</td>
                 <td>{product.category.name}</td>
-                <td>${product.price}</td>
+                <td>{Number(product.price).toLocaleString("vi-VN")}đ</td>
                 <td>
                   <button
                     type="button"
@@ -564,7 +647,7 @@ export default function AdminProducts() {
           </tbody>
         </table>
 
-        {/* Product Modal */}
+        {/* ── Product Modal ── */}
         {showProductModal && (
           <div className="modal-overlay">
             <div className="modal">
@@ -595,7 +678,7 @@ export default function AdminProducts() {
                   <label>Giá</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     value={formData.price}
                     onChange={(e) =>
                       setFormData({ ...formData, price: e.target.value })
@@ -649,8 +732,79 @@ export default function AdminProducts() {
                       ))}
                   </select>
                 </div>
+
+                {/* Hình ảnh sản phẩm */}
                 <div className="form-group">
                   <label>Hình ảnh sản phẩm</label>
+
+                  {/* Danh sách ảnh hiện có với nút xóa từng ảnh */}
+                  {editingProduct &&
+                    (() => {
+                      const existingImages = (
+                        editingProduct.images ?? []
+                      ).filter(
+                        (img) =>
+                          img.image &&
+                          !formData.delete_image_ids?.includes(img.id),
+                      );
+                      return existingImages.length > 0 ? (
+                        <div style={{ marginBottom: 10 }}>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text-muted)",
+                              marginBottom: 6,
+                            }}
+                          >
+                            Ảnh hiện có — bấm ✕ để đánh dấu xóa khi lưu:
+                          </p>
+                          <div className="image-preview-list">
+                            {existingImages.map((img) => (
+                              <div
+                                key={img.id}
+                                className="image-preview-item"
+                                style={{ position: "relative" }}
+                              >
+                                <img src={img.image!} alt="" />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      delete_image_ids: [
+                                        ...(prev.delete_image_ids ?? []),
+                                        img.id,
+                                      ],
+                                    }))
+                                  }
+                                  style={{
+                                    position: "absolute",
+                                    top: 2,
+                                    right: 2,
+                                    background: "rgba(239,68,68,0.85)",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: "50%",
+                                    width: 20,
+                                    height: 20,
+                                    fontSize: 12,
+                                    lineHeight: "20px",
+                                    textAlign: "center",
+                                    cursor: "pointer",
+                                    padding: 0,
+                                  }}
+                                  title="Xóa ảnh này"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                  {/* Ảnh mới sẽ thêm */}
                   <input
                     type="file"
                     accept="image/*"
@@ -659,19 +813,216 @@ export default function AdminProducts() {
                   />
                   {formData.upload_images &&
                     formData.upload_images.length > 0 && (
-                      <div className="image-preview-list">
+                      <div
+                        className="image-preview-list"
+                        style={{ marginTop: 8 }}
+                      >
                         {formData.upload_images.map((file, index) => (
-                          <div key={index} className="image-preview-item">
+                          <div
+                            key={index}
+                            className="image-preview-item"
+                            style={{ position: "relative" }}
+                          >
                             <img
                               src={URL.createObjectURL(file)}
                               alt={`Preview ${index}`}
                             />
-                            <span>{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  upload_images: (
+                                    prev.upload_images ?? []
+                                  ).filter((_, i) => i !== index),
+                                }))
+                              }
+                              style={{
+                                position: "absolute",
+                                top: 2,
+                                right: 2,
+                                background: "rgba(239,68,68,0.85)",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "50%",
+                                width: 20,
+                                height: 20,
+                                fontSize: 12,
+                                lineHeight: "20px",
+                                textAlign: "center",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                              title="Bỏ ảnh này"
+                            >
+                              ✕
+                            </button>
                           </div>
                         ))}
                       </div>
                     )}
                 </div>
+
+                {/* ── Bảng kích thước ── */}
+                <div className="form-group">
+                  <label>📏 Bảng kích thước (ảnh số đo)</label>
+
+                  {/* Ảnh size chart hiện tại */}
+                  {editingProduct?.size_chart &&
+                    !formData.clear_size_chart &&
+                    !formData.size_chart && (
+                      <div style={{ marginBottom: 10 }}>
+                        <img
+                          src={editingProduct.size_chart}
+                          alt="Bảng size hiện tại"
+                          style={{
+                            maxWidth: "100%",
+                            width: "100%",
+                            borderRadius: 8,
+                            border: "1px solid #eee",
+                            display: "block",
+                            objectFit: "contain",
+                          }}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginTop: 6,
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "#888",
+                              margin: 0,
+                              flex: 1,
+                            }}
+                          >
+                            Ảnh hiện tại — chọn file mới để thay thế, hoặc bấm
+                            xóa.
+                          </p>
+                          <button
+                            type="button"
+                            className="btn-delete btn-sm"
+                            style={{ fontSize: 12, padding: "3px 10px" }}
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                clear_size_chart: true,
+                              }))
+                            }
+                          >
+                            ✕ Xóa ảnh
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Đã đánh dấu xóa */}
+                  {formData.clear_size_chart && !formData.size_chart && (
+                    <div
+                      style={{
+                        marginBottom: 10,
+                        padding: "8px 12px",
+                        background: "#fef2f2",
+                        borderRadius: 6,
+                        border: "1px solid #fecaca",
+                      }}
+                    >
+                      <span style={{ fontSize: 12, color: "#ef4444" }}>
+                        Bảng kích thước sẽ bị xóa khi lưu.{" "}
+                      </span>
+                      <button
+                        type="button"
+                        style={{
+                          fontSize: 12,
+                          color: "#6366f1",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            clear_size_chart: false,
+                          }))
+                        }
+                      >
+                        Hoàn tác
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Preview ảnh mới chọn */}
+                  {formData.size_chart && (
+                    <div style={{ marginBottom: 10 }}>
+                      <img
+                        src={URL.createObjectURL(formData.size_chart)}
+                        alt="Preview bảng size"
+                        style={{
+                          maxWidth: "100%",
+                          width: "100%",
+                          borderRadius: 8,
+                          border: "1px solid #ddd",
+                          display: "block",
+                          objectFit: "contain",
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginTop: 6,
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "#888",
+                            margin: 0,
+                            flex: 1,
+                          }}
+                        >
+                          {formData.size_chart.name}
+                        </p>
+                        <button
+                          type="button"
+                          className="btn-delete btn-sm"
+                          style={{ fontSize: 12, padding: "3px 10px" }}
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              size_chart: null,
+                            }))
+                          }
+                        >
+                          ✕ Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSizeChartUpload}
+                  />
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-muted)",
+                      marginTop: 4,
+                    }}
+                  >
+                    Ảnh này hiển thị đầy đủ chiều ngang trong trang chi tiết sản
+                    phẩm.
+                  </p>
+                </div>
+
                 <div className="form-actions">
                   <button
                     type="button"
@@ -689,7 +1040,7 @@ export default function AdminProducts() {
           </div>
         )}
 
-        {/* Variant Modal */}
+        {/* ── Variant Modal ── */}
         {showVariantModal && selectedProduct && (
           <div
             className="modal-overlay variant-modal-overlay"
@@ -866,7 +1217,7 @@ export default function AdminProducts() {
                             )}
                           </div>
 
-                          {/* Quick-add size */}
+                          {/* Quick-add size — có thêm field order */}
                           <div className="variant-quick-card">
                             <div className="variant-quick-card__label">
                               <span
@@ -896,6 +1247,45 @@ export default function AdminProducts() {
                                   }}
                                   aria-label="Tên size"
                                 />
+                                {/* ✅ Field thứ tự khi thêm size mới */}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    marginTop: 6,
+                                  }}
+                                >
+                                  <label
+                                    style={{
+                                      fontSize: 12,
+                                      color: "var(--text-muted)",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    Thứ tự:
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={quickAddSizeOrder}
+                                    min={0}
+                                    onChange={(e) =>
+                                      setQuickAddSizeOrder(
+                                        Number(e.target.value),
+                                      )
+                                    }
+                                    style={{ width: 70 }}
+                                    aria-label="Thứ tự hiển thị"
+                                  />
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      color: "var(--text-muted)",
+                                    }}
+                                  >
+                                    (số nhỏ = hiển thị trước)
+                                  </span>
+                                </div>
                                 {quickAddSizeError && (
                                   <p
                                     style={{
@@ -995,9 +1385,10 @@ export default function AdminProducts() {
                                 <option value="" disabled>
                                   Chọn size
                                 </option>
+                                {/* ✅ Hiển thị size theo thứ tự đã sort */}
                                 {sizesList.map((s) => (
                                   <option key={s.id} value={s.id}>
-                                    {s.name}
+                                    {s.name} (thứ tự: {s.order})
                                   </option>
                                 ))}
                               </select>

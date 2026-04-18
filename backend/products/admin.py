@@ -32,6 +32,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'price')
     list_filter = ('category', 'promotion')
     search_fields = ('name', 'description')
+    fields = ('name', 'description', 'category', 'price', 'promotion', 'size_chart')
     inlines = [ProductImageInline, ProductVariantInline]
 
 
@@ -43,5 +44,7 @@ class ColorAdmin(admin.ModelAdmin):
 
 @admin.register(Size)
 class SizeAdmin(admin.ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name', 'order')
+    list_editable = ('order',)
+    ordering = ('order', 'name')
     search_fields = ('name',)

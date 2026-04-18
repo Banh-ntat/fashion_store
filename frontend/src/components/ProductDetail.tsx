@@ -30,6 +30,7 @@ interface Product {
   category: { id: number; name: string };
   promotion: { id: number; name: string; discount_percent: number } | null;
   variants?: ProductVariant[];
+  size_chart?: string | null;
 }
 
 type NotifType = "success" | "error" | "info" | "warning";
@@ -67,6 +68,9 @@ function ProductDetail() {
     { variant_id: number }[]
   >([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const addingRef = useRef(false);
 
   const thumbListRef = useRef<HTMLDivElement>(null);
   const variants = product?.variants ?? [];
@@ -197,6 +201,7 @@ function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+    if (addingRef.current) return;
     if (!user) {
       notify("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
       return;
@@ -212,6 +217,8 @@ function ProductDetail() {
       notify("Vui lòng chọn size và màu sắc.", "warning");
       return;
     }
+    addingRef.current = true;
+    setIsAddingToCart(true);
     try {
       await cart.addItem({
         quantity,
@@ -221,6 +228,7 @@ function ProductDetail() {
       });
       notifyCartUpdated();
       notify("Đã thêm vào giỏ hàng!", "success");
+      await new Promise(res => setTimeout(res, 1500));
     } catch (err: unknown) {
       const ax = err as {
         response?: {
@@ -236,6 +244,9 @@ function ProductDetail() {
         notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
       else if (typeof apiMsg === "string") notify(apiMsg, "error");
       else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
+    } finally {
+      setIsAddingToCart(false);
+      addingRef.current = false;
     }
   };
 
@@ -372,7 +383,17 @@ function ProductDetail() {
   }
 
   const sizes = variants.length
-    ? [...new Set(variants.map((v) => v.size.name))]
+    ? [
+        ...new Map(
+          [...variants]
+            .sort(
+              (a, b) =>
+                (a.size.order ?? 0) - (b.size.order ?? 0) ||
+                a.size.name.localeCompare(b.size.name),
+            )
+            .map((v) => [v.size.name, v.size.name]),
+        ).keys(),
+      ]
     : ["M"];
   const colors = variants.length
     ? [...new Set(variants.map((v) => v.color.name))]
@@ -624,9 +645,7 @@ function ProductDetail() {
                   );
                   const sizeHasStock = variantForSize
                     ? (variantForSize.stock ?? 0) > 0
-                    : variants.some(
-                        (v) => v.size.name === size && (v.stock ?? 0) > 0,
-                      );
+                    : false;
                   return (
                     <button
                       key={size}
@@ -689,10 +708,14 @@ function ProductDetail() {
                 <button
                   className="add-to-cart-btn"
                   onClick={handleAddToCart}
-                  disabled={variantStock === 0}
+                  disabled={variantStock === 0 || isAddingToCart}
                   type="button"
                 >
-                  {variantStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
+                  {variantStock === 0
+                    ? "Hết hàng"
+                    : isAddingToCart
+                      ? "Thêm vào giỏ hàng"
+                      : "Thêm vào giỏ hàng"}
                 </button>
                 <button
                   type="button"
@@ -733,6 +756,7 @@ function ProductDetail() {
               </div>
             </div>
           </div>
+          {/* Mô tả */}
           <div className="product-description">
             <p className="product-description__title">Chi tiết sản phẩm:</p>
             {product.description
@@ -752,8 +776,82 @@ function ProductDetail() {
               <p>{product.description}</p>
             )}
           </div>
+
+          {/* ── Ảnh bảng kích thước (nếu có) ── */}
+          {product.size_chart && (
+            <div className="size-chart-section">
+              <p
+                className="product-description__title"
+                style={{ marginBottom: "10px" }}
+              >
+                Bảng kích thước:
+              </p>
+              <img
+                src={product.size_chart}
+                alt="Bảng kích thước sản phẩm"
+                className="size-chart-img"
+                onClick={() => setShowSizeChart(true)}
+                style={{
+                  borderRadius: "8px",
+                  cursor: "zoom-in",
+                  border: "1px solid #eee",
+                }}
+                title="Nhấn để phóng to"
+              />
+              <p
+                style={{ fontSize: "0.78rem", color: "#888", marginTop: "4px" }}
+              >
+                Nhấn vào ảnh để xem kích thước đầy đủ
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Lightbox bảng size ── */}
+      {showSizeChart && product.size_chart && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowSizeChart(false)}
+          style={{ zIndex: 1500, cursor: "zoom-out" }}
+        >
+          <div
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              background: "#fff",
+              borderRadius: "12px",
+              overflow: "hidden",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setShowSizeChart(false)}
+              style={{
+                position: "absolute",
+                top: "8px",
+                right: "12px",
+                zIndex: 1,
+              }}
+            >
+              ×
+            </button>
+            <img
+              src={product.size_chart}
+              alt="Bảng kích thước"
+              style={{
+                display: "block",
+                maxWidth: "90vw",
+                maxHeight: "88vh",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+        </div>
+      )}
       <section className="product-reviews">
         <div className="reviews-header">
           <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>

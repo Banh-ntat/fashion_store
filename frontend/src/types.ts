@@ -19,12 +19,13 @@ export interface Product {
   rating?: number;
   sold_count?: number;
   review_count?: number;
+  size_chart?: string | null;
 }
 
 export interface ProductVariant {
   id: number;
   color: { id: number; name: string; code: string };
-  size: { id: number; name: string };
+  size: { id: number; name: string; order: number };
   stock: number;
   price?: number | null;
   effective_price?: number;
