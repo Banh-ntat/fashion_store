@@ -79,6 +79,7 @@ function App() {
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/careers" element={<Careers />} />
             <Route path="/policy" element={<Policy />} />
+            <Route path="/policy/view/:policyId" element={<Policy />} />
             <Route path="/policy/:slug" element={<Policy />} />
           </Route>
           <Route path="/dashboard" element={<CustomerAccountRoute />}>

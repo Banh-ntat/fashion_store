@@ -18,7 +18,9 @@ class PromotionAdmin(admin.ModelAdmin):
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
-    fields = ('image',)
+    fields = ("image",)
+    can_delete = True
+    show_change_link = True
 
 
 class ProductVariantInline(admin.TabularInline):

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap");
+
 /* ─────────────────────────────────────────────────────────
    FILE GỐC (file 2) — GIỮ NGUYÊN TOÀN BỘ
    Chỉ phần Dashboard được override bên dưới
@@ -1169,9 +1171,6 @@
    DASHBOARD — OVERRIDE (nền trắng, typography từ file 1)
    Chỉ áp dụng cho các class trong trang Dashboard
    ═══════════════════════════════════════════════════════ */
-
-/* Import Sora cho dashboard display text */
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
 
 /* Dashboard CSS variables — chỉ dùng trong scope dashboard */
 .dashboard {

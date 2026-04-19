@@ -234,8 +234,10 @@ export default function AdminProducts() {
       formDataToSend.append("description", formData.description);
       formDataToSend.append("price", formData.price);
       formDataToSend.append("category_id", formData.category_id.toString());
-      if (formData.promotion_id) {
-        formDataToSend.append("promotion_id", formData.promotion_id.toString());
+      if (formData.promotion_id != null) {
+        formDataToSend.append("promotion_id", String(formData.promotion_id));
+      } else if (editingProduct) {
+        formDataToSend.append("clear_promotion", "true");
       }
       if (formData.upload_images && formData.upload_images.length > 0) {
         formData.upload_images.forEach((file) => {
@@ -253,12 +255,7 @@ export default function AdminProducts() {
         if (formData.delete_image_ids && formData.delete_image_ids.length > 0) {
           await Promise.all(
             formData.delete_image_ids.map((imgId) =>
-              fetch(`/api/products/images/${imgId}/`, {
-                method: "DELETE",
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-                },
-              }),
+              admin.products.deleteImage(imgId),
             ),
           );
         }
@@ -285,20 +282,26 @@ export default function AdminProducts() {
       alert(getApiErrorMessage(error));
     }
   };
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      category_id: product.category.id,
-      promotion_id: product.promotion?.id || null,
-      upload_images: [],
-      size_chart: null,
-      clear_size_chart: false,
-      delete_image_ids: [],
-    });
-    setShowProductModal(true);
+  const handleEditProduct = async (product: Product) => {
+    try {
+      const res = await admin.products.get(product.id);
+      const full = res.data as Product;
+      setEditingProduct(full);
+      setFormData({
+        name: full.name,
+        description: full.description,
+        price: full.price,
+        category_id: full.category.id,
+        promotion_id: full.promotion?.id || null,
+        upload_images: [],
+        size_chart: null,
+        clear_size_chart: false,
+        delete_image_ids: [],
+      });
+      setShowProductModal(true);
+    } catch (error) {
+      alert(getApiErrorMessage(error, "Không tải được chi tiết sản phẩm."));
+    }
   };
 
   const handleSizeChartUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,10 +338,30 @@ export default function AdminProducts() {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      setFormData({ ...formData, upload_images: files });
-    }
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (picked.length === 0) return;
+    setFormData((prev) => ({
+      ...prev,
+      upload_images: [...(prev.upload_images ?? []), ...picked],
+    }));
+  };
+
+  const closeVariantModal = () => {
+    setShowVariantModal(false);
+    loadData();
+  };
+
+  const syncVariantModalFromServer = async (productId: number) => {
+    const [detailRes, varRes] = await Promise.all([
+      admin.products.get(productId),
+      variantsApi.list({ product: productId }),
+    ]);
+    const detail = detailRes.data as Product;
+    setSelectedProduct((prev) =>
+      prev && prev.id === productId ? { ...prev, ...detail } : prev,
+    );
+    setProductVariants(varRes.data.results || varRes.data);
   };
 
   const openVariantModal = async (product: Product) => {
@@ -468,8 +491,7 @@ export default function AdminProducts() {
         await admin.variants.create(variantPayload);
       }
 
-      const res = await variantsApi.list({ product: selectedProduct.id });
-      setProductVariants(res.data.results || res.data);
+      await syncVariantModalFromServer(selectedProduct.id);
 
       setVariantForm({ color_id: 0, size_id: 0, stock: 0, price: null });
       setWarehouseDelta("");
@@ -524,8 +546,7 @@ export default function AdminProducts() {
       try {
         await admin.variants.delete(id);
         if (selectedProduct) {
-          const res = await variantsApi.list({ product: selectedProduct.id });
-          setProductVariants(res.data.results || res.data);
+          await syncVariantModalFromServer(selectedProduct.id);
         }
       } catch {
         alert("Có lỗi xảy ra!");
@@ -1046,7 +1067,7 @@ export default function AdminProducts() {
             className="modal-overlay variant-modal-overlay"
             role="presentation"
             onClick={(e) => {
-              if (e.target === e.currentTarget) setShowVariantModal(false);
+              if (e.target === e.currentTarget) closeVariantModal();
             }}
           >
             <div
@@ -1664,7 +1685,7 @@ export default function AdminProducts() {
                 <button
                   type="button"
                   className="btn-secondary variant-modal__close"
-                  onClick={() => setShowVariantModal(false)}
+                  onClick={() => closeVariantModal()}
                 >
                   Đóng cửa sổ
                 </button>
