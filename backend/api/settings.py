@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework_simplejwt.token_blacklist',
 
     'rest_framework',
     'rest_framework_simplejwt',
@@ -252,7 +253,7 @@ GOOGLE_REDIRECT_URI = os.getenv(
 # Facebook OAuth Configuration
 # DEBUG: nếu chưa có trong .env, dùng cùng App ID mặc định như frontend (Login.tsx / VITE_FACEBOOK_APP_ID)
 FACEBOOK_APP_ID = (os.getenv('FACEBOOK_APP_ID') or '').strip() or (
-    '1571626650928827' if DEBUG else None
+    '918507394342467' if DEBUG else None
 )
 # Bỏ khoảng trắng đầu/cuối (lỗi thường gặp khi copy từ Meta)
 FACEBOOK_APP_SECRET = (os.getenv('FACEBOOK_APP_SECRET') or '').strip() or None
