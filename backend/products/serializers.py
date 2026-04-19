@@ -104,9 +104,13 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         return int(base.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
     def validate(self, attrs):
-        product = attrs.get("product")
-        color = attrs.get("color")
-        size = attrs.get("size")
+        product = attrs.get("product") or (
+            self.instance.product if self.instance else None
+        )
+        color = attrs.get("color") or (
+            self.instance.color if self.instance else None
+        )
+        size = attrs.get("size") or (self.instance.size if self.instance else None)
         if product and color and size:
             # Kiểm tra trùng lặp
             exists = ProductVariant.objects.filter(
@@ -163,6 +167,7 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    clear_promotion = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Product
@@ -180,6 +185,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_id",
             "promotion",
             "promotion_id",
+            "clear_promotion",
             "variants",
             "rating",
             "sold_count",
@@ -197,6 +203,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        validated_data.pop('clear_promotion', None)
         product = Product.objects.create(**validated_data)
         # Lưu các ảnh được upload
         for image in upload_images:
@@ -205,6 +212,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        if validated_data.pop("clear_promotion", False):
+            instance.promotion = None
+            validated_data.pop("promotion", None)
         # Cập nhật thông tin sản phẩm
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

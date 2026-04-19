@@ -328,15 +328,22 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
         <div className="stats-row">   
           <div className="stat-card">
               <div>
-              <div className="stat-value">{stats?.active_users ?? 0}</div>
+              <div className="stat-value">{stats.users_total}</div>
                 <div className="stat-label">Tài khoản hoạt động</div>
               </div>
             </div>
 
             <div className="stat-card">
               <div>
-                <div className="stat-value">{stats?.customers ?? 0}</div>
-                <div className="stat-label">Khách hàng</div>
+                <div className="stat-value">{stats.users_by_role?.customer ?? 0}</div>
+                <div className="stat-label">Khách hàng (profile)</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div>
+                <div className="stat-value">{stats.customers_inactive ?? 0}</div>
+                <div className="stat-label">Khách chưa kích hoạt</div>
               </div>
             </div>
 

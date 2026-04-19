@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 
 from accounts.models import Profile
 from contact.models import Contact, Feedback
-from core.permissions import is_admin, is_staff
+from core.permissions import RoleChoices, is_admin, is_staff
 from orders.models import Order, OrderItem, ReturnRequest
 from products.models import Category, Product, ProductVariant
 
@@ -157,6 +157,11 @@ class AdminDashboardStatsView(APIView):
         role_rows = Profile.objects.values("role").annotate(c=Count("id")).order_by("role")
         users_by_role = {row["role"]: row["c"] for row in role_rows}
 
+        customers_inactive = User.objects.filter(
+            is_active=False,
+            profile__role=RoleChoices.CUSTOMER,
+        ).count()
+
         return {
             "role_scope": "admin",
             "revenue_today": str(revenue_today),
@@ -180,6 +185,7 @@ class AdminDashboardStatsView(APIView):
             },
             "users_total": User.objects.filter(is_active=True).count(),
             "users_by_role": users_by_role,
+            "customers_inactive": customers_inactive,
             "revenue_series": revenue_series,
             "orders_by_status": _orders_by_status(order_qs),
             "top_products": top_products,

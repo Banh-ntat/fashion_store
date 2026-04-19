@@ -2,7 +2,12 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import {
+  filterAndSortCatalogProducts,
+  parseCatalogSortKey,
+  type CatalogSortKey,
+} from '../utils/productSort';
 import '../styles/pages/Products.css';
 
 export default function Products() {
@@ -16,10 +21,9 @@ export default function Products() {
   const query = searchParams.get('search') ?? '';
 
   const { items: products, loading, error } = useProducts({ categoryId });
-  console.log(products);
   const { items: categories } = useCategories();
 
-  const [sort, setSort] = useState(() => searchParams.get('sort') ?? 'default');
+  const sort: CatalogSortKey = parseCatalogSortKey(searchParams.get('sort'));
 
   const currentCategory = categories.find(c => c.id === categoryId);
 
@@ -27,35 +31,26 @@ export default function Products() {
   const titleItalic = query ? `"${query}"` : currentCategory ? currentCategory.name : 'Sản Phẩm';
 
   /* Filter + sort — client-side */
-  const displayed = useMemo(() => {
-    let list = [...products];
-
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
-      );
-    }
-
-    const effectivePrice = (p: typeof list[0]) => {
-      const base = Number(p.price);
-      const disc = p.promotion?.discount_percent ?? 0;
-      return base * (1 - disc / 100);
-    };
-    if (sort === 'price-asc')  list.sort((a, b) => effectivePrice(a) - effectivePrice(b));
-    if (sort === 'price-desc') list.sort((a, b) => effectivePrice(b) - effectivePrice(a));
-    if (sort === 'name-asc')   list.sort((a, b) => a.name.trim()[0].localeCompare(b.name.trim()[0], 'vi'));
-    if (sort === 'popular') list.sort((a, b) =>Number(b.sold_count ?? b.review_count ?? 0) -Number(a.sold_count ?? a.review_count ?? 0));
-    if (sort === 'discount') list.sort((a, b) => (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0));
-
-    return list;
-  }, [products, query, sort]);
+  const displayed = useMemo(
+    () => filterAndSortCatalogProducts(products, query, sort),
+    [products, query, sort],
+  );
 
   // Khi chọn danh mục thì xoá search để tránh conflict
   const handleCategoryClick = (id?: number) => {
     setSearchParams(id ? { category: String(id) } : {});
-    setSort('default');
+  };
+
+  const handleSortClick = (value: CatalogSortKey) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === 'default') {
+        next.delete('sort');
+      } else {
+        next.set('sort', value);
+      }
+      return next;
+    });
   };
 
   return (
@@ -117,7 +112,7 @@ export default function Products() {
                   key={opt.value}
                   type="button"
                   className={`sortNavItem ${sort === opt.value ? 'active' : ''}`}
-                  onClick={() => setSort(opt.value)}
+                  onClick={() => handleSortClick(opt.value)}
                 >
                   <span className="sortRadio" />
                   {opt.label}

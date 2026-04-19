@@ -235,7 +235,7 @@
     create: (data: Record<string, unknown>) =>
       api.post("/products/variants/", data),
     update: (id: number, data: Record<string, unknown>) =>
-      api.put(`/products/variants/${id}/`, data),
+      api.patch(`/products/variants/${id}/`, data),
     delete: (id: number) => api.delete(`/products/variants/${id}/`),
   };
 
@@ -392,6 +392,8 @@
     catalog: { products: number; variants: number; categories: number };
     users_total: number;
     users_by_role: Record<string, number>;
+    /** Khách hàng (role customer) có tài khoản Django is_active=False */
+    customers_inactive: number;
     revenue_series: {
       date: string;
       label: string;
@@ -489,6 +491,7 @@
               : undefined,
         }),
       delete: (id: number) => api.delete(`/products/${id}/`),
+      deleteImage: (id: number) => api.delete(`/products/images/${id}/`),
     },
     // Categories
     categories: {
@@ -548,7 +551,7 @@
       create: (data: Record<string, unknown>) =>
         api.post("/products/variants/", data),
       update: (id: number, data: Record<string, unknown>) =>
-        api.put(`/products/variants/${id}/`, data),
+        api.patch(`/products/variants/${id}/`, data),
       delete: (id: number) => api.delete(`/products/variants/${id}/`),
     },
     // Orders (backend: api/orders/ + router 'orders' => /orders/orders/)
