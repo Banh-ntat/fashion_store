@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { admin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { getAddressProvince, getEstimatedDeliveryTime, shouldShowDeliveryEstimate } from '../../utils/delivery';
-import './Admin.css';
+import "../../styles/admin/Admin.css";
 
 interface OrderUser {
   id: number;

@@ -51,7 +51,7 @@ function getUnitPrice(item: CartItemType): number {
 }
 
 function formatCurrency(value: number): string {
-  return `${value.toLocaleString("vi-VN")}₫`;
+  return `${value.toLocaleString("vi-VN")}đ`;
 }
 
 function parseMoney(value: string | number | undefined): number {
@@ -931,14 +931,14 @@ export default function Checkout() {
                 )}
                 {pricing.shippingFee > 0 && (
                   <p className="checkout-free-shipping-hint">
-                    Miễn phí vận chuyển cho đơn từ 500.000₫
+                    Miễn phí vận chuyển cho đơn từ 500.000đ
                   </p>
                 )}
                 {pricing.shippingFee === 0 && (
                   <div className="checkout-ship-note">
                     <span className="checkout-ship-note-text">
                       Các sản phẩm đã chọn đủ điều kiện miễn phí vận chuyển từ
-                      500.000₫ trở lên.
+                      500.000đ trở lên.
                     </span>
                   </div>
                 )}

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import "../../pages/admin/Admin.css";
+import "../../styles/admin/Admin.css";
 
 interface AdminLayoutProps {
   children: React.ReactNode;

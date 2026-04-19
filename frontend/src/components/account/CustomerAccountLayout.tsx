@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { customerAccountPageTitle } from "./customerAccountTitles";
-import "../../pages/admin/Admin.css";
+import "../../styles/admin/Admin.css";
 import "./CustomerAccountLayout.css";
 
 const IconDashboard = () => (

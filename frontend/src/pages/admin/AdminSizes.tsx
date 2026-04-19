@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { admin, sizes as sizesApi } from "../../api/client";
 import AdminLayout from "../../components/admin/AdminLayout";
-import "./Admin.css";
+import "../../styles/admin/Admin.css";
 
 interface Size {
   id: number;

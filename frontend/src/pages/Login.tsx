@@ -12,11 +12,11 @@ interface LoginProps {
 
 // OAuth — redirect Google phải khớp từng ký tự với Google Cloud Console (localhost ≠ 127.0.0.1)
 const GOOGLE_CLIENT_ID_DEFAULT =
-  '188966214696-rj8bomspmvc8ocmrb4ss7s6n8dnu7p3m.apps.googleusercontent.com';
+  '996740588417-h4itfdmqo0h2frdl7fo0rt84h5pvrd7a.apps.googleusercontent.com';
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || GOOGLE_CLIENT_ID_DEFAULT;
 const FACEBOOK_APP_ID =
-  import.meta.env.VITE_FACEBOOK_APP_ID?.trim() || '1571626650928827';
+  import.meta.env.VITE_FACEBOOK_APP_ID?.trim() || '918507394342467';
 
 function getGoogleRedirectUri(): string {
   const fromEnv = import.meta.env.VITE_GOOGLE_REDIRECT_URI?.trim();

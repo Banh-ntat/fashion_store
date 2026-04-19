@@ -105,7 +105,7 @@ export default function Products() {
                 { value: 'price-asc',  label: 'Giá tăng dần' },
                 { value: 'price-desc', label: 'Giá giảm dần' },
                 { value: 'name-asc',   label: 'Tên A → Z' },
-                { value: 'popular',    label: 'Phổ biến' },
+                { value: 'popular',    label: 'Bán chạy' },
                 { value: 'discount',   label: 'Giảm giá lớn' },
               ] as const).map(opt => (
                 <button

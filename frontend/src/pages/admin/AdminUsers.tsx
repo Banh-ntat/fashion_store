@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { admin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
-import './Admin.css';
+import "../../styles/admin/Admin.css";
 
 interface UserProfile {
   id: number;

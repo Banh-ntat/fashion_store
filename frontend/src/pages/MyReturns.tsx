@@ -100,11 +100,6 @@ export default function MyReturns({ embedded = false }: MyReturnsProps) {
         <div className="returns-header">
           <div>
             <h1 className={`returns-title ${embedded ? 'returns-title--embed' : ''}`.trim()}>Yêu cầu trả hàng & hoàn tiền</h1>
-            <p className="returns-subtitle">
-              Để gửi yêu cầu mới, vào{' '}
-              <Link to={ordersPath} className="returns-link">lịch sử đơn hàng</Link>{' '}
-              và chọn đơn cần hoàn trả.
-            </p>
           </div>
         </div>
 

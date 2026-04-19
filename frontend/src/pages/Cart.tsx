@@ -39,7 +39,7 @@ function getUnitPrice(item: CartItemType): number {
 }
 
 function formatCurrency(value: number): string {
-  return `${value.toLocaleString("vi-VN")}₫`;
+  return `${value.toLocaleString("vi-VN")}đ`;
 }
 
 export default function Cart() {

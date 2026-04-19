@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { customerDashboard, type CustomerDashboardData } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
-import "../admin/Admin.css";
+import "../../styles/admin/Admin.css";
 
 const DASH = "/dashboard";
 

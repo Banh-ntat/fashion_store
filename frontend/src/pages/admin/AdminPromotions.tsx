@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { admin } from "../../api/client";
 import AdminLayout from "../../components/admin/AdminLayout";
-import "./Admin.css";
+import "../../styles/admin/Admin.css";
 
 interface Promotion {
   id: number;
@@ -350,7 +350,7 @@ export default function AdminPromotions() {
                   {(Number(discountCode.min_order_value) || 0).toLocaleString(
                     "vi-VN",
                   )}
-                  ₫ ₫
+                  đ
                 </td>
                 <td>
                   {new Date(discountCode.start_date).toLocaleDateString(
@@ -525,7 +525,7 @@ export default function AdminPromotions() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Đơn tối thiểu (₫)</label>
+                  <label>Đơn tối thiểu (đ)</label>
                   <input
                     type="number"
                     min="0"

@@ -8,7 +8,7 @@ import {
 } from "../../api/client";
 import AdminLayout from "../../components/admin/AdminLayout";
 import { useAuth } from "../../context/AuthContext";
-import "./Admin.css";
+import "../../styles/admin/AdminProducts.css";
 
 interface Product {
   id: number;
@@ -35,7 +35,6 @@ interface Color {
   code: string;
 }
 
-// ✅ FIX: Thêm field `order` vào Size interface
 interface Size {
   id: number;
   name: string;
@@ -70,29 +69,18 @@ interface VariantFormData {
   price: number | null;
 }
 
-function getApiErrorMessage(
-  error: unknown,
-  fallback = "Có lỗi xảy ra!",
-): string {
-  const responseData = (error as { response?: { data?: unknown } })?.response
-    ?.data;
+function getApiErrorMessage(error: unknown, fallback = "Có lỗi xảy ra!"): string {
+  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
   if (!responseData) return fallback;
   if (typeof responseData === "string") return responseData;
-  if (Array.isArray(responseData) && typeof responseData[0] === "string")
-    return responseData[0];
+  if (Array.isArray(responseData) && typeof responseData[0] === "string") return responseData[0];
   if (typeof responseData === "object") {
-    if (
-      "detail" in responseData &&
-      typeof (responseData as { detail?: unknown }).detail === "string"
-    ) {
+    if ("detail" in responseData && typeof (responseData as { detail?: unknown }).detail === "string") {
       return (responseData as { detail: string }).detail;
     }
-    const firstValue = Object.values(
-      responseData as Record<string, unknown>,
-    )[0];
+    const firstValue = Object.values(responseData as Record<string, unknown>)[0];
     if (typeof firstValue === "string") return firstValue;
-    if (Array.isArray(firstValue) && typeof firstValue[0] === "string")
-      return firstValue[0];
+    if (Array.isArray(firstValue) && typeof firstValue[0] === "string") return firstValue[0];
   }
   return fallback;
 }
@@ -104,9 +92,7 @@ function variantStockTone(stock: number): "empty" | "low" | "ok" {
 }
 
 function productImageGallery(p: Product): string[] {
-  const fromDb = (p.images ?? [])
-    .map((x) => x.image)
-    .filter((u): u is string => Boolean(u));
+  const fromDb = (p.images ?? []).map((x) => x.image).filter((u): u is string => Boolean(u));
   if (fromDb.length > 0) return fromDb;
   if (p.image) return [p.image];
   return [];
@@ -154,25 +140,33 @@ export default function AdminProducts() {
   const variantFormPanelRef = useRef<HTMLElement | null>(null);
   const variantColorSelectRef = useRef<HTMLSelectElement | null>(null);
 
-  // ✅ State cho quick-add màu
+  // Quick-add màu
   const [showQuickAddColor, setShowQuickAddColor] = useState(false);
   const [quickAddColorName, setQuickAddColorName] = useState("");
   const [quickAddColorCode, setQuickAddColorCode] = useState("#000000");
   const [quickAddColorLoading, setQuickAddColorLoading] = useState(false);
   const [quickAddColorError, setQuickAddColorError] = useState("");
 
-  // ✅ State cho quick-add size (tách riêng với order)
+  // Quick-add size (trong variant modal)
   const [showQuickAddSize, setShowQuickAddSize] = useState(false);
   const [quickAddSizeName, setQuickAddSizeName] = useState("");
   const [quickAddSizeOrder, setQuickAddSizeOrder] = useState(0);
   const [quickAddSizeLoading, setQuickAddSizeLoading] = useState(false);
   const [quickAddSizeError, setQuickAddSizeError] = useState("");
 
-  // ✅ State cho chỉnh thứ tự size inline
-  const [editingOrders, setEditingOrders] = useState<Record<number, number>>(
-    {},
-  );
+  // Inline order editing (trong variant modal)
+  const [editingOrders, setEditingOrders] = useState<Record<number, number>>({});
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
+
+  // ── Size CRUD trong product form ──
+  const [sizeManagerName, setSizeManagerName] = useState("");
+  const [sizeManagerOrder, setSizeManagerOrder] = useState(0);
+  const [sizeManagerError, setSizeManagerError] = useState("");
+  const [sizeManagerLoading, setSizeManagerLoading] = useState(false);
+  const [editingSizeId, setEditingSizeId] = useState<number | null>(null);
+  const [editingSizeName, setEditingSizeName] = useState("");
+  const [editingSizeOrder, setEditingSizeOrder] = useState(0);
+  const [deletingSizeId, setDeletingSizeId] = useState<number | null>(null);
 
   const loadData = (search?: string, lowStock?: boolean) => {
     const q = search !== undefined ? search : searchQuery;
@@ -191,24 +185,26 @@ export default function AdminProducts() {
       sizesApi.list(),
       admin.promotions.list(),
     ])
-      .then(
-        ([productsRes, categoriesRes, colorsRes, sizesRes, promotionsRes]) => {
-          const pdata = productsRes.data as { results?: Product[] };
-          setProducts(pdata.results || (productsRes.data as Product[]) || []);
-          setCategoriesList(categoriesRes.data.results || categoriesRes.data);
-          setColorsList(colorsRes.data.results || colorsRes.data);
-          const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
-          setSizesList(
-            [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-          );
-          const prom = promotionsRes.data as
-            | { results?: typeof promotionsList }
-            | typeof promotionsList;
-          setPromotionsList(Array.isArray(prom) ? prom : (prom.results ?? []));
-        },
-      )
+      .then(([productsRes, categoriesRes, colorsRes, sizesRes, promotionsRes]) => {
+        const pdata = productsRes.data as { results?: Product[] };
+        setProducts(pdata.results || (productsRes.data as Product[]) || []);
+        setCategoriesList(categoriesRes.data.results || categoriesRes.data);
+        setColorsList(colorsRes.data.results || colorsRes.data);
+        const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
+        setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+        const prom = promotionsRes.data as
+          | { results?: typeof promotionsList }
+          | typeof promotionsList;
+        setPromotionsList(Array.isArray(prom) ? prom : (prom.results ?? []));
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  const reloadSizes = async () => {
+    const res = await sizesApi.list();
+    const rawSizes: Size[] = res.data.results || res.data;
+    setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
   };
 
   useEffect(() => {
@@ -254,9 +250,7 @@ export default function AdminProducts() {
       if (editingProduct) {
         if (formData.delete_image_ids && formData.delete_image_ids.length > 0) {
           await Promise.all(
-            formData.delete_image_ids.map((imgId) =>
-              admin.products.deleteImage(imgId),
-            ),
+            formData.delete_image_ids.map((imgId) => admin.products.deleteImage(imgId)),
           );
         }
         await admin.products.update(editingProduct.id, formDataToSend);
@@ -282,6 +276,7 @@ export default function AdminProducts() {
       alert(getApiErrorMessage(error));
     }
   };
+
   const handleEditProduct = async (product: Product) => {
     try {
       const res = await admin.products.get(product.id);
@@ -347,6 +342,68 @@ export default function AdminProducts() {
     }));
   };
 
+  // ── Size Manager trong product form ──
+  const handleAddSize = async () => {
+    const name = sizeManagerName.trim();
+    if (!name) {
+      setSizeManagerError("Vui lòng nhập tên size.");
+      return;
+    }
+    setSizeManagerError("");
+    setSizeManagerLoading(true);
+    try {
+      await admin.sizes.create({ name, order: sizeManagerOrder });
+      await reloadSizes();
+      setSizeManagerName("");
+      setSizeManagerOrder(0);
+    } catch (error) {
+      setSizeManagerError(getApiErrorMessage(error, "Không thể thêm size."));
+    } finally {
+      setSizeManagerLoading(false);
+    }
+  };
+
+  const startEditSize = (s: Size) => {
+    setEditingSizeId(s.id);
+    setEditingSizeName(s.name);
+    setEditingSizeOrder(s.order);
+  };
+
+  const cancelEditSize = () => {
+    setEditingSizeId(null);
+    setEditingSizeName("");
+    setEditingSizeOrder(0);
+  };
+
+  const handleUpdateSize = async (id: number) => {
+    const name = editingSizeName.trim();
+    if (!name) return;
+    setSizeManagerLoading(true);
+    try {
+      await admin.sizes.update(id, { name, order: editingSizeOrder });
+      await reloadSizes();
+      cancelEditSize();
+    } catch (error) {
+      alert(getApiErrorMessage(error, "Không thể cập nhật size."));
+    } finally {
+      setSizeManagerLoading(false);
+    }
+  };
+
+  const handleDeleteSize = async (id: number) => {
+    if (!confirm("Xóa size này? Các biến thể dùng size này có thể bị ảnh hưởng.")) return;
+    setDeletingSizeId(id);
+    try {
+      await admin.sizes.delete(id);
+      await reloadSizes();
+    } catch (error) {
+      alert(getApiErrorMessage(error, "Không thể xóa size."));
+    } finally {
+      setDeletingSizeId(null);
+    }
+  };
+
+  // ── Variant modal helpers ──
   const closeVariantModal = () => {
     setShowVariantModal(false);
     loadData();
@@ -423,7 +480,6 @@ export default function AdminProducts() {
     }
   };
 
-  // ✅ FIX: handleQuickAddSize giờ gửi cả `order`
   const handleQuickAddSize = async () => {
     const name = quickAddSizeName.trim();
     if (!name) {
@@ -436,9 +492,7 @@ export default function AdminProducts() {
       await admin.sizes.create({ name, order: quickAddSizeOrder });
       const res = await sizesApi.list();
       const rawSizes: Size[] = res.data.results || res.data;
-      setSizesList(
-        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-      );
+      setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
       setQuickAddSizeName("");
       setQuickAddSizeOrder(0);
       setShowQuickAddSize(false);
@@ -449,16 +503,13 @@ export default function AdminProducts() {
     }
   };
 
-  // ✅ Lưu thứ tự size ngay khi blur hoặc bấm Enter
   const handleSaveOrder = async (s: Size, newOrder: number) => {
     setSavingOrderId(s.id);
     try {
       await admin.sizes.update(s.id, { name: s.name, order: newOrder });
       const res = await sizesApi.list();
       const rawSizes: Size[] = res.data.results || res.data;
-      setSizesList(
-        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-      );
+      setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
       setEditingOrders((prev) => {
         const next = { ...prev };
         delete next[s.id];
@@ -492,14 +543,12 @@ export default function AdminProducts() {
       }
 
       await syncVariantModalFromServer(selectedProduct.id);
-
       setVariantForm({ color_id: 0, size_id: 0, stock: 0, price: null });
       setWarehouseDelta("");
       setEditingVariant(null);
     } catch (error: unknown) {
       console.error("Variant error:", (error as any)?.response?.data);
-      const msg = (error as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail;
+      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       alert(msg || "Có lỗi xảy ra!");
     }
   };
@@ -514,10 +563,7 @@ export default function AdminProducts() {
       price: variant.price ?? null,
     });
     window.setTimeout(() => {
-      variantFormPanelRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+      variantFormPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       variantColorSelectRef.current?.focus({ preventScroll: false });
     }, 0);
   };
@@ -530,10 +576,7 @@ export default function AdminProducts() {
       alert("Nhập số hợp lệ (có thể âm khi điều chỉnh giảm).");
       return;
     }
-    setVariantForm((f) => ({
-      ...f,
-      stock: Math.max(0, Math.round(f.stock + d)),
-    }));
+    setVariantForm((f) => ({ ...f, stock: Math.max(0, Math.round(f.stock + d)) }));
     setWarehouseDelta("");
   };
 
@@ -562,11 +605,8 @@ export default function AdminProducts() {
     );
 
   const variantGallery =
-    showVariantModal && selectedProduct
-      ? productImageGallery(selectedProduct)
-      : [];
-  const variantMainSrc =
-    variantGallery[variantImageIndex] ?? variantGallery[0] ?? "";
+    showVariantModal && selectedProduct ? productImageGallery(selectedProduct) : [];
+  const variantMainSrc = variantGallery[variantImageIndex] ?? variantGallery[0] ?? "";
 
   return (
     <AdminLayout>
@@ -578,14 +618,13 @@ export default function AdminProducts() {
               {canManageVariantStock ? (
                 <>
                   Tồn kho theo màu &amp; size không hiện trên bảng — bấm nút tím{" "}
-                  <strong className="page-header-desc-em">Biến thể</strong> trên
-                  từng sản phẩm để nhập kho / chỉnh số lượng trong cửa sổ.
+                  <strong className="page-header-desc-em">Biến thể</strong> trên từng sản phẩm
+                  để nhập kho / chỉnh số lượng.
                 </>
               ) : (
                 <>
-                  Bấm <strong className="page-header-desc-em">Biến thể</strong>{" "}
-                  để <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ
-                  xem; nhập kho do quản trị viên).
+                  Bấm <strong className="page-header-desc-em">Biến thể</strong> để{" "}
+                  <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ xem).
                 </>
               )}
             </p>
@@ -601,7 +640,7 @@ export default function AdminProducts() {
             placeholder="Tìm theo tên, mô tả, danh mục…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ minWidth: "240px", flex: 1 }}
+            className="admin-filters__search"
           />
           <label className="admin-inlineCheck">
             <input
@@ -640,26 +679,15 @@ export default function AdminProducts() {
                     className="btn-variant"
                     onClick={() => openVariantModal(product)}
                   >
-                    <span className="btn-variant__icon" aria-hidden>
-                      ◎
-                    </span>
                     <span className="btn-variant__text">Biến thể</span>
-                    <span className="btn-variant__count">
-                      {product.variants?.length ?? 0}
-                    </span>
+                    <span className="btn-variant__count">{product.variants?.length ?? 0}</span>
                   </button>
                 </td>
                 <td>
-                  <button
-                    className="btn-edit"
-                    onClick={() => handleEditProduct(product)}
-                  >
+                  <button className="btn-edit" onClick={() => handleEditProduct(product)}>
                     Sửa
                   </button>
-                  <button
-                    className="btn-delete"
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
+                  <button className="btn-delete" onClick={() => handleDeleteProduct(product.id)}>
                     Xóa
                   </button>
                 </td>
@@ -671,380 +699,238 @@ export default function AdminProducts() {
         {/* ── Product Modal ── */}
         {showProductModal && (
           <div className="modal-overlay">
-            <div className="modal">
-              <h3>{editingProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}</h3>
-              <form onSubmit={handleSubmitProduct}>
-                <div className="form-group">
-                  <label>Tên sản phẩm</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Mô tả</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Giá</label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Danh mục</label>
-                  <select
-                    value={formData.category_id}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        category_id: Number(e.target.value),
-                      })
-                    }
-                    required
-                  >
-                    <option value="">Chọn danh mục</option>
-                    {categoriesList.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Khuyến mãi</label>
-                  <select
-                    value={formData.promotion_id ?? ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        promotion_id: e.target.value
-                          ? Number(e.target.value)
-                          : null,
-                      })
-                    }
-                  >
-                    <option value="">Không có khuyến mãi</option>
-                    {promotionsList
-                      .filter(
-                        (p) => p.is_active || p.id === formData.promotion_id,
-                      )
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (-{p.discount_percent}%)
-                          {!p.is_active ? " [Hết hạn]" : ""}
-                        </option>
-                      ))}
-                  </select>
-                </div>
+            <div className="modal product-modal">
+              <div className="product-modal__header">
+                <h3>{editingProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}</h3>                
+              </div>
 
-                {/* Hình ảnh sản phẩm */}
-                <div className="form-group">
-                  <label>Hình ảnh sản phẩm</label>
+              <form onSubmit={handleSubmitProduct} className="product-form">
+                {/* Cột trái */}
+                <div className="product-form__col">
+                  <div className="product-form__section-label">Thông tin cơ bản</div>
 
-                  {/* Danh sách ảnh hiện có với nút xóa từng ảnh */}
-                  {editingProduct &&
-                    (() => {
-                      const existingImages = (
-                        editingProduct.images ?? []
-                      ).filter(
-                        (img) =>
-                          img.image &&
-                          !formData.delete_image_ids?.includes(img.id),
-                      );
-                      return existingImages.length > 0 ? (
-                        <div style={{ marginBottom: 10 }}>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "var(--text-muted)",
-                              marginBottom: 6,
-                            }}
-                          >
-                            Ảnh hiện có — bấm ✕ để đánh dấu xóa khi lưu:
-                          </p>
-                          <div className="image-preview-list">
-                            {existingImages.map((img) => (
-                              <div
-                                key={img.id}
-                                className="image-preview-item"
-                                style={{ position: "relative" }}
-                              >
-                                <img src={img.image!} alt="" />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      delete_image_ids: [
-                                        ...(prev.delete_image_ids ?? []),
-                                        img.id,
-                                      ],
-                                    }))
-                                  }
-                                  style={{
-                                    position: "absolute",
-                                    top: 2,
-                                    right: 2,
-                                    background: "rgba(239,68,68,0.85)",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: "50%",
-                                    width: 20,
-                                    height: 20,
-                                    fontSize: 12,
-                                    lineHeight: "20px",
-                                    textAlign: "center",
-                                    cursor: "pointer",
-                                    padding: 0,
-                                  }}
-                                  title="Xóa ảnh này"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
+                  <div className="form-group">
+                    <label>Tên sản phẩm</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
 
-                  {/* Ảnh mới sẽ thêm */}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                  />
-                  {formData.upload_images &&
-                    formData.upload_images.length > 0 && (
-                      <div
-                        className="image-preview-list"
-                        style={{ marginTop: 8 }}
+                  <div className="form-group">
+                    <label>Mô tả</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="product-form__row2">
+                    <div className="form-group">
+                      <label>Giá (đ)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Danh mục</label>
+                      <select
+                        value={formData.category_id}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category_id: Number(e.target.value) })
+                        }
+                        required
                       >
-                        {formData.upload_images.map((file, index) => (
-                          <div
-                            key={index}
-                            className="image-preview-item"
-                            style={{ position: "relative" }}
-                          >
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index}`}
-                            />
+                        <option value="">Chọn danh mục</option>
+                        {categoriesList.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Khuyến mãi</label>
+                    <select
+                      value={formData.promotion_id ?? ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          promotion_id: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                    >
+                      <option value="">Không có khuyến mãi</option>
+                      {promotionsList
+                        .filter((p) => p.is_active || p.id === formData.promotion_id)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (-{p.discount_percent}%)
+                            {!p.is_active ? " [Hết hạn]" : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Cột phải */}
+                <div className="product-form__col">
+                  {/* ── Bảng kích thước ── */}
+                  <div className="product-form__section-label">
+                    Bảng kích thước                    
+                  </div>
+
+                  {/* Ảnh size chart */}
+                  <div className="form-group">
+                    <label>Ảnh bảng size</label>
+
+                    {editingProduct?.size_chart &&
+                      !formData.clear_size_chart &&
+                      !formData.size_chart && (
+                        <div className="size-chart-preview">
+                          <img
+                            src={editingProduct.size_chart}
+                            alt="Bảng size hiện tại"
+                            className="size-chart-preview__img"
+                          />
+                          <div className="size-chart-preview__footer">
+                            <span className="size-chart-preview__hint">
+                              Ảnh hiện tại — chọn file mới để thay thế
+                            </span>
                             <button
                               type="button"
+                              className="btn-delete btn-sm"
                               onClick={() =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  upload_images: (
-                                    prev.upload_images ?? []
-                                  ).filter((_, i) => i !== index),
-                                }))
+                                setFormData((prev) => ({ ...prev, clear_size_chart: true }))
                               }
-                              style={{
-                                position: "absolute",
-                                top: 2,
-                                right: 2,
-                                background: "rgba(239,68,68,0.85)",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "50%",
-                                width: 20,
-                                height: 20,
-                                fontSize: 12,
-                                lineHeight: "20px",
-                                textAlign: "center",
-                                cursor: "pointer",
-                                padding: 0,
-                              }}
-                              title="Bỏ ảnh này"
                             >
-                              ✕
+                              Xóa ảnh
                             </button>
                           </div>
-                        ))}
+                        </div>
+                      )}
+
+                    {formData.clear_size_chart && !formData.size_chart && (
+                      <div className="size-chart-deleted-notice">
+                        <span>Bảng size sẽ bị xóa khi lưu.</span>
+                        <button
+                          type="button"
+                          className="size-chart-deleted-notice__undo"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, clear_size_chart: false }))
+                          }
+                        >
+                          Hoàn tác
+                        </button>
                       </div>
                     )}
-                </div>
 
-                {/* ── Bảng kích thước ── */}
-                <div className="form-group">
-                  <label>📏 Bảng kích thước (ảnh số đo)</label>
-
-                  {/* Ảnh size chart hiện tại */}
-                  {editingProduct?.size_chart &&
-                    !formData.clear_size_chart &&
-                    !formData.size_chart && (
-                      <div style={{ marginBottom: 10 }}>
+                    {formData.size_chart && (
+                      <div className="size-chart-preview">
                         <img
-                          src={editingProduct.size_chart}
-                          alt="Bảng size hiện tại"
-                          style={{
-                            maxWidth: "100%",
-                            width: "100%",
-                            borderRadius: 8,
-                            border: "1px solid #eee",
-                            display: "block",
-                            objectFit: "contain",
-                          }}
+                          src={URL.createObjectURL(formData.size_chart)}
+                          alt="Preview bảng size"
+                          className="size-chart-preview__img"
                         />
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            marginTop: 6,
-                          }}
-                        >
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: "#888",
-                              margin: 0,
-                              flex: 1,
-                            }}
-                          >
-                            Ảnh hiện tại — chọn file mới để thay thế, hoặc bấm
-                            xóa.
-                          </p>
+                        <div className="size-chart-preview__footer">
+                          <span className="size-chart-preview__hint">
+                            {formData.size_chart.name}
+                          </span>
                           <button
                             type="button"
                             className="btn-delete btn-sm"
-                            style={{ fontSize: 12, padding: "3px 10px" }}
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                clear_size_chart: true,
-                              }))
-                            }
+                            onClick={() => setFormData((prev) => ({ ...prev, size_chart: null }))}
                           >
-                            ✕ Xóa ảnh
+                            Bỏ chọn
                           </button>
                         </div>
                       </div>
                     )}
 
-                  {/* Đã đánh dấu xóa */}
-                  {formData.clear_size_chart && !formData.size_chart && (
-                    <div
-                      style={{
-                        marginBottom: 10,
-                        padding: "8px 12px",
-                        background: "#fef2f2",
-                        borderRadius: 6,
-                        border: "1px solid #fecaca",
-                      }}
-                    >
-                      <span style={{ fontSize: 12, color: "#ef4444" }}>
-                        Bảng kích thước sẽ bị xóa khi lưu.{" "}
-                      </span>
-                      <button
-                        type="button"
-                        style={{
-                          fontSize: 12,
-                          color: "#6366f1",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          textDecoration: "underline",
-                        }}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            clear_size_chart: false,
-                          }))
-                        }
-                      >
-                        Hoàn tác
-                      </button>
-                    </div>
-                  )}
+                    <input type="file" accept="image/*" onChange={handleSizeChartUpload} />
+                  </div>
 
-                  {/* Preview ảnh mới chọn */}
-                  {formData.size_chart && (
-                    <div style={{ marginBottom: 10 }}>
-                      <img
-                        src={URL.createObjectURL(formData.size_chart)}
-                        alt="Preview bảng size"
-                        style={{
-                          maxWidth: "100%",
-                          width: "100%",
-                          borderRadius: 8,
-                          border: "1px solid #ddd",
-                          display: "block",
-                          objectFit: "contain",
-                        }}
-                      />
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginTop: 6,
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "#888",
-                            margin: 0,
-                            flex: 1,
-                          }}
-                        >
-                          {formData.size_chart.name}
-                        </p>
-                        <button
-                          type="button"
-                          className="btn-delete btn-sm"
-                          style={{ fontSize: 12, padding: "3px 10px" }}
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              size_chart: null,
-                            }))
-                          }
-                        >
-                          ✕ Bỏ chọn
-                        </button>
+                  {/* Hình ảnh sản phẩm */}
+                  <div className="form-group">
+                    <label>Hình ảnh sản phẩm</label>
+
+                    {editingProduct &&
+                      (() => {
+                        const existingImages = (editingProduct.images ?? []).filter(
+                          (img) => img.image && !formData.delete_image_ids?.includes(img.id),
+                        );
+                        return existingImages.length > 0 ? (
+                          <div className="image-list">
+                            <div className="image-preview-list">
+                              {existingImages.map((img) => (
+                                <div key={img.id} className="image-preview-item">
+                                  <img src={img.image!} alt="" />
+                                  <button
+                                    type="button"
+                                    className="image-preview-item__del"
+                                    onClick={() =>
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        delete_image_ids: [
+                                          ...(prev.delete_image_ids ?? []),
+                                          img.id,
+                                        ],
+                                      }))
+                                    }
+                                  >
+                                    Xóa
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                    />
+
+                    {formData.upload_images && formData.upload_images.length > 0 && (
+                      <div className="image-preview-list image-preview-list--new">
+                        {formData.upload_images.map((file, index) => (
+                          <div key={index} className="image-preview-item">
+                            <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} />
+                            <button
+                              type="button"
+                              className="image-preview-item__del"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  upload_images: (prev.upload_images ?? []).filter(
+                                    (_, i) => i !== index,
+                                  ),
+                                }))
+                              }
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  )}
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSizeChartUpload}
-                  />
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-muted)",
-                      marginTop: 4,
-                    }}
-                  >
-                    Ảnh này hiển thị đầy đủ chiều ngang trong trang chi tiết sản
-                    phẩm.
-                  </p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="form-actions">
+                {/* Actions */}
+                <div className="form-actions product-form__actions">
                   <button
                     type="button"
                     className="btn-secondary"
@@ -1053,7 +939,7 @@ export default function AdminProducts() {
                     Hủy
                   </button>
                   <button type="submit" className="btn-primary">
-                    Lưu
+                    {editingProduct ? "Lưu thay đổi" : "Thêm sản phẩm"}
                   </button>
                 </div>
               </form>
@@ -1083,12 +969,7 @@ export default function AdminProducts() {
                   {variantMainSrc ? (
                     <>
                       <div className="variant-modal__preview-main">
-                        <img
-                          src={variantMainSrc}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                        />
+                        <img src={variantMainSrc} alt="" loading="lazy" decoding="async" />
                       </div>
                       {variantGallery.length > 1 && (
                         <div
@@ -1119,18 +1000,14 @@ export default function AdminProducts() {
                   )}
                 </aside>
 
-                {/* Cột phải — header + body cuộn */}
+                {/* Cột phải */}
                 <div className="variant-modal__content">
                   <div className="variant-modal__header">
                     <div>
                       <h3 id="variant-modal-title">
-                        {canManageVariantStock
-                          ? "Biến thể & nhập kho"
-                          : "Biến thể (chỉ xem tồn)"}
+                        {canManageVariantStock ? "Biến thể & nhập kho" : "Biến thể (chỉ xem tồn)"}
                       </h3>
-                      <p className="variant-modal__product-name">
-                        {selectedProduct.name}
-                      </p>
+                      <p className="variant-modal__product-name">{selectedProduct.name}</p>
                     </div>
                     <span className="variant-modal__badge" title="Số biến thể">
                       {productVariants.length} SKU
@@ -1143,8 +1020,8 @@ export default function AdminProducts() {
                         className="admin-banner variant-modal__staff-readonly-banner"
                         role="status"
                       >
-                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp;
-                        size. Thêm/sửa/xóa biến thể và nhập kho do{" "}
+                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp; size.
+                        Thêm/sửa/xóa biến thể và nhập kho do{" "}
                         <strong>quản trị viên</strong> thực hiện.
                       </div>
                     )}
@@ -1154,12 +1031,10 @@ export default function AdminProducts() {
                         className="variant-modal__panel variant-modal__panel--quick"
                         aria-label="Thêm nhanh màu và size"
                       >
-                        <h4 className="variant-modal__panel-title">
-                          Mở rộng danh mục dùng chung
-                        </h4>
+                        <h4 className="variant-modal__panel-title">Mở rộng danh mục dùng chung</h4>
                         <p className="variant-modal__hint">
-                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp
-                          dụng cho toàn cửa hàng).
+                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp dụng cho toàn cửa
+                          hàng).
                         </p>
                         <div className="variant-quick-grid">
                           {/* Quick-add màu */}
@@ -1197,22 +1072,12 @@ export default function AdminProducts() {
                                   <input
                                     type="color"
                                     value={quickAddColorCode}
-                                    onChange={(e) =>
-                                      setQuickAddColorCode(e.target.value)
-                                    }
+                                    onChange={(e) => setQuickAddColorCode(e.target.value)}
                                     title="Chọn màu"
                                   />
                                 </label>
                                 {quickAddColorError && (
-                                  <p
-                                    style={{
-                                      color: "var(--color-danger, #ef4444)",
-                                      fontSize: "12px",
-                                      margin: "4px 0 0",
-                                    }}
-                                  >
-                                    {quickAddColorError}
-                                  </p>
+                                  <p className="variant-quick-card__error">{quickAddColorError}</p>
                                 )}
                                 <div className="variant-quick-card__actions">
                                   <button
@@ -1238,7 +1103,7 @@ export default function AdminProducts() {
                             )}
                           </div>
 
-                          {/* Quick-add size — có thêm field order */}
+                          {/* Quick-add size */}
                           <div className="variant-quick-card">
                             <div className="variant-quick-card__label">
                               <span
@@ -1268,55 +1133,22 @@ export default function AdminProducts() {
                                   }}
                                   aria-label="Tên size"
                                 />
-                                {/* ✅ Field thứ tự khi thêm size mới */}
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    marginTop: 6,
-                                  }}
-                                >
-                                  <label
-                                    style={{
-                                      fontSize: 12,
-                                      color: "var(--text-muted)",
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
-                                    Thứ tự:
-                                  </label>
+                                <div className="variant-quick-card__order-row">
+                                  <label>Thứ tự:</label>
                                   <input
                                     type="number"
                                     value={quickAddSizeOrder}
                                     min={0}
-                                    onChange={(e) =>
-                                      setQuickAddSizeOrder(
-                                        Number(e.target.value),
-                                      )
-                                    }
-                                    style={{ width: 70 }}
+                                    onChange={(e) => setQuickAddSizeOrder(Number(e.target.value))}
+                                    className="variant-quick-card__order-input"
                                     aria-label="Thứ tự hiển thị"
                                   />
-                                  <span
-                                    style={{
-                                      fontSize: 11,
-                                      color: "var(--text-muted)",
-                                    }}
-                                  >
-                                    (số nhỏ = hiển thị trước)
+                                  <span className="variant-quick-card__order-hint">
+                                    số nhỏ = trước
                                   </span>
                                 </div>
                                 {quickAddSizeError && (
-                                  <p
-                                    style={{
-                                      color: "var(--color-danger, #ef4444)",
-                                      fontSize: "12px",
-                                      margin: "4px 0 0",
-                                    }}
-                                  >
-                                    {quickAddSizeError}
-                                  </p>
+                                  <p className="variant-quick-card__error">{quickAddSizeError}</p>
                                 )}
                                 <div className="variant-quick-card__actions">
                                   <button
@@ -1352,19 +1184,14 @@ export default function AdminProducts() {
                         aria-label="Thêm hoặc sửa biến thể"
                       >
                         <h4 className="variant-modal__panel-title">
-                          {editingVariant
-                            ? "Cập nhật biến thể & tồn"
-                            : "Thêm biến thể mới"}
+                          {editingVariant ? "Cập nhật biến thể & tồn" : "Thêm biến thể mới"}
                         </h4>
                         <p className="variant-stock-workflow-hint">
                           {editingVariant
-                            ? "Chọn đúng màu/size của SKU, chỉnh « Tồn kho » trực tiếp hoặc « Nhập thêm » rồi Lưu."
-                            : "Chọn màu, size và tồn ban đầu; sau này mở lại đây để nhập thêm hàng."}
+                            ? "Chỉnh tồn kho trực tiếp hoặc dùng Nhập thêm rồi Lưu."
+                            : "Chọn màu, size và tồn ban đầu; sau này mở lại để nhập thêm hàng."}
                         </p>
-                        <form
-                          onSubmit={handleSubmitVariant}
-                          className="variant-form-compact"
-                        >
+                        <form onSubmit={handleSubmitVariant} className="variant-form-compact">
                           <div className="variant-form-compact__grid">
                             <div className="form-group">
                               <label htmlFor="vf-color">Màu</label>
@@ -1406,19 +1233,16 @@ export default function AdminProducts() {
                                 <option value="" disabled>
                                   Chọn size
                                 </option>
-                                {/* ✅ Hiển thị size theo thứ tự đã sort */}
                                 {sizesList.map((s) => (
                                   <option key={s.id} value={s.id}>
-                                    {s.name} (thứ tự: {s.order})
+                                    {s.name} (#{s.order})
                                   </option>
                                 ))}
                               </select>
                             </div>
                             <div className="form-group form-group--stock">
                               <label htmlFor="vf-stock">
-                                {editingVariant
-                                  ? "Tồn kho (sau cập nhật)"
-                                  : "Tồn kho ban đầu"}
+                                {editingVariant ? "Tồn kho (sau cập nhật)" : "Tồn kho ban đầu"}
                               </label>
                               <input
                                 id="vf-stock"
@@ -1429,10 +1253,7 @@ export default function AdminProducts() {
                                 onChange={(e) =>
                                   setVariantForm({
                                     ...variantForm,
-                                    stock: Math.max(
-                                      0,
-                                      Number(e.target.value) || 0,
-                                    ),
+                                    stock: Math.max(0, Number(e.target.value) || 0),
                                   })
                                 }
                                 required
@@ -1442,9 +1263,7 @@ export default function AdminProducts() {
                                 role="group"
                                 aria-label="Cộng nhanh vào tồn"
                               >
-                                <span className="variant-stock-quick__label">
-                                  Cộng nhanh:
-                                </span>
+                                <span className="variant-stock-quick__label">Cộng nhanh:</span>
                                 {[1, 5, 10, 50, 100].map((n) => (
                                   <button
                                     key={n}
@@ -1457,9 +1276,7 @@ export default function AdminProducts() {
                                 ))}
                               </div>
                               <div className="variant-stock-inbound">
-                                <label htmlFor="vf-warehouse-delta">
-                                  Nhập thêm vào kho
-                                </label>
+                                <label htmlFor="vf-warehouse-delta">Nhập thêm vào kho</label>
                                 <div className="variant-stock-inbound__row">
                                   <input
                                     id="vf-warehouse-delta"
@@ -1467,9 +1284,7 @@ export default function AdminProducts() {
                                     inputMode="numeric"
                                     placeholder="VD: 20 hoặc -3"
                                     value={warehouseDelta}
-                                    onChange={(e) =>
-                                      setWarehouseDelta(e.target.value)
-                                    }
+                                    onChange={(e) => setWarehouseDelta(e.target.value)}
                                   />
                                   <button
                                     type="button"
@@ -1480,28 +1295,16 @@ export default function AdminProducts() {
                                   </button>
                                 </div>
                                 <p className="variant-stock-inbound__hint">
-                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm
-                                  kê). Bấm Áp dụng để cộng vào ô tồn phía trên,
-                                  rồi Lưu.
+                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm kê). Bấm Áp dụng
+                                  để cộng vào ô tồn phía trên, rồi Lưu.
                                 </p>
                               </div>
                             </div>
                             <div className="form-group">
-                              <label htmlFor="vf-price">
-                                Giá riêng cho size này
-                              </label>
-                              <p
-                                style={{
-                                  fontSize: "12px",
-                                  color: "var(--text-muted)",
-                                  margin: "4px 0 8px",
-                                }}
-                              >
+                              <label htmlFor="vf-price">Giá riêng cho size này</label>
+                              <p className="form-hint">
                                 Để trống = dùng giá sản phẩm (
-                                {Number(selectedProduct.price).toLocaleString(
-                                  "vi-VN",
-                                )}
-                                đ). Nhập số để override giá cho size/màu này.
+                                {Number(selectedProduct.price).toLocaleString("vi-VN")}đ).
                               </p>
                               <input
                                 id="vf-price"
@@ -1526,9 +1329,7 @@ export default function AdminProducts() {
                                 type="submit"
                                 className="btn-primary variant-form-compact__btn-main"
                               >
-                                {editingVariant
-                                  ? "Lưu thay đổi"
-                                  : "Thêm biến thể"}
+                                {editingVariant ? "Lưu thay đổi" : "Thêm biến thể"}
                               </button>
                               {editingVariant && (
                                 <button
@@ -1554,27 +1355,16 @@ export default function AdminProducts() {
                       </section>
                     )}
 
-                    <section
-                      className="variant-modal__panel"
-                      aria-label="Danh sách biến thể"
-                    >
+                    <section className="variant-modal__panel" aria-label="Danh sách biến thể">
                       <div className="variant-modal__list-head">
                         <h4 className="variant-modal__panel-title variant-modal__panel-title--inline">
-                          {canManageVariantStock
-                            ? "Danh sách"
-                            : "Danh sách (màu · size · tồn)"}
+                          {canManageVariantStock ? "Danh sách" : "Danh sách (màu · size · tồn)"}
                         </h4>
                         <p className="variant-modal__legend">
                           Ô tồn:{" "}
-                          <span className="variant-legend-tag variant-legend-tag--ok">
-                            đủ
-                          </span>
-                          <span className="variant-legend-tag variant-legend-tag--low">
-                            thấp ≤5
-                          </span>
-                          <span className="variant-legend-tag variant-legend-tag--empty">
-                            hết
-                          </span>
+                          <span className="variant-legend-tag variant-legend-tag--ok">đủ</span>
+                          <span className="variant-legend-tag variant-legend-tag--low">thấp ≤5</span>
+                          <span className="variant-legend-tag variant-legend-tag--empty">hết</span>
                         </p>
                       </div>
                       <div className="variant-table-wrap">
@@ -1586,9 +1376,7 @@ export default function AdminProducts() {
                               <th>Giá riêng</th>
                               <th>Tồn</th>
                               {canManageVariantStock && (
-                                <th className="variant-table__actions">
-                                  Thao tác
-                                </th>
+                                <th className="variant-table__actions">Thao tác</th>
                               )}
                             </tr>
                           </thead>
@@ -1597,12 +1385,10 @@ export default function AdminProducts() {
                               <tr>
                                 <td colSpan={canManageVariantStock ? 5 : 4}>
                                   <div className="variant-empty">
-                                    <p className="variant-empty__title">
-                                      Chưa có biến thể
-                                    </p>
+                                    <p className="variant-empty__title">Chưa có biến thể</p>
                                     <p className="variant-empty__text">
                                       {canManageVariantStock
-                                        ? "Chọn màu, size và tồn kho ở form phía trên rồi bấm « Thêm biến thể »."
+                                        ? "Chọn màu, size và tồn kho ở form phía trên rồi bấm Thêm biến thể."
                                         : "Chưa có SKU — quản trị viên thêm biến thể và tồn kho."}
                                     </p>
                                   </div>
@@ -1615,32 +1401,20 @@ export default function AdminProducts() {
                                     <div className="variant-cell-color">
                                       <span
                                         className="color-dot color-dot--lg"
-                                        style={{
-                                          backgroundColor: v.color.code,
-                                        }}
+                                        style={{ backgroundColor: v.color.code }}
                                         title={v.color.name}
                                       />
                                       <span>{v.color.name}</span>
                                     </div>
                                   </td>
                                   <td>
-                                    <span className="variant-size-pill">
-                                      {v.size.name}
-                                    </span>
+                                    <span className="variant-size-pill">{v.size.name}</span>
                                   </td>
                                   <td>
                                     {v.price != null ? (
-                                      Number(v.price).toLocaleString("vi-VN") +
-                                      "đ"
+                                      Number(v.price).toLocaleString("vi-VN") + "đ"
                                     ) : (
-                                      <span
-                                        style={{
-                                          color: "var(--text-muted, #9ca3af)",
-                                          fontSize: "12px",
-                                        }}
-                                      >
-                                        = giá SP
-                                      </span>
+                                      <span className="variant-price-default">= giá SP</span>
                                     )}
                                   </td>
                                   <td>
@@ -1662,9 +1436,7 @@ export default function AdminProducts() {
                                       <button
                                         type="button"
                                         className="btn-delete btn-delete--compact"
-                                        onClick={() =>
-                                          handleDeleteVariant(v.id)
-                                        }
+                                        onClick={() => handleDeleteVariant(v.id)}
                                       >
                                         Xóa
                                       </button>
