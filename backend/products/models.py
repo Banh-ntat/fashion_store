@@ -30,9 +30,11 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     price = models.IntegerField()
     promotion = models.ForeignKey(Promotion, on_delete=models.SET_NULL, null=True, blank=True)
-
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    sold_count = models.IntegerField(default=0)
+    size_chart = models.ImageField(upload_to='size_charts/', blank=True, null=True, verbose_name="Bảng kích thước")
+    
     class Meta:
-        # Tránh UnorderedObjectListWarning khi phân trang; thứ tự ổn định giữa các request
         ordering = ["-id"]
 
     def __str__(self):
@@ -52,6 +54,9 @@ class Color(models.Model):
 
 class Size(models.Model):
     name = models.CharField(max_length=10)
+    order = models.IntegerField(default=0, verbose_name="Thứ tự hiển thị")
+    class Meta:
+        ordering = ["order", "name"]
     def __str__(self):
         return self.name
 
@@ -60,5 +65,9 @@ class ProductVariant(models.Model):
     color = models.ForeignKey(Color, on_delete=models.CASCADE)
     size = models.ForeignKey(Size, on_delete=models.CASCADE)
     stock = models.IntegerField()
+    price = models.IntegerField(null=True, blank=True)
+    def get_price(self):
+        return self.price if self.price is not None else self.product.price
+
     def __str__(self):
         return self.product.name + " - " + self.color.name + " - " + self.size.name

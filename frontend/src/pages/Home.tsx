@@ -56,6 +56,9 @@ export default function Home() {
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const sortedHotDeals = [...hotDeals].sort((a, b) =>
+      (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0)
+    );
 
   useEffect(() => {
     Promise.all([
@@ -249,12 +252,12 @@ export default function Home() {
                 Đừng bỏ lỡ những ưu đãi có thời hạn cực kỳ hấp dẫn
               </p>
             </div>
-            <Link to="/products?has_promotion=true" className="viewAll">
+            <Link to="/products?has_promotion=true&sort=discount" className="viewAll">
               Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
           <div className="productGrid">
-            {hotDeals.map((product) => (
+            {[...hotDeals].sort((a, b) => (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0)).map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

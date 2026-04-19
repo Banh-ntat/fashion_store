@@ -57,7 +57,7 @@ class ColorSerializer(serializers.ModelSerializer):
 class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
-        fields = ("id", "name")
+        fields = ("id", "name", "order")
         
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -89,15 +89,28 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         source="product", queryset=Product.objects.all(), write_only=True
     )
+    effective_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock")
+        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock", "price", "effective_price",)
+
+    def get_effective_price(self, obj) -> int:
+        from decimal import Decimal, ROUND_HALF_UP
+        base = Decimal(obj.get_price())
+        promo = obj.product.promotion
+        if promo and promo.is_active:
+            base = base * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100)
+        return int(base.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
     def validate(self, attrs):
-        product = attrs.get("product")
-        color = attrs.get("color")
-        size = attrs.get("size")
+        product = attrs.get("product") or (
+            self.instance.product if self.instance else None
+        )
+        color = attrs.get("color") or (
+            self.instance.color if self.instance else None
+        )
+        size = attrs.get("size") or (self.instance.size if self.instance else None)
         if product and color and size:
             # Kiểm tra trùng lặp
             exists = ProductVariant.objects.filter(
@@ -154,6 +167,7 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    clear_promotion = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Product
@@ -171,11 +185,25 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_id",
             "promotion",
             "promotion_id",
+            "clear_promotion",
             "variants",
+            "rating",
+            "sold_count",
+            "size_chart",
         )
+        
+    size_chart = serializers.SerializerMethodField()
+
+    def get_size_chart(self, obj: Product) -> str | None:
+        if not obj.size_chart:
+            return None
+        request = self.context.get("request")
+        url = obj.size_chart.url
+        return request.build_absolute_uri(url) if request else url
 
     def create(self, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        validated_data.pop('clear_promotion', None)
         product = Product.objects.create(**validated_data)
         # Lưu các ảnh được upload
         for image in upload_images:
@@ -184,6 +212,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        if validated_data.pop("clear_promotion", False):
+            instance.promotion = None
+            validated_data.pop("promotion", None)
         # Cập nhật thông tin sản phẩm
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -226,17 +257,28 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_variants(self, obj: Product) -> list:
-        """Lấy danh sách variants với màu sắc, kích thước và tồn kho"""
-        variants = ProductVariant.objects.filter(product=obj).select_related('color', 'size')
-        return [
-            {
+        variants = ProductVariant.objects.filter(product=obj).select_related("color", "size").order_by("size__order", "size__name")
+        promo = obj.promotion if (obj.promotion and obj.promotion.is_active) else None
+        result = []
+        for v in variants:
+            base_price = v.get_price()
+            effective = base_price
+            if promo:
+                from decimal import Decimal, ROUND_HALF_UP
+                effective = int(
+                    (Decimal(base_price) * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100))
+                    .quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                )
+            result.append({
                 "id": v.id,
                 "color": {"id": v.color.id, "name": v.color.name, "code": v.color.code},
-                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name)},
+                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name),
+                "order": v.size.order},
                 "stock": v.stock,
-            }
-            for v in variants
-        ]
+                "price": base_price,
+                "effective_price": effective,
+            })
+        return result
         
     def to_representation(self, instance):
         data = super().to_representation(instance)

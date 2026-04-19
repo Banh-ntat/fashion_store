@@ -109,6 +109,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                     )
                 )
             )
+        
+        sort = self.request.query_params.get('sort', '')
+        if sort == 'rating-desc':
+            queryset = queryset.order_by('-rating')
+        elif sort == 'popular':
+            queryset = queryset.order_by('-sold_count')
 
         return queryset
 

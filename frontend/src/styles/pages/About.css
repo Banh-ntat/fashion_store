@@ -25,18 +25,18 @@
 .tag,
 .sectionTag {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--color-primary);
   margin-bottom: var(--space-md);
 }
 
 .hero {
-  background: var(--color-bg);
-  padding: 50px 0;
-  overflow: hidden;
+  min-height: calc(100vh - 80px); /* trừ navbar */
+  display: flex;
+  align-items: center;
 }
 
 .heroInner {
@@ -48,25 +48,29 @@
 }
 
 .heroText {
-  animation: fadeInUp 0.6s ease both;
+  text-align: center;
+  margin: 0 auto;
 }
 
 .heroTitle {
   font-family: var(--font-display);
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: bold;
+  font-size: clamp(2.4rem, 4.5vw, 3.8rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.05;
+  max-width: 700px;
   color: var(--color-text);
   margin-bottom: var(--space-lg);
+  margin: 0 auto;
 }
 
 .heroSubtitle {
   font-size: 1.05rem;
   color: var(--color-text-muted);
   line-height: 1.8;
-  font-weight: 300;
+  font-weight: 400;
   max-width: 440px;
+  margin: 0 auto;
 }
 
 .heroImageGrid {
@@ -75,6 +79,7 @@
   gap: var(--space-md);
   animation: fadeIn 0.8s ease both;
   animation-delay: 0.2s;
+  align-items: center;
 }
 
 .heroImg1 {
@@ -94,7 +99,7 @@
 
 .storySection {
   background: white;
-  padding: 96px 0;
+  padding: 64px 0;
 }
 
 .storyGrid {
@@ -137,16 +142,18 @@
 }
 
 .storyText {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--color-text-muted);
-  line-height: 1.8;
+  line-height: 1.9;
   font-weight: 300;
+  max-width: 620px;
   margin-bottom: var(--space-md);
+  text-align: left;
 }
 
 .featuresSection {
   background: var(--color-bg);
-  padding: 96px 0;
+  padding: 64px 0;
 }
 
 .featureHeader {

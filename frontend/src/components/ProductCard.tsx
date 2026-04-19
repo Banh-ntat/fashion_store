@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { Product } from "../types";
 import { useAuth } from "../context/AuthContext";
@@ -13,7 +13,10 @@ interface ProductCardProps {
   onAddToCart?: (product: Product) => void;
 }
 
-export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  onAddToCart,
+}: ProductCardProps) {
   const { user } = useAuth();
   const { ids, toggle: toggleWishlist } = useWishlist();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +47,60 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   };
 
   const outOfStock = productStock === 0;
+
+  const minVariantPrice = useMemo(() => {
+    const vs = product.variants ?? [];
+    if (vs.length === 0) return null;
+    const prices = vs
+      .map((v) => v.effective_price ?? v.price ?? Number(product.price))
+      .filter((p) => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  }, [product]);
+
+  const minVariantOriginalPrice = useMemo(() => {
+    const vs = product.variants ?? [];
+    if (vs.length === 0 || !product.promotion) return null;
+    const prices = vs
+      .map((v) => v.price ?? Number(product.price))
+      .filter((p) => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  }, [product]);
+
+  const priceRange = useMemo(() => {
+    const vs = product.variants ?? [];
+    if (vs.length === 0) return null;
+
+    const prices = vs
+      .map((v) => v.effective_price ?? v.price ?? Number(product.price))
+      .filter((p) => p > 0);
+
+    if (prices.length === 0) return null;
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return { min, max, hasRange: min !== max };
+  }, [product]);
+
+  const originalPriceRange = useMemo(() => {
+    const vs = product.variants ?? [];
+    if (vs.length === 0 || !product.promotion) return null;
+
+    const prices = vs
+      .map((v) => v.price ?? Number(product.price))
+      .filter((p) => p > 0);
+
+    if (prices.length === 0) return null;
+    return Math.min(...prices);
+  }, [product]);
+
+  const displayCurrentPrice =
+    priceRange?.min ??
+    (product.promotion
+      ? Math.round(
+          parseFloat(product.price) *
+            (1 - product.promotion.discount_percent / 100),
+        )
+      : Number(product.price));
 
   return (
     <>
@@ -95,15 +152,34 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             {product.promotion ? (
               <>
                 <span className="productCardCurrentPrice">
-                  {Number(discountedPrice(product.price, product.promotion.discount_percent)).toLocaleString('vi-VN')}đ
+                  {priceRange?.hasRange
+                    ? `${priceRange.min.toLocaleString("vi-VN")}đ – ${priceRange.max.toLocaleString("vi-VN")}đ`
+                    : `${displayCurrentPrice.toLocaleString("vi-VN")}đ`}
                 </span>
-                <span className="productCardOldPrice">{Number(product.price).toLocaleString('vi-VN')}đ</span>
+                <span className="productCardOldPrice">
+                  {(originalPriceRange ?? Number(product.price)).toLocaleString(
+                    "vi-VN",
+                  )}
+                  đ
+                </span>
               </>
             ) : (
-              <span className="productCardCurrentPrice">{Number(product.price).toLocaleString('vi-VN')}đ</span>
+              <span className="productCardCurrentPrice">
+                {priceRange?.hasRange
+                  ? `${priceRange.min.toLocaleString("vi-VN")}đ – ${priceRange.max.toLocaleString("vi-VN")}đ`
+                  : `${displayCurrentPrice.toLocaleString("vi-VN")}đ`}
+              </span>
             )}
           </div>
 
+          <div className="productCardMeta">
+            <span className="productCardRating">
+              ⭐ {Number(product.rating ?? 0).toFixed(1)}
+            </span>
+            <span className="productCardSold">
+              Đã bán {(product.sold_count ?? 0).toLocaleString("vi-VN")}
+            </span>
+          </div>
           {!isAdmin && (
             <button
               className="productCardAddBtn"

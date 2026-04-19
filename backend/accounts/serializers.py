@@ -103,10 +103,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     address = serializers.CharField(required=False, allow_blank=True)
+    birth_date = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "password_confirm", "phone", "address")
+        fields = ("username", "email", "password", "password_confirm", "phone", "address", "birth_date")
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
@@ -128,6 +129,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('password_confirm')
         phone = validated_data.pop('phone', '')
         address = validated_data.pop('address', '')
+        birth_date = validated_data.pop('birth_date', None)
 
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -135,12 +137,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=password
         )
 
-        # Signal đã tạo Profile; chỉ cập nhật phone, address, role
+        # Signal đã tạo Profile; chỉ cập nhật phone, address, role, birth_date
         profile = Profile.objects.get(user=user)
         profile.phone = phone or ""
         profile.address = address or ""
         profile.role = RoleChoices.CUSTOMER
-        profile.save(update_fields=["phone", "address", "role"])
+        if birth_date:
+            profile.birth_date = birth_date
+        profile.save(update_fields=["phone", "address", "role", "birth_date"])
 
         return user
 
@@ -247,9 +251,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         if request and not can_manage_profile_roles(request.user):
             validated_data.pop("role", None)
         new_bd = validated_data.get("birth_date", serializers.empty)
-        if new_bd is not serializers.empty:
-            if new_bd != instance.birth_date:
-                validated_data["birthday_reminder_sent_for_year"] = None
+        # Ngăn việc khách hàng đổi ngày sinh để nhận lại mã trong cùng 1 năm
+        # Việc KHÔNG set lại cờ này thành None đảm bảo mỗi tài khoản chỉ nhận được 1 lần/lên 1 năm dương lịch.
         user_data = validated_data.pop("user", None)
         instance = super().update(instance, validated_data)
         if user_data is not None:

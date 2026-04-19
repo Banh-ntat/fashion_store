@@ -21,6 +21,8 @@ export function normalizeProduct(api: ApiProduct): Product {
     category: api.category,
     promotion: api.promotion,
     variants: api.variants ?? [],
+    rating: api.rating ?? 0,
+    sold_count: api.sold_count ?? 0,
   };
 }
 

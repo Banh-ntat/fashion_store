@@ -294,12 +294,12 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
               <p>Doanh thu hôm nay</p>
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-info">
-              <h3>{formatVnd(stats.revenue_week)}</h3>
-              <p>Doanh thu 7 ngày</p>
-            </div>
-          </div>
+         <div className="stat-card stat-card--week">
+          <div className="stat-info">
+             <h3>{formatVnd(stats.revenue_week)}</h3>
+             <p>Doanh thu 7 ngày</p>
+           </div>
+         </div>
           <div className="stat-card">
             <div className="stat-info">
               <h3>{formatVnd(stats.revenue_month)}</h3>
@@ -325,40 +325,42 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
             </div>
           </div>
         </div>
+        <div className="stats-row">   
+          <div className="stat-card">
+              <div>
+              <div className="stat-value">{stats.users_total}</div>
+                <div className="stat-label">Tài khoản hoạt động</div>
+              </div>
+            </div>
 
-        <div className="dashboard-catalogStrip dashboard-catalogStrip--users">
-          <span>
-            <strong>{stats.users_total}</strong> tài khoản hoạt động
-          </span>
-          {Object.entries(stats.users_by_role).map(([role, c]) => (
-            <span key={role}>
-              <span className="dashboard-catalogStrip-sep">·</span>
-              <span>
-                {ROLE_VI[role] ?? role}: <strong>{c}</strong>
-              </span>
-            </span>
-          ))}
-          <Link to="/admin/users" className="dashboard-catalogStrip-link">
-            Quản lý người dùng →
-          </Link>
-        </div>
+            <div className="stat-card">
+              <div>
+                <div className="stat-value">{stats.users_by_role?.customer ?? 0}</div>
+                <div className="stat-label">Khách hàng (profile)</div>
+              </div>
+            </div>
 
-        <div className="dashboard-catalogStrip">
-          <span>
-            <strong>{stats.catalog?.products ?? 0}</strong> sản phẩm
-          </span>
-          <span className="dashboard-catalogStrip-sep">·</span>
-          <span>
-            <strong>{stats.catalog?.variants ?? 0}</strong> biến thể
-          </span>
-          <span className="dashboard-catalogStrip-sep">·</span>
-          <span>
-            <strong>{stats.catalog?.categories ?? 0}</strong> danh mục
-          </span>
-          <Link to="/admin/products" className="dashboard-catalogStrip-link">
-            Quản lý SP →
-          </Link>
-        </div>
+            <div className="stat-card">
+              <div>
+                <div className="stat-value">{stats.customers_inactive ?? 0}</div>
+                <div className="stat-label">Khách chưa kích hoạt</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div>
+                <div className="stat-value">{stats.catalog?.products ?? 0}</div>
+                <div className="stat-label">Sản phẩm</div>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div>
+                <div className="stat-value">{stats.catalog?.variants ?? 0}</div>
+                <div className="stat-label">Biến thể</div>
+              </div>
+            </div>
+        </div>  
       </section>
 
       <section className="dashboard-charts" aria-label="Biểu đồ">
@@ -482,7 +484,7 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
           <ul className="dashboard-alertList">
             <li>
               <Link to="/admin/orders?status=pending">
-                Đơn <strong>pending</strong>: {stats.pending_orders}
+                Đơn pending: <strong>{stats.pending_orders}</strong>
               </Link>
             </li>
             {stats.stale_pending_order_ids.length > 0 && (
@@ -545,6 +547,7 @@ function AdminDashboardBody({ stats }: { stats: AdminDashboardStats }) {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  console.log(stats);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 

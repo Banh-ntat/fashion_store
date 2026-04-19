@@ -16,13 +16,19 @@ export interface Product {
   category: { id: number; name: string };
   promotion: { id: number; name: string; discount_percent: number } | null;
   variants?: ProductVariant[];
+  rating?: number;
+  sold_count?: number;
+  review_count?: number;
+  size_chart?: string | null;
 }
 
 export interface ProductVariant {
   id: number;
   color: { id: number; name: string; code: string };
-  size: { id: number; name: string };
+  size: { id: number; name: string; order: number };
   stock: number;
+  price?: number | null;
+  effective_price?: number;
 }
 
 export interface ApiProduct {
@@ -36,6 +42,9 @@ export interface ApiProduct {
   old_price?: string | null;
   stock?: number;
   variants?: ProductVariant[];
+  rating?: number;
+  sold_count?: number;
+  review_count?: number;
 }
 
 export interface Profile {
@@ -103,3 +112,4 @@ export interface Review {
   is_visible?: boolean;
   created_at: string;
 }
+

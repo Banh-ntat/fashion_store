@@ -14,7 +14,7 @@ export const fetchCategories = () =>
   getList<Category>(`${BASE}/categories/`).then(data => data.slice(0, 4));
 
 export const fetchHotDeals = () =>
-  getList<ApiProduct>(`${BASE}/?has_promotion=true`).then(data => data.slice(0, 4));
+  getList<ApiProduct>(`${BASE}/hot_deals/`).then(data => data.slice(0, 4));
 
 export const fetchNewArrivals = () =>
-  getList<ApiProduct>(`${BASE}/?ordering=-id`).then(data => data.slice(0, 4));
+  getList<ApiProduct>(`${BASE}/new_arrivals/`).then(data => data.slice(0, 4));

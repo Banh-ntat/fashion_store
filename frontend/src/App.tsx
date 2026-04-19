@@ -35,6 +35,7 @@ import CustomerAccountRoute from "./components/account/CustomerAccountRoute";
 import CustomerAccountLayout from "./components/account/CustomerAccountLayout";
 import AccountDashboardHome from "./pages/account/AccountDashboardHome";
 import AdminReturns from "./pages/admin/AdminReturns";
+import AdminSizes from "./pages/admin/AdminSizes";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -78,6 +79,7 @@ function App() {
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/careers" element={<Careers />} />
             <Route path="/policy" element={<Policy />} />
+            <Route path="/policy/view/:policyId" element={<Policy />} />
             <Route path="/policy/:slug" element={<Policy />} />
           </Route>
           <Route path="/dashboard" element={<CustomerAccountRoute />}>
@@ -101,6 +103,7 @@ function App() {
             <Route path="policies" element={<AdminPolicies />} />
             <Route path="birthday-email" element={<AdminBirthdayEmail />} />
             <Route path="returns" element={<AdminReturns />} />
+            <Route path="sizes" element={<AdminSizes />} />
           </Route>
         </Routes>
       </div>

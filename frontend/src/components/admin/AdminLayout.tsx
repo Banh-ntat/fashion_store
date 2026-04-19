@@ -112,6 +112,13 @@ const IconLogout = () => (
   </svg>
 );
 
+const IconRuler = () => (
+  <svg viewBox="0 0 24 24" className="icon">
+    <path d="M2 12h20M2 12l4-4M2 12l4 4M22 12l-4-4M22 12l-4 4" />
+    <rect x="2" y="8" width="20" height="8" rx="1" />
+  </svg>
+);
+
 type MenuItem = {
   path: string;
   label: string;
@@ -123,6 +130,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { path: "/admin", label: "Dashboard", icon: <IconDashboard /> },
   { path: "/admin/products", label: "Sản phẩm", icon: <IconBox /> },
+  { path: "/admin/sizes", label: "Kích thước", icon: <IconRuler /> },
   { path: "/admin/categories", label: "Danh mục", icon: <IconList /> },
   { path: "/admin/promotions", label: "Khuyến mãi", icon: <IconPercent /> },
   { path: "/admin/orders", label: "Đơn hàng", icon: <IconShoppingBag /> },
