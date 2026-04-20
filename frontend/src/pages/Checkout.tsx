@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Link,
   useLocation,
@@ -71,6 +71,34 @@ function parseSelectedCartItemIds(rawValue: string | null): number[] {
     .map((value) => Number(value.trim()))
     .filter((value) => Number.isInteger(value) && value > 0);
   return [...new Set(ids)];
+}
+
+const SESSION_CART_KEY = "checkout_cart_items";
+const SESSION_CART_IDS_KEY = "checkout_cart_ids";
+
+function getStoredCartItems(): { items: CartItemType[]; ids: number[] } | null {
+  try {
+    const items = sessionStorage.getItem(SESSION_CART_KEY);
+    const ids = sessionStorage.getItem(SESSION_CART_IDS_KEY);
+    if (items && ids) {
+      return { items: JSON.parse(items), ids: JSON.parse(ids) };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function storeCartItems(items: CartItemType[], ids: number[]): void {
+  try {
+    sessionStorage.setItem(SESSION_CART_KEY, JSON.stringify(items));
+    sessionStorage.setItem(SESSION_CART_IDS_KEY, JSON.stringify(ids));
+  } catch { /* ignore */ }
+}
+
+function clearStoredCart(): void {
+  try {
+    sessionStorage.removeItem(SESSION_CART_KEY);
+    sessionStorage.removeItem(SESSION_CART_IDS_KEY);
+  } catch { /* ignore */ }
 }
 
 function getApiErrorMessage(data: unknown, fallback: string): string {
@@ -148,6 +176,9 @@ export default function Checkout() {
   const [discountCode, setDiscountCode] = useState(
     discountFromUrl || pendingCode,
   );
+
+  // Use ref to ensure cart is fetched only once on mount
+  const cartFetchedRef = useRef(false);
 
   useEffect(() => {
     if (pendingCode) sessionStorage.removeItem("pending_discount_code");
@@ -232,32 +263,29 @@ export default function Checkout() {
       .catch(console.error);
   }, [selectedDistrictCode]);
 
+  // Fetch cart only once on mount
   useEffect(() => {
+    // Prevent multiple fetches
+    if (cartFetchedRef.current) return;
+    cartFetchedRef.current = true;
+
     if (!user) {
       setLoading(false);
       return;
     }
 
-    cart
-      .get()
-      .then((res) => {
-        const data = res.data as { items?: CartItemType[] } | CartItemType[];
-        const list = Array.isArray(data)
-          ? ((data[0] as { items?: CartItemType[] })?.items ?? [])
-          : (data.items ?? []);
-        const safeList = Array.isArray(list) ? list : [];
-
-        if (!hasSpecificSelection) {
-          setItems(safeList);
-          setSelectionNotice("");
-          return;
-        }
-
-        const filtered = safeList.filter((item) =>
+    // Load from sessionStorage first
+    const stored = getStoredCartItems();
+    if (stored && stored.items.length > 0) {
+      if (!hasSpecificSelection) {
+        setItems(stored.items);
+        setLoading(false);
+      } else {
+        const filtered = stored.items.filter((item) =>
           selectedIdsFromQuery.includes(item.id),
         );
         setItems(filtered);
-
+        setLoading(false);
         if (filtered.length === 0) {
           setSelectionNotice("Các sản phẩm bạn chọn không còn trong giỏ hàng.");
         } else if (filtered.length !== selectedIdsFromQuery.length) {
@@ -267,10 +295,51 @@ export default function Checkout() {
         } else {
           setSelectionNotice("");
         }
+      }
+    }
+
+    // Fetch fresh data from API
+    cart
+      .get()
+      .then((res) => {
+        const data = res.data as { items?: CartItemType[] } | CartItemType[];
+        const list = Array.isArray(data)
+          ? ((data[0] as { items?: CartItemType[] })?.items ?? [])
+          : (data.items ?? []);
+        const safeList = Array.isArray(list) ? list : [];
+
+        // Store in sessionStorage
+        storeCartItems(safeList, safeList.map((item) => item.id));
+
+        if (!hasSpecificSelection) {
+          setItems(safeList);
+          setSelectionNotice("");
+        } else {
+          const filtered = safeList.filter((item) =>
+            selectedIdsFromQuery.includes(item.id),
+          );
+          setItems(filtered);
+
+          if (filtered.length === 0) {
+            setSelectionNotice("Các sản phẩm bạn chọn không còn trong giỏ hàng.");
+          } else if (filtered.length !== selectedIdsFromQuery.length) {
+            setSelectionNotice(
+              "Một số sản phẩm đã không còn trong giỏ. Hệ thống chỉ giữ lại các sản phẩm còn hợp lệ.",
+            );
+          } else {
+            setSelectionNotice("");
+          }
+        }
       })
-      .catch(() => setItems([]))
+      .catch(() => {
+        // If API fails but we have stored items, keep them
+        const stored = getStoredCartItems();
+        if (!stored || stored.items.length === 0) {
+          setItems([]);
+        }
+      })
       .finally(() => setLoading(false));
-  }, [hasSpecificSelection, selectedIdsFromQuery.join(","), user]);
+  }, [user]); // Only depend on user, not on selection params
 
   const selectedCartItemIds = items.map((item) => item.id);
   const subtotal = items.reduce(
@@ -387,6 +456,7 @@ export default function Checkout() {
           ? (data as { payment_method: string }).payment_method
           : "";
       if (payUrl && pm === "zalopay") {
+        clearStoredCart();
         notifyCartUpdated();
         setForm({ name: "", phone: "", address: "", note: "" });
         setDiscountCode("");
@@ -400,6 +470,7 @@ export default function Checkout() {
         return;
       }
       if (payUrl) {
+        clearStoredCart();
         notifyCartUpdated();
         window.location.href = payUrl;
         return;
@@ -408,6 +479,7 @@ export default function Checkout() {
       setDiscountCode("");
       setPricingPreview(null);
       setDiscountMessage("");
+      clearStoredCart();
       notifyCartUpdated();
       navigate("/orders", { state: { orderPlaced: true } });
     } catch (err) {

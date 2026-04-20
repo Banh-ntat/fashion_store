@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/admin/Admin.css";
@@ -119,11 +119,25 @@ const IconRuler = () => (
   </svg>
 );
 
+const IconMenu = () => (
+  <svg viewBox="0 0 24 24" className="icon">
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </svg>
+);
+
+const IconClose = () => (
+  <svg viewBox="0 0 24 24" className="icon">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 type MenuItem = {
   path: string;
   label: string;
   icon: React.ReactNode;
-  /** Chỉ hiện khi user là admin (gán vai trò) */
   adminOnly?: boolean;
 };
 
@@ -155,6 +169,7 @@ const menuItems: MenuItem[] = [
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -163,34 +178,66 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [navigate]);
 
+  // Close sidebar when clicking overlay
+  const handleOverlayClick = () => {
+    setSidebarOpen(false);
+  };
+
+  // Close sidebar on navigation (mobile)
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
   return (
-    <div className="admin-layout">
-      <aside className="admin-sidebar">
+    <div className={`admin-layout${sidebarOpen ? " admin-layout--sidebar-open" : ""}`}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="admin-sidebar-overlay"
+          onClick={handleOverlayClick}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`admin-sidebar${sidebarOpen ? " admin-sidebar--open" : ""}`}>
         <div className="admin-sidebar-header">
-          <h2>Admin Panel</h2>
+          <div className="admin-sidebar-header-row">
+            <h2>Admin</h2>
+            <button
+              type="button"
+              className="admin-sidebar-close"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Đóng menu"
+            >
+              <IconClose />
+            </button>
+          </div>
         </div>
 
         <nav className="admin-sidebar-nav">
           {menuItems
             .filter((item) => !item.adminOnly || user?.is_admin)
             .map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/admin"}
-              className={({ isActive }) =>
-                `admin-nav-item${isActive ? " active" : ""}`
-              }
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </NavLink>
-          ))}
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === "/admin"}
+                className={({ isActive }) =>
+                  `admin-nav-item${isActive ? " active" : ""}`
+                }
+                onClick={handleNavClick}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            ))}
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -209,6 +256,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <main className="admin-main">
         <header className="admin-header">
+          {/* Mobile menu toggle */}
+          <button
+            type="button"
+            className="admin-mobile-toggle"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Mở menu"
+          >
+            <IconMenu />
+          </button>
+
           <h1>Quản trị</h1>
           <div className="admin-header-right">
             <div className="admin-header-actions">
