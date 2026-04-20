@@ -14,7 +14,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ("id", "name", "description", "image")
+        fields = ("id", "name", "description", "image", "is_active")
         extra_kwargs = {"image": {"required": False, "allow_null": True}}
 
     def to_representation(self, instance):

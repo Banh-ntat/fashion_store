@@ -8,6 +8,15 @@ import "../styles/components/ProductCard.css";
 
 const PLACEHOLDER_IMAGE = "https://via.placeholder.com/300x400?text=San+pham";
 
+type NotifType = "success" | "error" | "info" | "warning";
+interface Notification {
+  id: number;
+  type: NotifType;
+  message: string;
+}
+
+let _notifId = 0;
+
 interface ProductCardProps {
   product: Product;
   onAddToCart?: (product: Product) => void;
@@ -21,6 +30,21 @@ export default function ProductCard({
   const { ids, toggle: toggleWishlist } = useWishlist();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const notify = (
+    message: string,
+    type: NotifType = "info",
+    duration = 4000,
+  ) => {
+    const notif: Notification = { id: ++_notifId, type, message };
+    setNotifications((prev) => [...prev, notif]);
+    if (duration > 0) setTimeout(() => removeNotif(notif.id), duration);
+  };
+
+  const removeNotif = (notifId: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+  };
 
   const isAdmin = Boolean(user?.can_access_admin);
   const isWishlisted = ids.includes(product.id);
@@ -43,6 +67,10 @@ export default function ProductCard({
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) {
+      notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
+      return;
+    }
     toggleWishlist(product.id);
   };
 
@@ -198,6 +226,34 @@ export default function ProductCard({
           onClose={() => setIsModalOpen(false)}
           product={product}
         />
+      )}
+
+      {notifications.length > 0 && (
+        <div className="notification-stack">
+          {notifications.map((n) => (
+            <div key={n.id} className={`notification notification--${n.type}`}>
+              <span className="notification__icon">
+                {n.type === "success" && "✓"}
+                {n.type === "error" && "✕"}
+                {n.type === "warning" && "!"}
+                {n.type === "info" && "i"}
+              </span>
+              <span className="notification__message">{n.message}</span>
+              <button
+                type="button"
+                className="notification__close"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  removeNotif(n.id);
+                }}
+                aria-label="Đóng thông báo"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </>
   );
