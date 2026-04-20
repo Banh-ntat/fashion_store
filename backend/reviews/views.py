@@ -25,7 +25,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = (
             Review.objects.select_related(
-                "user", "product", "product__product", "product__color", "product__size"
+                "user", "user__profile", "product", "product__product", "product__color", "product__size"
             )
             .all()
             .order_by("-created_at")
@@ -56,7 +56,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         reviews = Review.objects.filter(user=request.user).select_related(
-            "product", "product__product", "product__color", "product__size"
+            "user__profile", "product", "product__product", "product__color", "product__size"
         ).order_by("-created_at")
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)
@@ -99,11 +99,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="by_product/(?P<product_id>[^/.]+)")
     def by_product(self, request, product_id=None):
-        """Get reviews for a specific product"""
         reviews = (
             self.get_queryset()
             .filter(product__product_id=product_id)
-            .select_related("user", "product", "product__color", "product__size")
+            .select_related("user", "user__profile", "product", "product__color", "product__size")
         )
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)

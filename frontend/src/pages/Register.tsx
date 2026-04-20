@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { auth } from '../api/client';
+import { parseApiFieldErrors } from '../utils/apiErrors';
 import '../styles/pages/AuthPages.css';
 
 export default function Register() {
@@ -55,8 +57,13 @@ export default function Register() {
         navigate('/login');
       }, 2000);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Đăng ký thất bại. Vui lòng thử lại.';
-      setError(errorMessage);
+      if (axios.isAxiosError(err) && err.response?.data) {
+        setError(parseApiFieldErrors(err.response.data));
+      } else {
+        setError(
+          err instanceof Error ? err.message : 'Đăng ký thất bại. Vui lòng thử lại.',
+        );
+      }
     } finally {
       setLoading(false);
     }

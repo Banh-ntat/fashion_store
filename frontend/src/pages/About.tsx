@@ -78,7 +78,7 @@ export default function About() {
               </h2>
 
               <p className="storyText">
-                Được thành lập năm 2019 tại trung tâm TP. Hồ Chí Minh,
+                Được thành lập năm 2026 tại trung tâm TP. Hồ Chí Minh,
                 FashionStore ra đời từ một ý tưởng đơn giản:
                 mọi người đều xứng đáng được mặc những bộ trang phục đẹp,
                 chất lượng mà không phải đánh đổi giá trị hay ngân sách của mình.

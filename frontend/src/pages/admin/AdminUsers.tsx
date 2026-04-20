@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { admin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
-import './Admin.css';
+import { useAuth } from '../../context/AuthContext';
+import "../../styles/admin/Admin.css";
 
 interface UserProfile {
   id: number;
@@ -17,19 +19,14 @@ interface UserProfile {
 
 const ROLE_CHOICES = [
   { value: 'customer', label: 'Customer' },
+  { value: 'staff', label: 'Staff' },
   { value: 'admin', label: 'Admin' },
-  { value: 'product_manager', label: 'Product Manager' },
-  { value: 'order_manager', label: 'Order Manager' },
-  { value: 'customer_support', label: 'Customer Support' },
 ];
 
 export default function AdminUsers() {
+  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   const loadUsers = () => {
     admin.users
@@ -41,9 +38,13 @@ export default function AdminUsers() {
       .finally(() => setLoading(false));
   };
 
-  const handleRoleChange = async (userId: number, newRole: string) => {
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleRoleChange = async (profileId: number, newRole: string) => {
     try {
-      await admin.users.update(userId, { role: newRole });
+      await admin.users.update(profileId, { role: newRole });
       loadUsers();
     } catch {
       alert('Có lỗi xảy ra!');
@@ -53,9 +54,7 @@ export default function AdminUsers() {
   const getRoleBadge = (role: string) => {
     const roleMap: Record<string, string> = {
       admin: 'role-admin',
-      product_manager: 'role-product',
-      order_manager: 'role-order',
-      customer_support: 'role-support',
+      staff: 'role-staff',
       customer: 'role-customer',
     };
     return roleMap[role] || '';
@@ -65,6 +64,10 @@ export default function AdminUsers() {
     return ROLE_CHOICES.find((r) => r.value === role)?.label || role;
   };
 
+  if (!authUser?.is_admin) {
+    return <Navigate to="/admin" replace />;
+  }
+
   if (loading) return <AdminLayout><div className="loading">Loading...</div></AdminLayout>;
 
   return (
@@ -72,6 +75,9 @@ export default function AdminUsers() {
       <div className="admin-page">
         <div className="page-header">
           <h3>Quản lý người dùng</h3>
+          <p className="page-header-hint" style={{ marginTop: 8, opacity: 0.85 }}>
+            Chỉ quản trị viên mới có thể thay đổi vai trò tài khoản.
+          </p>
         </div>
 
         <table className="data-table">
@@ -101,7 +107,10 @@ export default function AdminUsers() {
                   <select
                     className="role-select"
                     value={profile.role}
-                    onChange={(e) => handleRoleChange(profile.user.id, e.target.value)}
+                    aria-label={`Đổi vai trò ${profile.user.username}`}
+                    onChange={(e) =>
+                      handleRoleChange(profile.id, e.target.value)
+                    }
                   >
                     {ROLE_CHOICES.map((role) => (
                       <option key={role.value} value={role.value}>

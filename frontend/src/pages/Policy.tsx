@@ -220,7 +220,7 @@ function PolicyHighlightGlyph({ variant }: { variant: 0 | 1 | 2 }) {
 }
 
 export default function Policy() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, policyId } = useParams<{ slug?: string; policyId?: string }>();
   const [apiPolicies, setApiPolicies] = useState<ApiPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState(false);
@@ -248,10 +248,73 @@ export default function Policy() {
     };
   }, []);
 
+  const viewPolicyId = useMemo(() => {
+    if (policyId == null || policyId === "") return null;
+    const n = Number(policyId);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [policyId]);
+
+  if (policyId != null && policyId !== "" && viewPolicyId == null) {
+    return <Navigate to="/policy" replace />;
+  }
+
   const templateBySlug = useMemo(() => {
     if (!slug) return undefined;
     return POLICY_TEMPLATES.find((t) => t.slug === slug);
   }, [slug]);
+
+  if (viewPolicyId != null) {
+    if (loading) {
+      return (
+        <div className="policy-page">
+          <section className="policy-hero">
+            <PolicyHeroDecor />
+            <div className="policy-heroInner">
+              <h1 className="policy-heroTitle policy-heroTitle--home">Chính sách</h1>
+              <p className="policy-heroSubtitle">Đang tải nội dung…</p>
+              <SupportSubnav />
+            </div>
+          </section>
+        </div>
+      );
+    }
+    const pol = apiPolicies.find((p) => p.id === viewPolicyId);
+    if (!pol) {
+      return <Navigate to="/policy" replace />;
+    }
+    return (
+      <div className="policy-page policy-page--detail">
+        <section className="policy-hero policy-hero--detail">
+          <PolicyHeroDecor />
+          <div className="policy-heroInner policy-heroInner--detail">
+            <p className="policy-heroBack">
+              <Link to="/policy" className="policy-backLink">
+                <span className="policy-backIcon" aria-hidden>
+                  ←
+                </span>
+                Tất cả chính sách
+              </Link>
+            </p>
+            <h1 className="policy-detailHeroTitle">{pol.title}</h1>
+            <p className="policy-heroSubtitle policy-heroSubtitle--detail">
+              Nội dung do quản trị viên cập nhật trên hệ thống.
+            </p>
+            <SupportSubnav />
+          </div>
+        </section>
+        <section className="policy-section">
+          <div className="policy-container">
+            <div
+              className="policy-detailProse policy-detailProse--premium"
+              style={{ whiteSpace: "pre-wrap" }}
+            >
+              {pol.content}
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   if (slug && !templateBySlug) {
     return <Navigate to="/policy" replace />;
@@ -536,9 +599,10 @@ export default function Policy() {
               );
               const extra = apiPolicies.filter((p) => !used.has(p.id));
               return extra.map((pol, i) => (
-                <div
+                <Link
                   key={pol.id}
-                  className={`policyCard policyCard--extra${loading ? " policyCard--loading" : ""}`}
+                  to={`/policy/view/${pol.id}`}
+                  className={`policyCard policyCard--interactive policyCard--extra${loading ? " policyCard--loading" : ""}`}
                   style={
                     {
                       "--card-accent": "#64748b",
@@ -547,6 +611,7 @@ export default function Policy() {
                     } as CSSProperties
                   }
                 >
+                  <div className="policyCardShine" aria-hidden />
                   <h3 className="policyCardTitle">{pol.title}</h3>
                   <p className="policyCardExcerpt">
                     {loading ? (
@@ -560,7 +625,13 @@ export default function Policy() {
                     )}
                   </p>
                   <div className="policyAccentBar" />
-                </div>
+                  <span className="policyCardCta">
+                    Xem chi tiết
+                    <span className="policyCardCtaArrow" aria-hidden>
+                      →
+                    </span>
+                  </span>
+                </Link>
               ));
             })()}
           </div>

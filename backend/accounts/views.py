@@ -1,23 +1,69 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
-from rest_framework import permissions, viewsets, status
+from django.utils import timezone
+from rest_framework import mixins, permissions, viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from urllib.parse import quote, quote_plus, urlencode
+
 import requests
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 
-from core.permissions import is_admin, is_staff, RoleChoices
-from .models import Profile
+from core.permissions import is_admin, is_staff, RoleChoices, IsAdminOrStaff
+from orders.models import DiscountCode
+
+from .birthday_reminder import build_birthday_template_context, render_birthday_email_bodies
+from .models import BirthdayEmailTemplate, Profile
 from .serializers import (
+    BirthdayEmailTemplateSerializer,
     ProfileSerializer,
     RegisterSerializer,
     PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+def _password_reset_email_bodies(user: User, reset_url: str) -> tuple[str, str]:
+    """Nội dung email dạng text + HTML (template trong templates/emails/)."""
+    display_name = (user.get_full_name() or "").strip() or user.username
+    ctx = {"display_name": display_name, "reset_url": reset_url}
+    text_body = render_to_string("emails/password_reset.txt", ctx).strip()
+    html_body = render_to_string("emails/password_reset.html", ctx).strip()
+    return text_body, html_body
+
+
+def _allowed_google_oauth_redirect_uris():
+    """
+    Các redirect_uri được phép khi đổi code — phải khớp một URI đã khai báo trong
+    Google Cloud Console (Authorized redirect URIs).
+    """
+    uris = set()
+    primary = (getattr(settings, "GOOGLE_REDIRECT_URI", "") or "").strip().rstrip("/")
+    fe = (getattr(settings, "FRONTEND_ORIGIN", "") or "").strip().rstrip("/")
+    if primary:
+        uris.add(primary)
+    if fe:
+        uris.add(f"{fe}/auth/google/callback")
+    expanded = set()
+    for u in uris:
+        if not u:
+            continue
+        expanded.add(u)
+        if "//localhost" in u:
+            expanded.add(u.replace("//localhost", "//127.0.0.1", 1))
+        if "//127.0.0.1" in u:
+            expanded.add(u.replace("//127.0.0.1", "//localhost", 1))
+    return expanded
 
 
 def _facebook_profile_picture_url(userinfo: dict) -> str:
@@ -40,16 +86,81 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-class ProfileViewSet(viewsets.ModelViewSet):
+class ProfileViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Profile do signal tạo; chỉ liệt kê / xem / cập nhật (không POST/DELETE)."""
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user):
+        if is_admin(user) or getattr(user, "is_superuser", False):
             return Profile.objects.all()
         return Profile.objects.filter(user=user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        
+        # Method 2: Gửi ngay định kì sinh nhật sau khu cập nhật (nếu thoả điều kiện). 
+        # Chạy trong luồng phụ (thread) để không làm chậm lúc người dùng lưu form.
+        from accounts.birthday_reminder import send_birthday_reminder_emails
+        import threading
+        threading.Thread(target=send_birthday_reminder_emails, daemon=True).start()
+
+
+class BirthdayEmailTemplateAdminView(RetrieveUpdateAPIView):
+    """GET/PATCH mẫu email sinh nhật (pk=1) — staff/admin."""
+
+    serializer_class = BirthdayEmailTemplateSerializer
+    permission_classes = [IsAdminOrStaff]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        return BirthdayEmailTemplate.get_solo()
+
+
+class BirthdayEmailPreviewView(APIView):
+    """POST xem trước HTML/text (không lưu). Body giống PATCH + preview_display_name."""
+
+    permission_classes = [IsAdminOrStaff]
+
+    def post(self, request):
+        base = BirthdayEmailTemplate.get_solo()
+        d = request.data
+        subject_t = d.get("email_subject", base.email_subject)
+        intro = d.get("intro_text", base.intro_text)
+        cta = d.get("cta_button_label", base.cta_button_label)
+        foot = d.get("footer_text", base.footer_text)
+        dc = base.discount_code
+        if "discount_code" in d:
+            raw = d.get("discount_code")
+            if raw in (None, ""):
+                dc = None
+            else:
+                dc = DiscountCode.objects.filter(pk=raw).first()
+        env_fb = (getattr(settings, "BIRTHDAY_VOUCHER_CODE", "") or "").strip()
+        display = (d.get("preview_display_name") or "Khách hàng thân mến").strip()
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        subject, ctx = build_birthday_template_context(
+            display_name=display,
+            birthday_date=tomorrow,
+            email_subject=subject_t,
+            intro_text=intro,
+            cta_button_label=cta,
+            footer_text=foot,
+            discount_code_obj=dc,
+            env_voucher_fallback=env_fb if dc is None else "",
+        )
+        text_body, html_body = render_birthday_email_bodies(ctx, subject)
+        return Response(
+            {"subject": subject, "html": html_body, "text": text_body}
+        )
 
 
 class RegisterView(APIView):
@@ -59,6 +170,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+
+            # Method 2: Khách hàng khai báo sinh nhật ngay lúc đăng ký trùng khớp -> gửi ưu đãi ngay lập tức.
+            from accounts.birthday_reminder import send_birthday_reminder_emails
+            import threading
+            threading.Thread(target=send_birthday_reminder_emails, daemon=True).start()
+
             return Response({
                 "message": "Đăng ký thành công!",
                 "user": {
@@ -87,7 +204,17 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         user = request.user
-        profile = Profile.objects.get(user=user)
+        try:
+            profile = Profile.objects.get(user=user)
+        except Profile.DoesNotExist:
+            return Response({"detail": "Profile not found."}, status=404)
+
+        avatar_url = None
+        try:
+            if profile.avatar:
+                avatar_url = request.build_absolute_uri(profile.avatar.url)
+        except Exception:
+            pass
         return Response({
             "id": user.id,
             "username": user.username,
@@ -96,10 +223,35 @@ class CurrentUserView(APIView):
             "last_name": user.last_name,
             "phone": profile.phone,
             "address": profile.address,
+            "birth_date": profile.birth_date.isoformat() if profile.birth_date else None,
             "role": profile.role,
             "can_access_admin": is_staff(request.user),
+            "is_admin": is_admin(request.user),
+            "avatar": avatar_url,
         })
 
+    def _build_login_response(user: User, request) -> dict:
+        """Response chuẩn cho mọi luồng đăng nhập — bao gồm avatar."""
+        refresh = RefreshToken.for_user(user)
+        avatar_url = None
+        try:
+            profile = user.profile
+            if profile.avatar:
+                avatar_url = request.build_absolute_uri(profile.avatar.url)
+        except Exception:
+            pass
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "avatar": avatar_url,
+            },
+        }
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -107,45 +259,103 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data['email']
+            email = serializer.validated_data["email"]
             user = User.objects.get(email=email)
+
+            backend = (settings.EMAIL_BACKEND or "").lower()
+            if "smtp" in backend:
+                if not (settings.EMAIL_HOST_USER or "").strip() or not (
+                    settings.EMAIL_HOST_PASSWORD or ""
+                ).strip():
+                    return Response(
+                        {
+                            "message": (
+                                "Chưa cấu hình gửi email: trong backend/.env cần EMAIL_HOST_USER "
+                                "(Gmail đầy đủ), EMAIL_HOST_PASSWORD (mật khẩu ứng dụng 16 ký tự, "
+                                "bỏ dấu cách), và nên đặt DEFAULT_FROM_EMAIL cùng Gmail. "
+                                "Khởi động lại server sau khi sửa .env."
+                            ),
+                        },
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
 
             # Generate password reset token
             from django.contrib.auth.tokens import default_token_generator
             token = default_token_generator.make_token(user)
 
-            # Create reset URL
-            reset_url = f"http://localhost:5173/reset-password?token={token}&user_id={user.id}"
+            frontend = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
+            reset_url = f"{frontend}/reset-password?{urlencode({'token': token, 'user_id': str(user.id)})}"
 
-            # Send email
+            text_body, html_body = _password_reset_email_bodies(user, reset_url)
+
+            # Gửi email (Gmail: cấu hình SMTP trong .env — xem env.example)
             try:
                 send_mail(
-                    subject='Đặt lại mật khẩu - FashionStore',
-                    message=f'''
-                    Xin chào {user.username},
-
-                    Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản FashionStore của mình.
-
-                    Nhấp vào liên kết bên dưới để đặt lại mật khẩu:
-                    {reset_url}
-
-                    Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
-
-                    Trân trọng,
-                    FashionStore
-                    ''',
+                    subject="Đặt lại mật khẩu - FashionStore",
+                    message=text_body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                     fail_silently=False,
+                    html_message=html_body,
                 )
             except Exception as e:
-                return Response({
-                    "message": f"Lỗi gửi email: {str(e)}. Vui lòng thử lại sau."
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                err_s = str(e)
+                low = err_s.lower()
+                if (
+                    "535" in err_s
+                    or "badcredentials" in low
+                    or "username and password not accepted" in low
+                ):
+                    return Response(
+                        {
+                            "message": (
+                                "Gmail từ chối đăng nhập SMTP (lỗi 535). Kiểm tra backend/.env: "
+                                "(1) EMAIL_HOST_USER đúng Gmail đã tạo Mật khẩu ứng dụng; "
+                                "(2) EMAIL_HOST_PASSWORD là mật khẩu 16 ký tự do Google cấp "
+                                "(không dùng mật khẩu đăng nhập web; có thể dán có dấu cách — "
+                                "server sẽ tự bỏ khoảng trắng); "
+                                "(3) tài khoản Google đã bật xác minh 2 bước; "
+                                "(4) tạo mật khẩu mới tại https://myaccount.google.com/apppasswords "
+                                "nếu mật cũ sai hoặc đã thu hồi. "
+                                "Tài khoản Workspace/đại học có thể không cho App Password — thử Gmail cá nhân "
+                                "hoặc hỏi quản trị. Sau đó khởi động lại runserver."
+                            ),
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+                return Response(
+                    {"message": f"Lỗi gửi email: {err_s}. Vui lòng thử lại sau."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-            return Response({
-                "message": f"Liên kết đặt lại mật khẩu đã được gửi đến {email}"
-            }, status=status.HTTP_200_OK)
+            payload = {
+                "message": f"Liên kết đặt lại mật khẩu đã được gửi đến {email}",
+            }
+            if settings.DEBUG and "console" in backend:
+                payload["dev_note"] = (
+                    "EMAIL_BACKEND=console: không có thư trong hộp Gmail — chỉ in ra terminal "
+                    "runserver. Đổi sang smtp + điền Gmail trong .env để gửi thật."
+                )
+                payload["reset_url"] = reset_url
+            return Response(payload, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data["_user"]
+            user.set_password(serializer.validated_data["new_password"])
+            user.save()
+            return Response(
+                {
+                    "message": "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới."
+                },
+                status=status.HTTP_200_OK,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -166,10 +376,10 @@ class GoogleAuthUrlView(APIView):
         scope = "openid email profile"
         auth_url = (
             f"https://accounts.google.com/o/oauth2/v2/auth?"
-            f"client_id={client_id}&"
-            f"redirect_uri={redirect_uri}&"
+            f"client_id={quote_plus(client_id)}&"
+            f"redirect_uri={quote_plus(redirect_uri)}&"
             f"response_type=code&"
-            f"scope={scope}&"
+            f"scope={quote_plus(scope)}&"
             f"access_type=offline&"
             f"prompt=select_account"
         )
@@ -185,11 +395,28 @@ class GoogleCallbackView(APIView):
     def post(self, request):
         """Exchange authorization code for tokens and authenticate user"""
         code = request.data.get('code')
-
         if not code:
             return Response({
                 "error": "Thiếu mã authorization"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        raw_redirect = (request.data.get("redirect_uri") or "").strip().rstrip("/")
+        allowed = _allowed_google_oauth_redirect_uris()
+        if raw_redirect:
+            if raw_redirect not in allowed:
+                return Response(
+                    {
+                        "error": (
+                            "redirect_uri không khớp cấu hình. Thêm đúng URI vào "
+                            "Google Cloud Console (Authorized redirect URIs), hoặc mở "
+                            "site bằng cùng host với URI đã khai báo (localhost vs 127.0.0.1)."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            redirect_uri = raw_redirect
+        else:
+            redirect_uri = (settings.GOOGLE_REDIRECT_URI or "").strip().rstrip("/")
 
         try:
             # Exchange code for tokens
@@ -199,7 +426,7 @@ class GoogleCallbackView(APIView):
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
                 "code": code,
                 "grant_type": "authorization_code",
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
             }
 
             token_response = requests.post(token_url, data=token_data)
@@ -381,10 +608,10 @@ class FacebookAuthUrlView(APIView):
         auth_url = (
             f"https://www.facebook.com/v21.0/dialog/oauth?"
             f"client_id={app_id}&"
-            f"redirect_uri={redirect_uri}&"
+            f"redirect_uri={quote(redirect_uri, safe='')}&"
             f"scope={scope}&"
             f"response_type=code&"
-            f"state=fashionstore"
+            f"state=facebook"
         )
 
         return Response({

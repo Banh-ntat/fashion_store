@@ -1,4 +1,9 @@
+from django.db import models
 from decimal import Decimal
+
+from django.utils import timezone
+from datetime import timedelta
+from .constants import RETURN_WINDOW
 
 from django.db import transaction
 from django.db.models import F
@@ -7,15 +12,20 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
 from cart.models import Cart, CartItem
-from core.permissions import is_admin, is_customer_support, is_order_manager, is_staff, IsAdminOrStaff, IsOrderStaff
+from core.permissions import is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
 from products.serializers import normalize_size_name
-from .mail import send_order_confirmation_email
-from .models import DiscountCode, Order, OrderItem, Shipping
+from .mail import (
+    send_order_confirmation_email,
+    send_order_shipped_email,
+    send_return_refund_completed_email,
+)
+from .models import DiscountCode, Order, OrderItem, Shipping, ReturnRequest
 from .pricing import build_order_totals, normalize_discount_code, unit_price_vnd
-from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer
+from .serializers import DiscountCodeSerializer, OrderItemSerializer, OrderSerializer, ReturnRequestSerializer
 
 
 class OrderPagination(PageNumberPagination):
@@ -29,12 +39,163 @@ class DiscountCodeViewSet(viewsets.ModelViewSet):
     serializer_class = DiscountCodeSerializer
     permission_classes = [IsAdminOrStaff]
 
+    @action(detail=False, methods=["get"], url_path="active", permission_classes=[AllowAny])
+    def active(self, request):
+        today = timezone.localdate()
+        codes = DiscountCode.objects.filter(
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today,
+        ).filter(
+            models.Q(usage_limit__isnull=True) | models.Q(used_count__lt=models.F("usage_limit"))
+        ).order_by("-id")
+        serializer = self.get_serializer(codes, many=True)
+        return Response(serializer.data)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = OrderPagination
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrStaff])
+    def approve_refund(self, request, pk=None):
+        order = self.get_object()
+        try:
+            from wallets.models import Wallet, WalletTransaction
+            
+            # Cập nhật trạng thái đơn hàng thành đã hoàn tiền
+            order.status = "refunded"
+            order.save(update_fields=["status"])
+
+            # Cộng tiền vào ví của khách hàng
+            wallet, _ = Wallet.objects.get_or_create(user=order.user)
+            refund_amount = order.total_price
+            wallet.balance += refund_amount
+            wallet.save()
+
+            # Lưu lịch sử giao dịch nạp tiền do hoàn đơn
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=refund_amount,
+                transaction_type='deposit',
+                note=f"Hoàn tiền đơn hàng #{order.id}"
+            )
+            return Response({"detail": "Đã hoàn tiền thành công vào ví!"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+    @action(detail=True, methods=["post"], url_path="confirm-received")
+    def confirm_received(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "awaiting_confirmation":
+            return Response(
+                {"detail": "Chỉ có thể xác nhận nhận hàng khi đơn đang chờ xác nhận."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        order.status = "completed"
+        order.confirmed_by_user = True
+        order.completed_at = timezone.now()
+        order.save(update_fields=["status", "confirmed_by_user", "completed_at"])
+        return Response(self.get_serializer(order).data)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền hủy đơn hàng này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "pending":
+            return Response(
+                {"detail": "Chỉ có thể hủy đơn hàng đang chờ xử lý."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            items = OrderItem.objects.filter(order=order).select_related("product")
+            for item in items:
+                ProductVariant.objects.filter(pk=item.product_id).update(
+                    stock=F("stock") + item.quantity
+                )
+            order.status = "cancelled"
+            order.save(update_fields=["status"])
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="retry-payment")
+    def retry_payment(self, request, pk=None):
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.status != "pending":
+            return Response(
+                {"detail": "Chỉ có thể thanh toán lại cho đơn hàng đang chờ xử lý."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.gateway_status == "paid":
+            return Response(
+                {"detail": "Đơn hàng này đã được thanh toán."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw_payment = (request.data.get("payment_method") or order.payment_method).strip().lower()
+        if raw_payment not in {"vnpay", "momo", "zalopay"}:
+            return Response(
+                {"detail": "Phương thức thanh toán không hỗ trợ thanh toán lại."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if raw_payment != order.payment_method:
+            order.payment_method = raw_payment
+            order.save(update_fields=["payment_method"])
+
+        payload = {"status": "ok"}
+        if raw_payment == "vnpay":
+            from payments import vnpay as vnpay_mod
+            try:
+                payload["payment_url"] = vnpay_mod.build_payment_url(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif raw_payment == "momo":
+            from payments import momo as momo_mod
+            try:
+                payload["payment_url"] = momo_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif raw_payment == "zalopay":
+            from payments import zalopay as zalopay_mod
+            try:
+                payload["payment_url"] = zalopay_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                    str(request.user.pk),
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(payload, status=status.HTTP_200_OK)
 
     def get_permissions(self):
         if self.action in ("update", "partial_update", "destroy"):
@@ -43,14 +204,20 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        import datetime
+        cutoff = timezone.now() - datetime.timedelta(days=2)
+        Order.objects.filter(
+            status="awaiting_confirmation",
+            updated_at__lte=cutoff,
+        ).update(status="completed")
+        if is_staff(user):
             qs = Order.objects.select_related("user", "discount_code").prefetch_related("shipping").all()
         else:
             qs = Order.objects.select_related("user", "discount_code").filter(user=user)
 
         qs = qs.order_by("-created_at")
 
-        if self.action == "list" and (is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user)):
+        if self.action == "list" and is_staff(user):
             st = self.request.query_params.get("status")
             if st:
                 qs = qs.filter(status=st)
@@ -65,6 +232,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        order = serializer.save()
+        if old_status != order.status and order.status == "shipping":
+            oid = order.pk
+            transaction.on_commit(lambda o=oid: send_order_shipped_email(o))
 
     def _validation_error_message(self, exc: ValidationError) -> str:
         detail = exc.detail
@@ -98,7 +272,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return list(dict.fromkeys(normalized_ids))
 
     def _load_cart_items(self, user, *, lock: bool = False, cart_item_ids=None):
-        cart_qs = Cart.objects.filter(user=user)
+        # Trùng với CartViewSet: giỏ mới nhất — tránh .first() không order_by (lệch giỏ so với API /cart/carts/).
+        cart_qs = Cart.objects.filter(user=user).order_by("-created_at")
         if lock:
             cart_qs = cart_qs.select_for_update()
         cart = cart_qs.first()
@@ -128,8 +303,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     def _build_pricing_payload(self, cart_items, discount_code=None):
         subtotal = Decimal("0")
         for cart_item in cart_items:
-            subtotal += unit_price_vnd(cart_item.product.product) * cart_item.quantity
-
+            subtotal += unit_price_vnd(cart_item.product) * cart_item.quantity
+        
         shipping_fee, discount_amount, total = build_order_totals(subtotal, discount_code)
         return {
             "subtotal": subtotal,
@@ -198,6 +373,11 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        allowed_payment = {c[0] for c in Order.PAYMENT_METHOD_CHOICES}
+        raw_payment = (request.data.get("payment_method") or "cod").strip().lower()
+        payment_method = raw_payment if raw_payment in allowed_payment else "cod"
+        gateway_status = "pending" if payment_method in ("vnpay", "momo", "zalopay") else "none"
+
         with transaction.atomic():
             try:
                 cart, cart_items = self._load_cart_items(user, lock=True, cart_item_ids=cart_item_ids)
@@ -228,7 +408,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                         {"detail": f"Không đủ hàng: {label}. Còn {variant.stock}, cần {cart_item.quantity}."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-                unit = unit_price_vnd(variant.product)
+                unit = unit_price_vnd(variant)
                 subtotal += unit * cart_item.quantity
                 line_build.append((cart_item, variant, unit))
 
@@ -263,6 +443,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 discount_amount=discount_amount,
                 shipping_fee=shipping_fee,
                 total_price=total_price,
+                payment_method=payment_method,
+                gateway_status=gateway_status,
+                inventory_deducted=True,
             )
             for cart_item, variant, unit in line_build:
                 OrderItem.objects.create(
@@ -279,23 +462,175 @@ class OrderViewSet(viewsets.ModelViewSet):
             CartItem.objects.filter(cart=cart, id__in=[cart_item.id for cart_item, _variant, _unit in line_build]).delete()
 
             order_id_for_email = order.id
-            transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
+            if payment_method == "cod":
+                transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
 
         serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        payload = dict(serializer.data)
+        if payment_method == "vnpay":
+            from payments import vnpay as vnpay_mod
 
+            try:
+                payload["payment_url"] = vnpay_mod.build_payment_url(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif payment_method == "momo":
+            from payments import momo as momo_mod
+
+            try:
+                payload["payment_url"] = momo_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif payment_method == "zalopay":
+            from payments import zalopay as zalopay_mod
+
+            try:
+                payload["payment_url"] = zalopay_mod.create_payment(
+                    request,
+                    order.id,
+                    order.total_price,
+                    f"Thanh toan don hang #{order.id}",
+                    str(user.pk),
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticated(), IsOrderStaff()]
+
     def get_queryset(self):
         user = self.request.user
-        if is_staff(user) or is_admin(user) or is_order_manager(user) or is_customer_support(user):
+        if is_staff(user):
             return OrderItem.objects.all().select_related(
                 "order", "product", "product__product", "product__product__category", "product__color", "product__size"
             )
         return OrderItem.objects.filter(order__user=user).select_related(
             "order", "product", "product__product", "product__product__category", "product__color", "product__size"
         )
+
+
+class ReturnRequestViewSet(viewsets.ModelViewSet):
+    queryset = ReturnRequest.objects.all()
+    serializer_class = ReturnRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        base_qs = ReturnRequest.objects.select_related("order", "user").prefetch_related(
+            "order__orderitem_set__product__product__category",
+            "order__orderitem_set__product__color",
+            "order__orderitem_set__product__size",
+        )
+        if is_staff(user):
+            return base_qs.all()
+        return base_qs.filter(user=user)
+
+    def get_permissions(self):
+        if self.action in ("update", "partial_update", "destroy"):
+            return [permissions.IsAuthenticated(), IsOrderStaff()]
+        return [permissions.IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        order_id = request.data.get("order")
+
+        if not order_id:
+            return Response({"detail": "Thiếu order id."}, status=400)
+
+        try:
+            order_id = int(order_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "Order id không hợp lệ."}, status=400)
+
+        try:
+            order = Order.objects.get(pk=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"detail": "Đơn hàng không tồn tại."}, status=400)
+
+        if order.status not in ("shipping", "awaiting_confirmation", "completed"):
+            return Response(
+                {"detail": "Chỉ có thể yêu cầu trả hàng cho đơn đang giao hoặc đã hoàn thành."},
+                status=400,
+            )
+        
+        if order.status == "completed" and order.confirmed_by_user:
+            if timezone.now() > order.completed_at + RETURN_WINDOW:
+                return Response({"detail": "Đã quá thời hạn hoàn trả, không thể gửi yêu cầu."}, status=400)
+
+        if ReturnRequest.objects.filter(order=order, user=request.user).exists():
+            return Response(
+                {"detail": "Bạn đã gửi yêu cầu trả hàng cho đơn này rồi."},
+                status=400,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user, order=order)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        if not is_staff(request.user):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "pending":
+            return Response({"detail": "Chỉ duyệt được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            obj.status = "approved"
+            obj.admin_note = request.data.get("admin_note", "")
+            obj.save(update_fields=["status", "admin_note", "updated_at"])
+            Order.objects.filter(
+                pk=obj.order_id,
+                status__in=["shipping", "awaiting_confirmation"]
+            ).update(status="returning")
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        if not is_staff(request.user):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "pending":
+            return Response({"detail": "Chỉ từ chối được yêu cầu đang chờ."}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            obj.status = "rejected"
+            obj.admin_note = request.data.get("admin_note", "")
+            obj.save(update_fields=["status", "admin_note", "updated_at"])
+            Order.objects.filter(
+                pk=obj.order_id,
+                status__in=["shipping", "awaiting_confirmation"]
+            ).update(status="completed")
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete(self, request, pk=None):
+        if not is_staff(request.user):
+            return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object()
+        if obj.status != "approved":
+            return Response({"detail": "Chỉ hoàn thành được yêu cầu đã duyệt."}, status=status.HTTP_400_BAD_REQUEST)
+        obj.status = "completed"
+        obj.admin_note = request.data.get("admin_note", obj.admin_note)
+        obj.save(update_fields=["status", "admin_note", "updated_at"])
+        rid = obj.pk
+        transaction.on_commit(lambda r=rid: send_return_refund_completed_email(r))
+        return Response(self.get_serializer(obj).data)
