@@ -168,6 +168,12 @@ class ProductSerializer(serializers.ModelSerializer):
         required=False
     )
     clear_promotion = serializers.BooleanField(write_only=True, required=False)
+    size_chart = serializers.SerializerMethodField()
+    
+    size_chart_upload = serializers.ImageField(
+            write_only=True, required=False, allow_null=True
+        )
+    clear_size_chart = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Product
@@ -190,10 +196,10 @@ class ProductSerializer(serializers.ModelSerializer):
             "rating",
             "sold_count",
             "size_chart",
+            "size_chart_upload",
+            "clear_size_chart",
         )
         
-    size_chart = serializers.SerializerMethodField()
-
     def get_size_chart(self, obj: Product) -> str | None:
         if not obj.size_chart:
             return None
@@ -204,22 +210,36 @@ class ProductSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         upload_images = validated_data.pop('upload_images', [])
         validated_data.pop('clear_promotion', None)
+        size_chart_upload = validated_data.pop('size_chart_upload', None)
+        validated_data.pop('clear_size_chart', None)
+        
+        if size_chart_upload:
+            validated_data['size_chart'] = size_chart_upload
+        
         product = Product.objects.create(**validated_data)
-        # Lưu các ảnh được upload
         for image in upload_images:
             ProductImage.objects.create(product=product, image=image)
         return product
 
     def update(self, instance, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        size_chart_upload = validated_data.pop('size_chart_upload', None)
+        clear_size_chart = validated_data.pop('clear_size_chart', False)
+        
         if validated_data.pop("clear_promotion", False):
             instance.promotion = None
             validated_data.pop("promotion", None)
-        # Cập nhật thông tin sản phẩm
+        
+        # Xử lý size_chart
+        if size_chart_upload:
+            instance.size_chart = size_chart_upload
+        elif clear_size_chart:
+            instance.size_chart = None
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        # Thêm các ảnh mới được upload
+        
         for image in upload_images:
             ProductImage.objects.create(product=instance, image=image)
         return instance

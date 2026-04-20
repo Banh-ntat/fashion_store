@@ -69,18 +69,29 @@ interface VariantFormData {
   price: number | null;
 }
 
-function getApiErrorMessage(error: unknown, fallback = "Có lỗi xảy ra!"): string {
-  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+function getApiErrorMessage(
+  error: unknown,
+  fallback = "Có lỗi xảy ra!",
+): string {
+  const responseData = (error as { response?: { data?: unknown } })?.response
+    ?.data;
   if (!responseData) return fallback;
   if (typeof responseData === "string") return responseData;
-  if (Array.isArray(responseData) && typeof responseData[0] === "string") return responseData[0];
+  if (Array.isArray(responseData) && typeof responseData[0] === "string")
+    return responseData[0];
   if (typeof responseData === "object") {
-    if ("detail" in responseData && typeof (responseData as { detail?: unknown }).detail === "string") {
+    if (
+      "detail" in responseData &&
+      typeof (responseData as { detail?: unknown }).detail === "string"
+    ) {
       return (responseData as { detail: string }).detail;
     }
-    const firstValue = Object.values(responseData as Record<string, unknown>)[0];
+    const firstValue = Object.values(
+      responseData as Record<string, unknown>,
+    )[0];
     if (typeof firstValue === "string") return firstValue;
-    if (Array.isArray(firstValue) && typeof firstValue[0] === "string") return firstValue[0];
+    if (Array.isArray(firstValue) && typeof firstValue[0] === "string")
+      return firstValue[0];
   }
   return fallback;
 }
@@ -92,7 +103,9 @@ function variantStockTone(stock: number): "empty" | "low" | "ok" {
 }
 
 function productImageGallery(p: Product): string[] {
-  const fromDb = (p.images ?? []).map((x) => x.image).filter((u): u is string => Boolean(u));
+  const fromDb = (p.images ?? [])
+    .map((x) => x.image)
+    .filter((u): u is string => Boolean(u));
   if (fromDb.length > 0) return fromDb;
   if (p.image) return [p.image];
   return [];
@@ -155,7 +168,9 @@ export default function AdminProducts() {
   const [quickAddSizeError, setQuickAddSizeError] = useState("");
 
   // Inline order editing (trong variant modal)
-  const [editingOrders, setEditingOrders] = useState<Record<number, number>>({});
+  const [editingOrders, setEditingOrders] = useState<Record<number, number>>(
+    {},
+  );
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null);
 
   // ── Size CRUD trong product form ──
@@ -185,18 +200,22 @@ export default function AdminProducts() {
       sizesApi.list(),
       admin.promotions.list(),
     ])
-      .then(([productsRes, categoriesRes, colorsRes, sizesRes, promotionsRes]) => {
-        const pdata = productsRes.data as { results?: Product[] };
-        setProducts(pdata.results || (productsRes.data as Product[]) || []);
-        setCategoriesList(categoriesRes.data.results || categoriesRes.data);
-        setColorsList(colorsRes.data.results || colorsRes.data);
-        const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
-        setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
-        const prom = promotionsRes.data as
-          | { results?: typeof promotionsList }
-          | typeof promotionsList;
-        setPromotionsList(Array.isArray(prom) ? prom : (prom.results ?? []));
-      })
+      .then(
+        ([productsRes, categoriesRes, colorsRes, sizesRes, promotionsRes]) => {
+          const pdata = productsRes.data as { results?: Product[] };
+          setProducts(pdata.results || (productsRes.data as Product[]) || []);
+          setCategoriesList(categoriesRes.data.results || categoriesRes.data);
+          setColorsList(colorsRes.data.results || colorsRes.data);
+          const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
+          setSizesList(
+            [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+          );
+          const prom = promotionsRes.data as
+            | { results?: typeof promotionsList }
+            | typeof promotionsList;
+          setPromotionsList(Array.isArray(prom) ? prom : (prom.results ?? []));
+        },
+      )
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -241,7 +260,7 @@ export default function AdminProducts() {
         });
       }
       if (formData.size_chart) {
-        formDataToSend.append("size_chart", formData.size_chart);
+        formDataToSend.append("size_chart_upload", formData.size_chart);
       }
       if (formData.clear_size_chart && !formData.size_chart) {
         formDataToSend.append("clear_size_chart", "true");
@@ -250,7 +269,9 @@ export default function AdminProducts() {
       if (editingProduct) {
         if (formData.delete_image_ids && formData.delete_image_ids.length > 0) {
           await Promise.all(
-            formData.delete_image_ids.map((imgId) => admin.products.deleteImage(imgId)),
+            formData.delete_image_ids.map((imgId) =>
+              admin.products.deleteImage(imgId),
+            ),
           );
         }
         await admin.products.update(editingProduct.id, formDataToSend);
@@ -391,7 +412,10 @@ export default function AdminProducts() {
   };
 
   const handleDeleteSize = async (id: number) => {
-    if (!confirm("Xóa size này? Các biến thể dùng size này có thể bị ảnh hưởng.")) return;
+    if (
+      !confirm("Xóa size này? Các biến thể dùng size này có thể bị ảnh hưởng.")
+    )
+      return;
     setDeletingSizeId(id);
     try {
       await admin.sizes.delete(id);
@@ -492,7 +516,9 @@ export default function AdminProducts() {
       await admin.sizes.create({ name, order: quickAddSizeOrder });
       const res = await sizesApi.list();
       const rawSizes: Size[] = res.data.results || res.data;
-      setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+      setSizesList(
+        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      );
       setQuickAddSizeName("");
       setQuickAddSizeOrder(0);
       setShowQuickAddSize(false);
@@ -509,7 +535,9 @@ export default function AdminProducts() {
       await admin.sizes.update(s.id, { name: s.name, order: newOrder });
       const res = await sizesApi.list();
       const rawSizes: Size[] = res.data.results || res.data;
-      setSizesList([...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+      setSizesList(
+        [...rawSizes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      );
       setEditingOrders((prev) => {
         const next = { ...prev };
         delete next[s.id];
@@ -548,7 +576,8 @@ export default function AdminProducts() {
       setEditingVariant(null);
     } catch (error: unknown) {
       console.error("Variant error:", (error as any)?.response?.data);
-      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const msg = (error as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail;
       alert(msg || "Có lỗi xảy ra!");
     }
   };
@@ -563,7 +592,10 @@ export default function AdminProducts() {
       price: variant.price ?? null,
     });
     window.setTimeout(() => {
-      variantFormPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      variantFormPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
       variantColorSelectRef.current?.focus({ preventScroll: false });
     }, 0);
   };
@@ -576,7 +608,10 @@ export default function AdminProducts() {
       alert("Nhập số hợp lệ (có thể âm khi điều chỉnh giảm).");
       return;
     }
-    setVariantForm((f) => ({ ...f, stock: Math.max(0, Math.round(f.stock + d)) }));
+    setVariantForm((f) => ({
+      ...f,
+      stock: Math.max(0, Math.round(f.stock + d)),
+    }));
     setWarehouseDelta("");
   };
 
@@ -605,8 +640,11 @@ export default function AdminProducts() {
     );
 
   const variantGallery =
-    showVariantModal && selectedProduct ? productImageGallery(selectedProduct) : [];
-  const variantMainSrc = variantGallery[variantImageIndex] ?? variantGallery[0] ?? "";
+    showVariantModal && selectedProduct
+      ? productImageGallery(selectedProduct)
+      : [];
+  const variantMainSrc =
+    variantGallery[variantImageIndex] ?? variantGallery[0] ?? "";
 
   return (
     <AdminLayout>
@@ -618,13 +656,14 @@ export default function AdminProducts() {
               {canManageVariantStock ? (
                 <>
                   Tồn kho theo màu &amp; size không hiện trên bảng — bấm nút tím{" "}
-                  <strong className="page-header-desc-em">Biến thể</strong> trên từng sản phẩm
-                  để nhập kho / chỉnh số lượng.
+                  <strong className="page-header-desc-em">Biến thể</strong> trên
+                  từng sản phẩm để nhập kho / chỉnh số lượng.
                 </>
               ) : (
                 <>
-                  Bấm <strong className="page-header-desc-em">Biến thể</strong> để{" "}
-                  <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ xem).
+                  Bấm <strong className="page-header-desc-em">Biến thể</strong>{" "}
+                  để <strong>xem</strong> tồn theo màu &amp; size (nhân viên chỉ
+                  xem).
                 </>
               )}
             </p>
@@ -680,14 +719,22 @@ export default function AdminProducts() {
                     onClick={() => openVariantModal(product)}
                   >
                     <span className="btn-variant__text">Biến thể</span>
-                    <span className="btn-variant__count">{product.variants?.length ?? 0}</span>
+                    <span className="btn-variant__count">
+                      {product.variants?.length ?? 0}
+                    </span>
                   </button>
                 </td>
                 <td>
-                  <button className="btn-edit" onClick={() => handleEditProduct(product)}>
+                  <button
+                    className="btn-edit"
+                    onClick={() => handleEditProduct(product)}
+                  >
                     Sửa
                   </button>
-                  <button className="btn-delete" onClick={() => handleDeleteProduct(product.id)}>
+                  <button
+                    className="btn-delete"
+                    onClick={() => handleDeleteProduct(product.id)}
+                  >
                     Xóa
                   </button>
                 </td>
@@ -701,20 +748,24 @@ export default function AdminProducts() {
           <div className="modal-overlay">
             <div className="modal product-modal">
               <div className="product-modal__header">
-                <h3>{editingProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}</h3>                
+                <h3>{editingProduct ? "Sửa sản phẩm" : "Thêm sản phẩm"}</h3>
               </div>
 
               <form onSubmit={handleSubmitProduct} className="product-form">
                 {/* Cột trái */}
                 <div className="product-form__col">
-                  <div className="product-form__section-label">Thông tin cơ bản</div>
+                  <div className="product-form__section-label">
+                    Thông tin cơ bản
+                  </div>
 
                   <div className="form-group">
                     <label>Tên sản phẩm</label>
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -723,7 +774,12 @@ export default function AdminProducts() {
                     <label>Mô tả</label>
                     <textarea
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -735,7 +791,9 @@ export default function AdminProducts() {
                         type="number"
                         step="1"
                         value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -744,7 +802,10 @@ export default function AdminProducts() {
                       <select
                         value={formData.category_id}
                         onChange={(e) =>
-                          setFormData({ ...formData, category_id: Number(e.target.value) })
+                          setFormData({
+                            ...formData,
+                            category_id: Number(e.target.value),
+                          })
                         }
                         required
                       >
@@ -765,13 +826,17 @@ export default function AdminProducts() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          promotion_id: e.target.value ? Number(e.target.value) : null,
+                          promotion_id: e.target.value
+                            ? Number(e.target.value)
+                            : null,
                         })
                       }
                     >
                       <option value="">Không có khuyến mãi</option>
                       {promotionsList
-                        .filter((p) => p.is_active || p.id === formData.promotion_id)
+                        .filter(
+                          (p) => p.is_active || p.id === formData.promotion_id,
+                        )
                         .map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name} (-{p.discount_percent}%)
@@ -786,7 +851,7 @@ export default function AdminProducts() {
                 <div className="product-form__col">
                   {/* ── Bảng kích thước ── */}
                   <div className="product-form__section-label">
-                    Bảng kích thước                    
+                    Bảng kích thước
                   </div>
 
                   {/* Ảnh size chart */}
@@ -810,7 +875,10 @@ export default function AdminProducts() {
                               type="button"
                               className="btn-delete btn-sm"
                               onClick={() =>
-                                setFormData((prev) => ({ ...prev, clear_size_chart: true }))
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  clear_size_chart: true,
+                                }))
                               }
                             >
                               Xóa ảnh
@@ -826,7 +894,10 @@ export default function AdminProducts() {
                           type="button"
                           className="size-chart-deleted-notice__undo"
                           onClick={() =>
-                            setFormData((prev) => ({ ...prev, clear_size_chart: false }))
+                            setFormData((prev) => ({
+                              ...prev,
+                              clear_size_chart: false,
+                            }))
                           }
                         >
                           Hoàn tác
@@ -848,7 +919,12 @@ export default function AdminProducts() {
                           <button
                             type="button"
                             className="btn-delete btn-sm"
-                            onClick={() => setFormData((prev) => ({ ...prev, size_chart: null }))}
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                size_chart: null,
+                              }))
+                            }
                           >
                             Bỏ chọn
                           </button>
@@ -856,7 +932,11 @@ export default function AdminProducts() {
                       </div>
                     )}
 
-                    <input type="file" accept="image/*" onChange={handleSizeChartUpload} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSizeChartUpload}
+                    />
                   </div>
 
                   {/* Hình ảnh sản phẩm */}
@@ -865,14 +945,21 @@ export default function AdminProducts() {
 
                     {editingProduct &&
                       (() => {
-                        const existingImages = (editingProduct.images ?? []).filter(
-                          (img) => img.image && !formData.delete_image_ids?.includes(img.id),
+                        const existingImages = (
+                          editingProduct.images ?? []
+                        ).filter(
+                          (img) =>
+                            img.image &&
+                            !formData.delete_image_ids?.includes(img.id),
                         );
                         return existingImages.length > 0 ? (
                           <div className="image-list">
                             <div className="image-preview-list">
                               {existingImages.map((img) => (
-                                <div key={img.id} className="image-preview-item">
+                                <div
+                                  key={img.id}
+                                  className="image-preview-item"
+                                >
                                   <img src={img.image!} alt="" />
                                   <button
                                     type="button"
@@ -903,29 +990,33 @@ export default function AdminProducts() {
                       onChange={handleImageUpload}
                     />
 
-                    {formData.upload_images && formData.upload_images.length > 0 && (
-                      <div className="image-preview-list image-preview-list--new">
-                        {formData.upload_images.map((file, index) => (
-                          <div key={index} className="image-preview-item">
-                            <img src={URL.createObjectURL(file)} alt={`Preview ${index}`} />
-                            <button
-                              type="button"
-                              className="image-preview-item__del"
-                              onClick={() =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  upload_images: (prev.upload_images ?? []).filter(
-                                    (_, i) => i !== index,
-                                  ),
-                                }))
-                              }
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {formData.upload_images &&
+                      formData.upload_images.length > 0 && (
+                        <div className="image-preview-list image-preview-list--new">
+                          {formData.upload_images.map((file, index) => (
+                            <div key={index} className="image-preview-item">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`Preview ${index}`}
+                              />
+                              <button
+                                type="button"
+                                className="image-preview-item__del"
+                                onClick={() =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    upload_images: (
+                                      prev.upload_images ?? []
+                                    ).filter((_, i) => i !== index),
+                                  }))
+                                }
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -969,7 +1060,12 @@ export default function AdminProducts() {
                   {variantMainSrc ? (
                     <>
                       <div className="variant-modal__preview-main">
-                        <img src={variantMainSrc} alt="" loading="lazy" decoding="async" />
+                        <img
+                          src={variantMainSrc}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
                       {variantGallery.length > 1 && (
                         <div
@@ -1005,9 +1101,13 @@ export default function AdminProducts() {
                   <div className="variant-modal__header">
                     <div>
                       <h3 id="variant-modal-title">
-                        {canManageVariantStock ? "Biến thể & nhập kho" : "Biến thể (chỉ xem tồn)"}
+                        {canManageVariantStock
+                          ? "Biến thể & nhập kho"
+                          : "Biến thể (chỉ xem tồn)"}
                       </h3>
-                      <p className="variant-modal__product-name">{selectedProduct.name}</p>
+                      <p className="variant-modal__product-name">
+                        {selectedProduct.name}
+                      </p>
                     </div>
                     <span className="variant-modal__badge" title="Số biến thể">
                       {productVariants.length} SKU
@@ -1020,8 +1120,8 @@ export default function AdminProducts() {
                         className="admin-banner variant-modal__staff-readonly-banner"
                         role="status"
                       >
-                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp; size.
-                        Thêm/sửa/xóa biến thể và nhập kho do{" "}
+                        <strong>Nhân viên:</strong> chỉ xem tồn theo màu &amp;
+                        size. Thêm/sửa/xóa biến thể và nhập kho do{" "}
                         <strong>quản trị viên</strong> thực hiện.
                       </div>
                     )}
@@ -1031,10 +1131,12 @@ export default function AdminProducts() {
                         className="variant-modal__panel variant-modal__panel--quick"
                         aria-label="Thêm nhanh màu và size"
                       >
-                        <h4 className="variant-modal__panel-title">Mở rộng danh mục dùng chung</h4>
+                        <h4 className="variant-modal__panel-title">
+                          Mở rộng danh mục dùng chung
+                        </h4>
                         <p className="variant-modal__hint">
-                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp dụng cho toàn cửa
-                          hàng).
+                          Thêm màu hoặc size mới để chọn ở form bên dưới (áp
+                          dụng cho toàn cửa hàng).
                         </p>
                         <div className="variant-quick-grid">
                           {/* Quick-add màu */}
@@ -1072,12 +1174,16 @@ export default function AdminProducts() {
                                   <input
                                     type="color"
                                     value={quickAddColorCode}
-                                    onChange={(e) => setQuickAddColorCode(e.target.value)}
+                                    onChange={(e) =>
+                                      setQuickAddColorCode(e.target.value)
+                                    }
                                     title="Chọn màu"
                                   />
                                 </label>
                                 {quickAddColorError && (
-                                  <p className="variant-quick-card__error">{quickAddColorError}</p>
+                                  <p className="variant-quick-card__error">
+                                    {quickAddColorError}
+                                  </p>
                                 )}
                                 <div className="variant-quick-card__actions">
                                   <button
@@ -1139,7 +1245,11 @@ export default function AdminProducts() {
                                     type="number"
                                     value={quickAddSizeOrder}
                                     min={0}
-                                    onChange={(e) => setQuickAddSizeOrder(Number(e.target.value))}
+                                    onChange={(e) =>
+                                      setQuickAddSizeOrder(
+                                        Number(e.target.value),
+                                      )
+                                    }
                                     className="variant-quick-card__order-input"
                                     aria-label="Thứ tự hiển thị"
                                   />
@@ -1148,7 +1258,9 @@ export default function AdminProducts() {
                                   </span>
                                 </div>
                                 {quickAddSizeError && (
-                                  <p className="variant-quick-card__error">{quickAddSizeError}</p>
+                                  <p className="variant-quick-card__error">
+                                    {quickAddSizeError}
+                                  </p>
                                 )}
                                 <div className="variant-quick-card__actions">
                                   <button
@@ -1184,14 +1296,19 @@ export default function AdminProducts() {
                         aria-label="Thêm hoặc sửa biến thể"
                       >
                         <h4 className="variant-modal__panel-title">
-                          {editingVariant ? "Cập nhật biến thể & tồn" : "Thêm biến thể mới"}
+                          {editingVariant
+                            ? "Cập nhật biến thể & tồn"
+                            : "Thêm biến thể mới"}
                         </h4>
                         <p className="variant-stock-workflow-hint">
                           {editingVariant
                             ? "Chỉnh tồn kho trực tiếp hoặc dùng Nhập thêm rồi Lưu."
                             : "Chọn màu, size và tồn ban đầu; sau này mở lại để nhập thêm hàng."}
                         </p>
-                        <form onSubmit={handleSubmitVariant} className="variant-form-compact">
+                        <form
+                          onSubmit={handleSubmitVariant}
+                          className="variant-form-compact"
+                        >
                           <div className="variant-form-compact__grid">
                             <div className="form-group">
                               <label htmlFor="vf-color">Màu</label>
@@ -1242,7 +1359,9 @@ export default function AdminProducts() {
                             </div>
                             <div className="form-group form-group--stock">
                               <label htmlFor="vf-stock">
-                                {editingVariant ? "Tồn kho (sau cập nhật)" : "Tồn kho ban đầu"}
+                                {editingVariant
+                                  ? "Tồn kho (sau cập nhật)"
+                                  : "Tồn kho ban đầu"}
                               </label>
                               <input
                                 id="vf-stock"
@@ -1253,7 +1372,10 @@ export default function AdminProducts() {
                                 onChange={(e) =>
                                   setVariantForm({
                                     ...variantForm,
-                                    stock: Math.max(0, Number(e.target.value) || 0),
+                                    stock: Math.max(
+                                      0,
+                                      Number(e.target.value) || 0,
+                                    ),
                                   })
                                 }
                                 required
@@ -1263,7 +1385,9 @@ export default function AdminProducts() {
                                 role="group"
                                 aria-label="Cộng nhanh vào tồn"
                               >
-                                <span className="variant-stock-quick__label">Cộng nhanh:</span>
+                                <span className="variant-stock-quick__label">
+                                  Cộng nhanh:
+                                </span>
                                 {[1, 5, 10, 50, 100].map((n) => (
                                   <button
                                     key={n}
@@ -1276,7 +1400,9 @@ export default function AdminProducts() {
                                 ))}
                               </div>
                               <div className="variant-stock-inbound">
-                                <label htmlFor="vf-warehouse-delta">Nhập thêm vào kho</label>
+                                <label htmlFor="vf-warehouse-delta">
+                                  Nhập thêm vào kho
+                                </label>
                                 <div className="variant-stock-inbound__row">
                                   <input
                                     id="vf-warehouse-delta"
@@ -1284,7 +1410,9 @@ export default function AdminProducts() {
                                     inputMode="numeric"
                                     placeholder="VD: 20 hoặc -3"
                                     value={warehouseDelta}
-                                    onChange={(e) => setWarehouseDelta(e.target.value)}
+                                    onChange={(e) =>
+                                      setWarehouseDelta(e.target.value)
+                                    }
                                   />
                                   <button
                                     type="button"
@@ -1295,16 +1423,22 @@ export default function AdminProducts() {
                                   </button>
                                 </div>
                                 <p className="variant-stock-inbound__hint">
-                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm kê). Bấm Áp dụng
-                                  để cộng vào ô tồn phía trên, rồi Lưu.
+                                  Số dương = nhập thêm; số âm = trừ tồn (kiểm
+                                  kê). Bấm Áp dụng để cộng vào ô tồn phía trên,
+                                  rồi Lưu.
                                 </p>
                               </div>
                             </div>
                             <div className="form-group">
-                              <label htmlFor="vf-price">Giá riêng cho size này</label>
+                              <label htmlFor="vf-price">
+                                Giá riêng cho size này
+                              </label>
                               <p className="form-hint">
                                 Để trống = dùng giá sản phẩm (
-                                {Number(selectedProduct.price).toLocaleString("vi-VN")}đ).
+                                {Number(selectedProduct.price).toLocaleString(
+                                  "vi-VN",
+                                )}
+                                đ).
                               </p>
                               <input
                                 id="vf-price"
@@ -1329,7 +1463,9 @@ export default function AdminProducts() {
                                 type="submit"
                                 className="btn-primary variant-form-compact__btn-main"
                               >
-                                {editingVariant ? "Lưu thay đổi" : "Thêm biến thể"}
+                                {editingVariant
+                                  ? "Lưu thay đổi"
+                                  : "Thêm biến thể"}
                               </button>
                               {editingVariant && (
                                 <button
@@ -1355,16 +1491,27 @@ export default function AdminProducts() {
                       </section>
                     )}
 
-                    <section className="variant-modal__panel" aria-label="Danh sách biến thể">
+                    <section
+                      className="variant-modal__panel"
+                      aria-label="Danh sách biến thể"
+                    >
                       <div className="variant-modal__list-head">
                         <h4 className="variant-modal__panel-title variant-modal__panel-title--inline">
-                          {canManageVariantStock ? "Danh sách" : "Danh sách (màu · size · tồn)"}
+                          {canManageVariantStock
+                            ? "Danh sách"
+                            : "Danh sách (màu · size · tồn)"}
                         </h4>
                         <p className="variant-modal__legend">
                           Ô tồn:{" "}
-                          <span className="variant-legend-tag variant-legend-tag--ok">đủ</span>
-                          <span className="variant-legend-tag variant-legend-tag--low">thấp ≤5</span>
-                          <span className="variant-legend-tag variant-legend-tag--empty">hết</span>
+                          <span className="variant-legend-tag variant-legend-tag--ok">
+                            đủ
+                          </span>
+                          <span className="variant-legend-tag variant-legend-tag--low">
+                            thấp ≤5
+                          </span>
+                          <span className="variant-legend-tag variant-legend-tag--empty">
+                            hết
+                          </span>
                         </p>
                       </div>
                       <div className="variant-table-wrap">
@@ -1376,7 +1523,9 @@ export default function AdminProducts() {
                               <th>Giá riêng</th>
                               <th>Tồn</th>
                               {canManageVariantStock && (
-                                <th className="variant-table__actions">Thao tác</th>
+                                <th className="variant-table__actions">
+                                  Thao tác
+                                </th>
                               )}
                             </tr>
                           </thead>
@@ -1385,7 +1534,9 @@ export default function AdminProducts() {
                               <tr>
                                 <td colSpan={canManageVariantStock ? 5 : 4}>
                                   <div className="variant-empty">
-                                    <p className="variant-empty__title">Chưa có biến thể</p>
+                                    <p className="variant-empty__title">
+                                      Chưa có biến thể
+                                    </p>
                                     <p className="variant-empty__text">
                                       {canManageVariantStock
                                         ? "Chọn màu, size và tồn kho ở form phía trên rồi bấm Thêm biến thể."
@@ -1401,20 +1552,27 @@ export default function AdminProducts() {
                                     <div className="variant-cell-color">
                                       <span
                                         className="color-dot color-dot--lg"
-                                        style={{ backgroundColor: v.color.code }}
+                                        style={{
+                                          backgroundColor: v.color.code,
+                                        }}
                                         title={v.color.name}
                                       />
                                       <span>{v.color.name}</span>
                                     </div>
                                   </td>
                                   <td>
-                                    <span className="variant-size-pill">{v.size.name}</span>
+                                    <span className="variant-size-pill">
+                                      {v.size.name}
+                                    </span>
                                   </td>
                                   <td>
                                     {v.price != null ? (
-                                      Number(v.price).toLocaleString("vi-VN") + "đ"
+                                      Number(v.price).toLocaleString("vi-VN") +
+                                      "đ"
                                     ) : (
-                                      <span className="variant-price-default">= giá SP</span>
+                                      <span className="variant-price-default">
+                                        = giá SP
+                                      </span>
                                     )}
                                   </td>
                                   <td>
@@ -1436,7 +1594,9 @@ export default function AdminProducts() {
                                       <button
                                         type="button"
                                         className="btn-delete btn-delete--compact"
-                                        onClick={() => handleDeleteVariant(v.id)}
+                                        onClick={() =>
+                                          handleDeleteVariant(v.id)
+                                        }
                                       >
                                         Xóa
                                       </button>
