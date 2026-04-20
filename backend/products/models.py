@@ -6,6 +6,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='categories/', blank=True, null=True) 
+    is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
 
     def __str__(self):
         return self.name

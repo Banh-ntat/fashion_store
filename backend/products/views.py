@@ -25,6 +25,12 @@ class CategoryViewSet(viewsets.ModelViewSet):
     ordering_fields = ["id", "name"]
     filter_backends = []  # Disable filters
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not getattr(self.request.user, 'is_staff', False) and not getattr(self.request.user, 'is_superuser', False):
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
     @action(detail=True, methods=['get'])
     def products(self, request, pk=None):
         """Lấy danh sách sản phẩm theo danh mục"""
@@ -66,6 +72,9 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+
+        if not getattr(self.request.user, 'is_staff', False) and not getattr(self.request.user, 'is_superuser', False):
+            queryset = queryset.filter(category__is_active=True)
 
         # Tìm kiếm nâng cao với Q objects - tìm kiếm một phần (partial matching)
         search_query = self.request.query_params.get('search', '')

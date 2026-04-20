@@ -8,11 +8,13 @@ interface Category {
   name: string;
   description: string;
   image?: string;
+  is_active?: boolean;
 }
 
 interface CategoryFormData {
   name: string;
   description: string;
+  is_active: boolean;
 }
 
 export default function AdminCategories() {
@@ -23,6 +25,7 @@ export default function AdminCategories() {
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
     description: '',
+    is_active: true,
   });
   /** File ảnh mới chọn (thêm/sửa); gửi multipart lên API */
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -56,6 +59,7 @@ export default function AdminCategories() {
       const fd = new FormData();
       fd.append('name', formData.name.trim());
       fd.append('description', formData.description.trim());
+      fd.append('is_active', String(formData.is_active));
       if (imageFile) {
         fd.append('image', imageFile);
       }
@@ -67,7 +71,7 @@ export default function AdminCategories() {
       }
       setShowModal(false);
       setEditingCategory(null);
-      setFormData({ name: '', description: '' });
+      setFormData({ name: '', description: '', is_active: true });
       setImageFile(null);
       setImagePreview(null);
       loadCategories();
@@ -81,6 +85,7 @@ export default function AdminCategories() {
     setFormData({
       name: category.name,
       description: category.description,
+      is_active: category.is_active ?? true,
     });
     setImageFile(null);
     setImagePreview(category.image || null);
@@ -99,7 +104,7 @@ export default function AdminCategories() {
 
   const openAddModal = () => {
     setEditingCategory(null);
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', is_active: true });
     setImageFile(null);
     setImagePreview(null);
     setShowModal(true);
@@ -148,6 +153,7 @@ export default function AdminCategories() {
               <th>ID</th>
               <th>Tên danh mục</th>
               <th>Mô tả</th>
+              <th>Trạng thái</th>
               <th>Thao tác</th>
             </tr>
           </thead>
@@ -166,6 +172,11 @@ export default function AdminCategories() {
                 <td>{category.id}</td>
                 <td>{category.name}</td>
                 <td className="message-cell">{category.description}</td>
+                <td>
+                  <span className={`status-badge ${category.is_active !== false ? 'success' : 'error'}`}>
+                    {category.is_active !== false ? 'Hiển thị' : 'Đã ẩn'}
+                  </span>
+                </td>
                 <td>
                   <button type="button" className="btn-edit" onClick={() => handleEdit(category)}>
                     Sửa
@@ -200,6 +211,15 @@ export default function AdminCategories() {
                     id="cat-desc"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                  <label htmlFor="cat-active" style={{ marginBottom: 0 }}>Kích hoạt (Hiển thị):</label>
+                  <input
+                    id="cat-active"
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                   />
                 </div>
                 <div className="form-group">
