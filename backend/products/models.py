@@ -8,6 +8,9 @@ class Category(models.Model):
     image = models.ImageField(upload_to='categories/', blank=True, null=True) 
     is_active = models.BooleanField(default=True, verbose_name="Kích hoạt")
 
+    class Meta:
+        ordering = ['name']
+
     def __str__(self):
         return self.name
 class Promotion(models.Model):
