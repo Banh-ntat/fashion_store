@@ -1,10 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import '../pages/admin/Admin.css'; 
 
 const WalletPage = () => {
   const { user } = useAuth();
-  const [balance] = useState<number>(500000); 
+  const [balance, setBalance] = useState<number>(0);
+  const [transactions, setTransactions] = useState([]);
+
+  const fetchWalletData = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/wallets/info/', {
+        headers: { Authorization: `Token ${user.token}` }
+      });
+      setBalance(res.data.balance);
+      setTransactions(res.data.transactions);
+    } catch (err) {
+      console.error("Lỗi lấy dữ liệu ví thực tế:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.token) fetchWalletData();
+  }, [user]);
 
   return (
     <div className="page-container wallet-page">
@@ -19,25 +37,37 @@ const WalletPage = () => {
         <div className="wallet-balance-group">
           <h3>Số dư khả dụng</h3>
           <div className="wallet-balance">
-            {balance.toLocaleString('vi-VN')}
+            {Number(balance).toLocaleString('vi-VN')}
             <span className="wallet-currency">VNĐ</span>
           </div>
         </div>
-        <button className="wallet-action-btn" onClick={() => alert('Hệ thống đang kết nối cổng thanh toán!')}>
-          Nạp tiền ngay
-        </button>
+        <div className="wallet-actions" style={{ display: 'flex', gap: '12px' }}>
+          <button className="wallet-action-btn" onClick={() => alert('Chuyển đến MoMo...')}>
+            Nạp tiền ngay
+          </button>
+          <button className="wallet-action-btn" style={{ background: '#333' }} onClick={() => alert('Nhập SĐT MoMo...')}>
+            Rút tiền MoMo
+          </button>
+        </div>
       </div>
 
       <div className="transaction-history">
         <h4>Lịch sử giao dịch</h4>
-        <div className="transaction-item">
-          <div className="tx-info">
-            <span className="tx-name">Hoàn tiền hệ thống</span>
-            <span className="tx-date">20/04/2026</span>
-          </div>
-          <span className="tx-amount plus">+ 200.000đ</span>
-        </div>
-        <div className="transaction-empty">Hết danh sách giao dịch.</div>
+        {transactions.length > 0 ? (
+          transactions.map((tx: any) => (
+            <div key={tx.id} className="transaction-item">
+              <div className="tx-info">
+                <span className="tx-name">{tx.note}</span>
+                <span className="tx-date">{tx.created_at}</span>
+              </div>
+              <span className={`tx-amount ${tx.amount > 0 ? 'plus' : 'minus'}`}>
+                {tx.amount > 0 ? '+' : ''}{Number(tx.amount).toLocaleString('vi-VN')}đ
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="transaction-empty">Chưa có giao dịch nào trong database.</div>
+        )}
       </div>
     </div>
   );
