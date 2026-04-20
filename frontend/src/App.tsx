@@ -15,6 +15,7 @@ import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
 import OrderHistory from "./pages/OrderHistory";
 import MyFeedback from "./pages/MyFeedback";
+import WalletPage from "./pages/WalletPage";
 import Wishlist from "./pages/Wishlist";
 import Layout from "./components/Layout";
 import ProductDetail from "./components/ProductDetail";
@@ -88,6 +89,7 @@ function App() {
               <Route path="orders" element={<OrderHistory embedded />} />
               <Route path="profile" element={<Profile embedded />} />
               <Route path="returns" element={<MyReturns embedded />} />
+              <Route path="wallet" element={<WalletPage />} />
             </Route>
           </Route>
           <Route path="/admin" element={<AdminRoute />}>
