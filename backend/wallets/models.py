@@ -27,6 +27,10 @@ class WalletTransaction(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    # momo / zalopay khi nạp tiền qua cổng; rỗng với giao dịch khác
+    gateway = models.CharField(max_length=16, blank=True, default="")
+    # Mã đối soát cổng (MoMo orderId, ZaloPay app_trans_id, …)
+    gateway_ref = models.CharField(max_length=128, blank=True, default="")
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

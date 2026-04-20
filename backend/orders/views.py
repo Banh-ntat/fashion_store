@@ -17,6 +17,7 @@ from rest_framework.permissions import AllowAny
 from cart.models import Cart, CartItem
 from core.permissions import is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
+from wallets.services import credit_order_refund_to_user_wallet
 from products.serializers import normalize_size_name
 from .mail import (
     send_order_confirmation_email,
@@ -61,27 +62,23 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrStaff])
     def approve_refund(self, request, pk=None):
-        order = self.get_object()
+        order_pk = self.get_object().pk
         try:
-            from wallets.models import Wallet, WalletTransaction
-            
-            # Cập nhật trạng thái đơn hàng thành đã hoàn tiền
-            order.status = "refunded"
-            order.save(update_fields=["status"])
-
-            # Cộng tiền vào ví của khách hàng
-            wallet, _ = Wallet.objects.get_or_create(user=order.user)
-            refund_amount = order.total_price
-            wallet.balance += refund_amount
-            wallet.save()
-
-            # Lưu lịch sử giao dịch nạp tiền do hoàn đơn
-            WalletTransaction.objects.create(
-                wallet=wallet,
-                amount=refund_amount,
-                transaction_type='deposit',
-                note=f"Hoàn tiền đơn hàng #{order.id}"
-            )
+            with transaction.atomic():
+                order = Order.objects.select_for_update().get(pk=order_pk)
+                if order.status == "refunded":
+                    return Response(
+                        {"detail": "Đơn đã được hoàn tiền trước đó."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                credit_order_refund_to_user_wallet(
+                    order.user,
+                    order_id=order.id,
+                    total_price=order.total_price,
+                    reason_label="Hoàn tiền đơn hàng (duyệt hoàn)",
+                )
+                order.status = "refunded"
+                order.save(update_fields=["status"])
             return Response({"detail": "Đã hoàn tiền thành công vào ví!"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -159,7 +156,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.payment_method = raw_payment
             order.save(update_fields=["payment_method"])
 
-        payload = {"status": "ok"}
+        payload = {"status": "ok", "payment_method": raw_payment}
         if raw_payment == "vnpay":
             from payments import vnpay as vnpay_mod
             try:
@@ -185,17 +182,68 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif raw_payment == "zalopay":
             from payments import zalopay as zalopay_mod
             try:
-                payload["payment_url"] = zalopay_mod.create_payment(
+                pay_url, app_tid = zalopay_mod.create_payment(
                     request,
                     order.id,
                     order.total_price,
                     f"Thanh toan don hang #{order.id}",
                     str(request.user.pk),
                 )
+                Order.objects.filter(pk=order.pk).update(zalopay_app_trans_id=app_tid)
+                payload["payment_url"] = pay_url
             except ValueError as exc:
                 return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="zalopay-sync")
+    def zalopay_sync(self, request, pk=None):
+        """Đối soát trạng thái với ZaloPay /v2/query (bù khi IPN callback không tới server)."""
+        from payments import zalopay as zalopay_mod
+        from payments.services import mark_order_paid
+
+        order = self.get_object()
+        if order.user != request.user:
+            return Response(
+                {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if order.payment_method != "zalopay":
+            return Response(
+                {"detail": "Đơn hàng không dùng ZaloPay."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.gateway_status == "paid":
+            return Response(self.get_serializer(order).data)
+
+        atid = (order.zalopay_app_trans_id or "").strip()
+        if not atid:
+            return Response(
+                {
+                    "detail": "Chưa có mã giao dịch ZaloPay để đối soát. Hãy dùng \"Thanh toán lại\" để tạo phiên thanh toán mới.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            body = zalopay_mod.query_order_status(atid)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        paid, zp = zalopay_mod.is_query_result_paid(order.total_price, body)
+        if paid:
+            mark_order_paid(order.pk, zp)
+            order.refresh_from_db()
+            return Response(self.get_serializer(order).data)
+
+        msg = (
+            body.get("return_message")
+            or body.get("sub_return_message")
+            or "ZaloPay chưa xác nhận thanh toán cho giao dịch này."
+        )
+        data = dict(self.get_serializer(order).data)
+        data["zalopay_pending_message"] = msg
+        return Response(data, status=status.HTTP_200_OK)
 
     def get_permissions(self):
         if self.action in ("update", "partial_update", "destroy"):
@@ -495,13 +543,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             from payments import zalopay as zalopay_mod
 
             try:
-                payload["payment_url"] = zalopay_mod.create_payment(
+                pay_url, app_tid = zalopay_mod.create_payment(
                     request,
                     order.id,
                     order.total_price,
                     f"Thanh toan don hang #{order.id}",
                     str(user.pk),
                 )
+                Order.objects.filter(pk=order.pk).update(zalopay_app_trans_id=app_tid)
+                payload["payment_url"] = pay_url
             except ValueError as exc:
                 return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
@@ -625,12 +675,41 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         if not is_staff(request.user):
             return Response({"detail": "Không có quyền."}, status=status.HTTP_403_FORBIDDEN)
-        obj = self.get_object()
-        if obj.status != "approved":
-            return Response({"detail": "Chỉ hoàn thành được yêu cầu đã duyệt."}, status=status.HTTP_400_BAD_REQUEST)
-        obj.status = "completed"
-        obj.admin_note = request.data.get("admin_note", obj.admin_note)
-        obj.save(update_fields=["status", "admin_note", "updated_at"])
-        rid = obj.pk
-        transaction.on_commit(lambda r=rid: send_return_refund_completed_email(r))
+        rr_pk = int(self.kwargs["pk"])
+        try:
+            with transaction.atomic():
+                obj = (
+                    ReturnRequest.objects.select_for_update()
+                    .select_related("order")
+                    .get(pk=rr_pk)
+                )
+                if obj.status != "approved":
+                    return Response(
+                        {"detail": "Chỉ hoàn thành được yêu cầu đã duyệt."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                order = Order.objects.select_for_update().get(pk=obj.order_id)
+                if order.status == "refunded":
+                    return Response(
+                        {"detail": "Đơn đã được hoàn tiền, không thể hoàn tất lại."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                # Hoàn tiền vào ví của tài khoản đã gửi yêu cầu trả hàng
+                credit_order_refund_to_user_wallet(
+                    obj.user,
+                    order_id=order.id,
+                    total_price=order.total_price,
+                    reason_label="Hoàn tiền trả hàng",
+                )
+                obj.status = "completed"
+                obj.admin_note = request.data.get("admin_note", obj.admin_note)
+                obj.save(update_fields=["status", "admin_note", "updated_at"])
+                order.status = "refunded"
+                order.save(update_fields=["status"])
+                rid = obj.pk
+                transaction.on_commit(lambda r=rid: send_return_refund_completed_email(r))
+        except ReturnRequest.DoesNotExist:
+            return Response({"detail": "Không tìm thấy yêu cầu."}, status=status.HTTP_404_NOT_FOUND)
+
+        obj = ReturnRequest.objects.select_related("order", "user").get(pk=rr_pk)
         return Response(self.get_serializer(obj).data)

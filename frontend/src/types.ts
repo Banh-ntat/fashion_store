@@ -76,6 +76,8 @@ export interface Order {
   shipping_fee?: string;
   total_price: string;
   payment_method?: string;
+  /** Trả về từ POST zalopay-sync khi ZaloPay chưa ghi nhận thanh toán */
+  zalopay_pending_message?: string;
   gateway_status?: string;
   inventory_deducted?: boolean;
   status: string;

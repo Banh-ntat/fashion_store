@@ -12,7 +12,7 @@ const FALLBACK_META: ContactMeta = {
   hotline_e164: "+84964942121",
   email: "cskh@fashionstore.vn",
   address:
-    "Tầng 8, Tòa nhà 311-313 Trường Chinh, Phường Phương Liệt, Thành phố Hà Nội, Việt Nam",
+    "70 Tô Ký, Phường Tân Chánh Hiệp, Quận 12, TP. Hồ Chí Minh",
   hours:
     "Thứ Hai – Thứ Sáu: 8:30 – 17:30 (GMT+7). Thứ Bảy, Chủ nhật & ngày lễ: không làm việc tại văn phòng.",
   response_note:

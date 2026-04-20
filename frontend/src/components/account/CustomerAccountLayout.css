@@ -86,3 +86,8 @@
 .my-returns-page--embed.pageSection {
   padding-top: 0;
 }
+
+.wallet-page--embed.pageSection {
+  padding-top: 0;
+  padding-bottom: 56px;
+}
