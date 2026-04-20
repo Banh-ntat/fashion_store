@@ -59,6 +59,33 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = OrderPagination
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminOrStaff])
+    def approve_refund(self, request, pk=None):
+        order = self.get_object()
+        try:
+            from wallets.models import Wallet, WalletTransaction
+            
+            # Cập nhật trạng thái đơn hàng thành đã hoàn tiền
+            order.status = "refunded"
+            order.save(update_fields=["status"])
+
+            # Cộng tiền vào ví của khách hàng
+            wallet, _ = Wallet.objects.get_or_create(user=order.user)
+            refund_amount = order.total_price
+            wallet.balance += refund_amount
+            wallet.save()
+
+            # Lưu lịch sử giao dịch nạp tiền do hoàn đơn
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                amount=refund_amount,
+                transaction_type='deposit',
+                note=f"Hoàn tiền đơn hàng #{order.id}"
+            )
+            return Response({"detail": "Đã hoàn tiền thành công vào ví!"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
     @action(detail=True, methods=["post"], url_path="confirm-received")
     def confirm_received(self, request, pk=None):
         order = self.get_object()
@@ -479,7 +506,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response(payload, status=status.HTTP_201_CREATED)
-
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()

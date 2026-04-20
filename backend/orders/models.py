@@ -166,3 +166,18 @@ class ReturnRequest(models.Model):
 
     def __str__(self):
         return f"ReturnRequest #{self.id} — Order #{self.order_id} ({self.status})"
+    
+    # Đảm bảo dòng này sát lề trái
+    # Dòng này phải sát lề trái
+class RefundRequest(models.Model):
+    # TẤT CẢ các dòng dưới đây PHẢI thụt vào 4 khoảng trắng (hoặc 1 phím Tab)
+    STATUS_CHOICES = [
+        ('pending', 'Chờ duyệt'),
+        ('approved', 'Đã hoàn tiền'),
+        ('rejected', 'Từ chối'),
+    ]
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
