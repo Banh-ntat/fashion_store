@@ -47,12 +47,12 @@ const IconLogout = () => (
 );
 
 const IconWallet = () => (
-    <svg viewBox="0 0 24 24" className="icon" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20 18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
-      <path d="M16 11V7" />
-      <path d="M16 17v-2" />
-      <rect x="16" y="11" width="4" height="4" rx="1" />
-    </svg>
+  <svg viewBox="0 0 24 24" className="icon" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2" />
+    <path d="M16 11V7" />
+    <path d="M16 17v-2" />
+    <rect x="16" y="11" width="4" height="4" rx="1" />
+  </svg>
 );
 
 const menuItems = [
@@ -78,13 +78,6 @@ export default function CustomerAccountLayout() {
     <div className="admin-layout customer-account-layout">
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <Link to="/" className="back-to-home">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          <span>Quay lại cửa hàng</span>
-        </Link>
-        
           <h2>Tài khoản</h2>
           <p className="customer-account-tagline">FashionStore</p>
         </div>
