@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { admin } from "../../api/client";
 import AdminLayout from "../../components/admin/AdminLayout";
 import "../../styles/admin/Admin.css";
@@ -39,13 +39,16 @@ export default function AdminBirthdayEmail() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState("Nguyễn Văn A");
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loadCodes = useCallback(() => {
     admin.discountCodes
       .list()
       .then((res) => {
-        const raw = res.data as { results?: DiscountOption[] } | DiscountOption[];
-        const list = Array.isArray(raw) ? raw : raw.results ?? [];
+        const raw = res.data as
+          | { results?: DiscountOption[] }
+          | DiscountOption[];
+        const list = Array.isArray(raw) ? raw : (raw.results ?? []);
         setCodes(list);
       })
       .catch(console.error);
@@ -71,6 +74,15 @@ export default function AdminBirthdayEmail() {
     loadTemplate();
     loadCodes();
   }, [loadTemplate, loadCodes]);
+
+  useEffect(() => {
+    if (!previewHtml || !iframeRef.current) return;
+    const doc = iframeRef.current.contentDocument;
+    if (!doc) return;
+    doc.open();
+    doc.write(previewHtml);
+    doc.close();
+  }, [previewHtml]);
 
   const payloadFromForm = () => ({
     email_subject: form.email_subject,
@@ -131,14 +143,15 @@ export default function AdminBirthdayEmail() {
           <div>
             <h3>Email nhắc sinh nhật</h3>
             <p className="admin-birthday-lead">
-              Soạn nội dung gửi khách trước 1 ngày. Chọn mã giảm giá có sẵn trong
-              hệ thống hoặc để trống và dùng biến môi trường{" "}
+              Soạn nội dung gửi khách trước 1 ngày. Chọn mã giảm giá có sẵn
+              trong hệ thống hoặc để trống và dùng biến môi trường{" "}
               <code>BIRTHDAY_VOUCHER_CODE</code> trên server.
             </p>
           </div>
         </div>
 
         <div className="admin-birthday-grid">
+          {/* ── Form cột trái ── */}
           <form className="admin-birthday-form" onSubmit={handleSave}>
             <label className="admin-birthday-field">
               <span className="admin-birthday-label">Tiêu đề email</span>
@@ -153,7 +166,9 @@ export default function AdminBirthdayEmail() {
             </label>
 
             <label className="admin-birthday-field">
-              <span className="admin-birthday-label">Lời mở đầu (nội dung chính)</span>
+              <span className="admin-birthday-label">
+                Lời mở đầu (nội dung chính)
+              </span>
               <textarea
                 className="admin-textarea admin-textarea--tall"
                 rows={6}
@@ -166,7 +181,9 @@ export default function AdminBirthdayEmail() {
             </label>
 
             <label className="admin-birthday-field">
-              <span className="admin-birthday-label">Mã giảm giá gắn vào email</span>
+              <span className="admin-birthday-label">
+                Mã giảm giá gắn vào email
+              </span>
               <select
                 className="admin-input"
                 value={form.discount_code ?? ""}
@@ -199,6 +216,7 @@ export default function AdminBirthdayEmail() {
                   setForm((f) => ({ ...f, cta_button_label: e.target.value }))
                 }
                 maxLength={80}
+                placeholder="Vào FashionStore"
               />
             </label>
 
@@ -229,9 +247,12 @@ export default function AdminBirthdayEmail() {
             </div>
           </form>
 
+          {/* ── Preview cột phải ── */}
           <div className="admin-birthday-previewCol">
             <label className="admin-birthday-field">
-              <span className="admin-birthday-label">Tên hiển thị khi xem trước</span>
+              <span className="admin-birthday-label">
+                Tên hiển thị khi xem trước
+              </span>
               <input
                 className="admin-input"
                 value={previewName}
@@ -239,22 +260,24 @@ export default function AdminBirthdayEmail() {
                 placeholder="Họ tên mẫu"
               />
             </label>
-            {previewSubject ? (
+
+            {previewSubject && (
               <p className="admin-birthday-subjectPreview">
                 <strong>Tiêu đề:</strong> {previewSubject}
               </p>
-            ) : null}
+            )}
+
             <div className="admin-birthday-previewShell">
               {previewHtml ? (
                 <iframe
+                  ref={iframeRef}
                   title="Xem trước email sinh nhật"
                   className="admin-birthday-iframe"
-                  sandbox=""
-                  srcDoc={previewHtml}
                 />
               ) : (
                 <p className="admin-birthday-previewPlaceholder">
-                  Bấm &quot;Xem trước email&quot; để hiển thị giao diện thư gửi khách.
+                  Bấm &quot;Xem trước email&quot; để hiển thị giao diện thư gửi
+                  khách.
                 </p>
               )}
             </div>

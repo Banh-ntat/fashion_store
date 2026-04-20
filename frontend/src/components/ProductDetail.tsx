@@ -228,7 +228,7 @@ function ProductDetail() {
       });
       notifyCartUpdated();
       notify("Đã thêm vào giỏ hàng!", "success");
-      await new Promise(res => setTimeout(res, 1500));
+      await new Promise((res) => setTimeout(res, 1500));
     } catch (err: unknown) {
       const ax = err as {
         response?: {
@@ -341,17 +341,28 @@ function ProductDetail() {
       });
       notify("Cảm ơn bạn đã đánh giá!", "success");
       setShowReviewModal(false);
-      const reviewsRes = await reviewsApi.getByProduct(Number(id));
+
+      const [reviewsRes, productRes] = await Promise.all([
+        reviewsApi.getByProduct(Number(id)),
+        products.get(Number(id)),
+      ]);
       setReviewsList(
         ((reviewsRes?.data ?? []) as Review[]).filter(
           (r) => r.is_visible !== false,
         ),
       );
+      if (productRes?.data) {
+        setProduct(productRes.data as Product);
+      }
     } catch (err: unknown) {
+      const errData = (err as { response?: { data?: Record<string, unknown> } })
+        ?.response?.data;
+      const productErr = errData?.product;
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail || "Không thể gửi đánh giá.";
-      notify(msg, "error");
+        (Array.isArray(productErr) ? productErr[0] : null) ??
+        (typeof errData?.detail === "string" ? errData.detail : null) ??
+        "Không thể gửi đánh giá.";
+      notify(String(msg), "error");
     }
   };
 

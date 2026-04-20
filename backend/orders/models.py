@@ -52,6 +52,7 @@ class Order(models.Model):
         ("returning", "Returning"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
+        ("refunded", "Refunded"),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -166,11 +167,7 @@ class ReturnRequest(models.Model):
 
     def __str__(self):
         return f"ReturnRequest #{self.id} — Order #{self.order_id} ({self.status})"
-    
-    # Đảm bảo dòng này sát lề trái
-    # Dòng này phải sát lề trái
 class RefundRequest(models.Model):
-    # TẤT CẢ các dòng dưới đây PHẢI thụt vào 4 khoảng trắng (hoặc 1 phím Tab)
     STATUS_CHOICES = [
         ('pending', 'Chờ duyệt'),
         ('approved', 'Đã hoàn tiền'),

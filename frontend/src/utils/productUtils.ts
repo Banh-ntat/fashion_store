@@ -1,19 +1,17 @@
-import type { Product, ApiProduct } from '../types';
+import type { Product, ApiProduct } from "../types";
 
 const PLACEHOLDER_IMAGE =
-  'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop';
+  "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop";
 
-/**
- * Chuyển sản phẩm từ API (có thể thiếu image, old_price, stock) sang Product dùng cho UI.
- * Tái sử dụng cho mọi nơi gọi API products.
- */
-export function normalizeProduct(api: ApiProduct): Product {
+export function normalizeProduct(
+  api: ApiProduct & { discount_percent_display?: number },
+): Product {
   const priceStr =
-    typeof api.price === 'number' ? String(api.price) : (api.price ?? '0');
+    typeof api.price === "number" ? String(api.price) : (api.price ?? "0");
   return {
     id: api.id,
     name: api.name,
-    description: api.description ?? '',
+    description: api.description ?? "",
     price: priceStr,
     old_price: api.old_price ?? null,
     stock: api.stock ?? 0,
@@ -23,9 +21,12 @@ export function normalizeProduct(api: ApiProduct): Product {
     variants: api.variants ?? [],
     rating: api.rating ?? 0,
     sold_count: api.sold_count ?? 0,
+    discount_percent_display: api.discount_percent_display ?? 0,
   };
 }
 
-export function normalizeProducts(apiList: ApiProduct[]): Product[] {
+export function normalizeProducts(
+  apiList: (ApiProduct & { discount_percent_display?: number })[],
+): Product[] {
   return apiList.map(normalizeProduct);
 }

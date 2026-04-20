@@ -1,7 +1,14 @@
+.pageSection {
+  background: none;
+  padding: 0;
+  margin: 0;
+}
+
 .cart-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 30px;
+  min-height: 552px;
 }
 
 .cart-title {
@@ -90,7 +97,7 @@
   color: #1a1a1a;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;   /* fix tên bị xuống dòng */
+  text-overflow: ellipsis;
 }
 
 .variant {
@@ -138,7 +145,7 @@
   flex-shrink: 0;
   padding: 7px 16px;
   border-radius: 999px;
-  border: 1.5px solid #ffb3b3;   /* nhạt hơn, nhẹ nhàng hơn */
+  border: 1.5px solid #ffb3b3;
   background: transparent;
   color: #ff4d4f;
   font-size: 12px; font-weight: 600;
@@ -333,7 +340,6 @@
   gap: 10px;
 }
 
-/* Nút đăng nhập — đỏ */
 .cart-btn-primary {
   display: block;
   padding: 13px 0;
@@ -352,7 +358,6 @@
   transform: translateY(-2px);
 }
 
-/* Nút mua sắm — outline */
 .cart-btn-secondary {
   display: block;
   padding: 12px 0;
@@ -388,7 +393,7 @@
 }
 
 .cart-empty-icon {
-  font-size: 60px; /* tăng lên tùy ý, mặc định thường là 60px */
+  font-size: 60px;
   display: block;
   margin-bottom: 15px;
 }

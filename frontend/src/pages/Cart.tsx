@@ -172,9 +172,7 @@ export default function Cart() {
   if (user?.can_access_admin) {
     return (
       <section className="pageSection">
-        <div className="sectionContainer">
           <div className="cart-empty">
-            <span className="cart-empty-icon">🚫</span>
             <h2>Không khả dụng</h2>
             <p>Tài khoản quản trị không thể sử dụng giỏ hàng.</p>
             <div className="cart-empty-actions">
@@ -183,21 +181,21 @@ export default function Cart() {
               </Link>
             </div>
           </div>
-        </div>
       </section>
     );
   }
 
   if (!user) {
     return (
-      <div className="cart-empty">
-        <span className="cart-empty-icon">🔐</span>
-        <h2>Chưa đăng nhập</h2>
-        <p>Vui lòng đăng nhập để xem giỏ hàng của bạn.</p>
-        <div className="cart-empty-actions">
-          <Link to="/login" className="cart-btn-primary">
-            Đăng nhập
-          </Link>
+      <div className="cart-empty-wrapper">
+        <div className="cart-empty">
+          <h2>Chưa đăng nhập</h2>
+          <p>Vui lòng đăng nhập để xem giỏ hàng của bạn.</p>
+          <div className="cart-empty-actions">
+            <Link to="/login" className="cart-btn-primary">
+              Đăng nhập
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -209,12 +207,11 @@ export default function Cart() {
 
   if (items.length === 0) {
     return (
-      <section className="pageSection">
-        <div className="sectionContainer">
-          <h1 className="cart-title">Giỏ hàng</h1>
+      <section className="cart-container">
+        <h1 className="cart-title">Giỏ hàng</h1>
 
+        <div className="cart-empty-wrapper">
           <div className="cart-empty">
-            <span className="cart-empty-icon">🛒</span>
             <h2>Giỏ hàng trống</h2>
             <p>Bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
 

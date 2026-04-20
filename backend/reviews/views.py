@@ -9,8 +9,18 @@ from orders.models import Order, OrderItem
 from products.serializers import normalize_size_name
 from .models import Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
+from django.db.models import Avg
+from products.models import ProductVariant, Product
 
-
+def _recalc_product_rating(product_variant: ProductVariant) -> None:
+    product = product_variant.product
+    avg = (
+        Review.objects
+        .filter(product__product=product, is_visible=True)
+        .aggregate(avg=Avg("rating"))["avg"]
+    )
+    product.rating = round(avg, 2) if avg is not None else 0
+    product.save(update_fields=["rating"])
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
@@ -38,7 +48,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return qs.filter(is_visible=True)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        review = serializer.save(user=self.request.user)
+        _recalc_product_rating(review.product)
+        
+    def perform_update(self, serializer):
+        review = serializer.save()
+        _recalc_product_rating(review.product)
 
     def destroy(self, request, *args, **kwargs):
         """Allow admin to delete any review, others can only delete their own"""

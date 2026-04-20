@@ -32,6 +32,29 @@ class ReviewSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and not is_staff(request.user):
             attrs.pop("is_visible", None)
+
+            from orders.models import OrderItem
+            variant = attrs.get("product")
+            if variant:
+                has_purchased = OrderItem.objects.filter(
+                    order__user=request.user,
+                    order__status="completed",
+                    product=variant,
+                ).exists()
+                if not has_purchased:
+                    raise serializers.ValidationError(
+                        {"product": "Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng thành công."}
+                    )
+
+            if variant:
+                already_reviewed = Review.objects.filter(
+                    user=request.user, product=variant
+                ).exists()
+                if already_reviewed:
+                    raise serializers.ValidationError(
+                        {"product": "Bạn đã đánh giá sản phẩm này rồi."}
+                    )
+
         return attrs
 
     def get_product_name(self, obj):

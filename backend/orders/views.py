@@ -454,6 +454,14 @@ class OrderViewSet(viewsets.ModelViewSet):
                     quantity=cart_item.quantity,
                     price=unit,
                 )
+                
+            from products.models import Product as ProductModel
+            product_qty_map: dict[int, int] = {}
+            for cart_item, variant, _unit in line_build:
+                pid = variant.product_id
+                product_qty_map[pid] = product_qty_map.get(pid, 0) + cart_item.quantity
+            for pid, qty in product_qty_map.items():
+                ProductModel.objects.filter(pk=pid).update(sold_count=F("sold_count") + qty)
 
             if discount_code is not None:
                 DiscountCode.objects.filter(pk=discount_code.pk).update(used_count=F("used_count") + 1)

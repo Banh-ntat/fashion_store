@@ -1,5 +1,3 @@
-/** Sắp xếp / lọc danh sách SP catalog (trang Products) — tách ra để test được. */
-
 export type CatalogSortKey =
   | "default"
   | "price-asc"
@@ -17,7 +15,9 @@ export const CATALOG_SORT_KEYS: readonly CatalogSortKey[] = [
   "discount",
 ] as const;
 
-export function parseCatalogSortKey(raw: string | null | undefined): CatalogSortKey {
+export function parseCatalogSortKey(
+  raw: string | null | undefined,
+): CatalogSortKey {
   const v = raw ?? "default";
   return (CATALOG_SORT_KEYS as readonly string[]).includes(v)
     ? (v as CatalogSortKey)
@@ -28,12 +28,17 @@ export interface CatalogSortProduct {
   name: string;
   description?: string | null;
   price: string | number;
+  old_price?: string | number | null;
+  discount_percent_display?: number | null;
   promotion?: { discount_percent?: number } | null;
   sold_count?: number | null;
 }
 
 export function effectiveCatalogPrice(p: CatalogSortProduct): number {
   const base = Number(p.price);
+  if (p.old_price && Number(p.old_price) > base) {
+    return base;
+  }
   const disc = p.promotion?.discount_percent ?? 0;
   return base * (1 - disc / 100);
 }
@@ -42,7 +47,9 @@ export function compareCatalogByNameAsc(
   a: CatalogSortProduct,
   b: CatalogSortProduct,
 ): number {
-  return a.name.trim().localeCompare(b.name.trim(), "vi", { sensitivity: "base" });
+  return a.name
+    .trim()
+    .localeCompare(b.name.trim(), "vi", { sensitivity: "base" });
 }
 
 export function compareCatalogByPopular(
@@ -50,6 +57,21 @@ export function compareCatalogByPopular(
   b: CatalogSortProduct,
 ): number {
   return (b.sold_count ?? 0) - (a.sold_count ?? 0);
+}
+
+export function getDiscountPercent(p: CatalogSortProduct): number {
+  if (p.discount_percent_display != null && p.discount_percent_display > 0) {
+    return p.discount_percent_display;
+  }
+  if (p.promotion?.discount_percent) {
+    return p.promotion.discount_percent;
+  }
+  const current = Number(p.price);
+  const original = Number(p.old_price ?? 0);
+  if (original > current && current > 0) {
+    return Math.round(((original - current) / original) * 100);
+  }
+  return 0;
 }
 
 export function filterAndSortCatalogProducts<T extends CatalogSortProduct>(
@@ -79,10 +101,7 @@ export function filterAndSortCatalogProducts<T extends CatalogSortProduct>(
   } else if (sort === "popular") {
     list.sort((a, b) => compareCatalogByPopular(a, b));
   } else if (sort === "discount") {
-    list.sort(
-      (a, b) =>
-        (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0),
-    );
+    list.sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a));
   }
 
   return list;
