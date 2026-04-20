@@ -8,8 +8,12 @@ import {
 import { cart, orders } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { notifyCartUpdated } from "../utils/cartEvents";
+import {
+  assignGatewayUrl,
+  closeGatewayTab,
+  openBlankGatewayTab,
+} from "../utils/gatewayTab";
 import { getEstimatedDeliveryTime } from "../utils/delivery";
-import ZaloPayQrModal from "../components/ZaloPayQrModal";
 import "../styles/pages/Checkout.css";
 
 const PLACEHOLDER_IMAGE = "https://via.placeholder.com/80x100?text=SP";
@@ -161,13 +165,8 @@ export default function Checkout() {
   );
   const [step, setStep] = useState<"shipping" | "confirm">("shipping");
   const [paymentMethod, setPaymentMethod] = useState<
-    "cod" | "vnpay" | "momo" | "zalopay"
+    "cod" | "momo" | "zalopay"
   >("cod");
-  const [zalopayModal, setZalopayModal] = useState<{
-    open: boolean;
-    url: string | null;
-    orderId?: number;
-  }>({ open: false, url: null });
   const [selectionNotice, setSelectionNotice] = useState("");
   const discountFromUrl =
     searchParams.get("discount")?.trim().toUpperCase() ?? "";
@@ -436,6 +435,11 @@ export default function Checkout() {
       return;
     }
 
+    const gatewayTab =
+      paymentMethod === "zalopay" || paymentMethod === "momo"
+        ? openBlankGatewayTab()
+        : null;
+
     setSubmitting(true);
     try {
       const res = await orders.checkout({
@@ -447,9 +451,13 @@ export default function Checkout() {
         cart_item_ids: selectedCartItemIds,
         payment_method: paymentMethod,
       });
-      const data = res.data;
+      const data = res.data as {
+        payment_url?: string;
+        id?: number;
+      };
       const payUrl =
         typeof data.payment_url === "string" ? data.payment_url : "";
+<<<<<<< Updated upstream
       const pm =
         typeof (data as { payment_method?: string }).payment_method ===
         "string"
@@ -469,9 +477,27 @@ export default function Checkout() {
         setZalopayModal({ open: true, url: payUrl, orderId: oid });
         return;
       }
+=======
+      /* ZaloPay / MoMo: tab trống mở ngay khi bấm; gán URL khi có — cổng tải ở tab mới, trang này về đơn hàng. */
+>>>>>>> Stashed changes
       if (payUrl) {
         clearStoredCart();
         notifyCartUpdated();
+        if (assignGatewayUrl(gatewayTab, payUrl)) {
+          setForm({ name: "", phone: "", address: "", note: "" });
+          setDiscountCode("");
+          setPricingPreview(null);
+          setDiscountMessage("");
+          navigate("/orders", {
+            state: {
+              orderPlaced: true,
+              externalPayTab: true,
+              orderId: typeof data.id === "number" ? data.id : undefined,
+            },
+          });
+          return;
+        }
+        closeGatewayTab(gatewayTab);
         window.location.href = payUrl;
         return;
       }
@@ -483,6 +509,7 @@ export default function Checkout() {
       notifyCartUpdated();
       navigate("/orders", { state: { orderPlaced: true } });
     } catch (err) {
+      closeGatewayTab(gatewayTab);
       const resData = (err as { response?: { data?: unknown } })?.response
         ?.data;
       alert(
@@ -577,6 +604,22 @@ export default function Checkout() {
 
   return (
     <section className="pageSection checkout-page">
+      {submitting && (paymentMethod === "zalopay" || paymentMethod === "momo") && (
+        <div className="checkout-gatewayOverlay" role="status" aria-live="polite">
+          <div className="checkout-gatewayOverlayCard">
+            <span className="checkout-gatewaySpinner" aria-hidden />
+            <p className="checkout-gatewayOverlayTitle">
+              {paymentMethod === "zalopay"
+                ? "Đang tạo phiên thanh toán ZaloPay…"
+                : "Đang tạo phiên thanh toán MoMo…"}
+            </p>
+            <p className="checkout-gatewayOverlayHint">
+              Đang liên hệ máy chủ cổng thanh toán. Nếu đã mở tab mới, vui lòng thanh toán ở đó;
+              trang này sẽ chuyển tới đơn hàng sau khi sẵn sàng.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="sectionContainer checkout-container">
         <div className="checkout-steps">
           <div
@@ -797,20 +840,6 @@ export default function Checkout() {
                       <input
                         type="radio"
                         name="payment"
-                        checked={paymentMethod === "vnpay"}
-                        onChange={() => setPaymentMethod("vnpay")}
-                      />
-                      <span>
-                        <strong>VNPay</strong>
-                        <small>
-                          Cổng VNPay: thẻ ATM, QR VNPAY (app ngân hàng), thẻ quốc tế — sandbox
-                        </small>
-                      </span>
-                    </label>
-                    <label className="checkout-payment-option">
-                      <input
-                        type="radio"
-                        name="payment"
                         checked={paymentMethod === "momo"}
                         onChange={() => setPaymentMethod("momo")}
                       />
@@ -829,7 +858,8 @@ export default function Checkout() {
                       <span>
                         <strong>ZaloPay</strong>
                         <small>
-                          Cổng ZaloPay: ví ZaloPay, thẻ, VietQR — cần cấu hình sandbox
+                          Sau khi đặt hàng bạn được chuyển sang trang cổng ZaloPay (QR trên đó); quét
+                          bằng app ZaloPay sandbox
                         </small>
                       </span>
                     </label>
@@ -1032,29 +1062,6 @@ export default function Checkout() {
           </aside>
         </div>
       </div>
-      <ZaloPayQrModal
-        open={zalopayModal.open}
-        orderUrl={zalopayModal.url}
-        orderId={zalopayModal.orderId}
-        onClose={() => {
-          const oid = zalopayModal.orderId;
-          setZalopayModal({ open: false, url: null });
-          navigate(
-            oid != null
-              ? `/orders?payment=pending&order_id=${String(oid)}`
-              : "/orders?payment=pending",
-          );
-        }}
-        onDone={() => {
-          const oid = zalopayModal.orderId;
-          setZalopayModal({ open: false, url: null });
-          navigate(
-            oid != null
-              ? `/orders?payment=pending&order_id=${String(oid)}`
-              : "/orders?payment=pending",
-          );
-        }}
-      />
     </section>
   );
 }

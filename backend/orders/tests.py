@@ -10,6 +10,8 @@ from rest_framework.test import APIClient
 from cart.models import Cart, CartItem
 from products.models import Category, Color, Product, ProductVariant, Promotion, Size
 
+from wallets.models import Wallet
+
 from .models import DiscountCode, Order, OrderItem, ReturnRequest, Shipping
 
 
@@ -188,3 +190,8 @@ class OrderNotificationEmailTests(TransactionTestCase):
         self.assertEqual(mail.outbox[0].to, ["buyer2@example.com"])
         body = mail.outbox[0].body
         self.assertIn("Da hoan tien.", body)
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "refunded")
+        wallet = Wallet.objects.get(user=self.buyer)
+        self.assertEqual(wallet.balance, self.order.total_price)

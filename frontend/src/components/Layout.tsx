@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
+import FloatingContactBar from './FloatingContactBar';
 import "../styles/components/Layout.css";
 
 export default function Layout() {
@@ -11,6 +12,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <FloatingContactBar />
     </div>
   );
 }

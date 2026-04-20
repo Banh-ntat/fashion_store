@@ -118,6 +118,13 @@ class Order(models.Model):
         choices=GATEWAY_STATUS_CHOICES,
         default="none",
     )
+    # Mã giao dịch app_trans_id gửi lên ZaloPay /v2/create (dùng cho /v2/query khi callback không tới được).
+    zalopay_app_trans_id = models.CharField(
+        max_length=48,
+        blank=True,
+        default="",
+        help_text="app_trans_id gửi ZaloPay (dùng API query khi callback không tới server).",
+    )
     # True khi tồn kho đã trừ tại checkout (luồng hiện tại trừ stock trước khi INSERT đơn)
     inventory_deducted = models.BooleanField(default=True)
 

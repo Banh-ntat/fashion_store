@@ -306,4 +306,7 @@ ZALOPAY_KEY2 = (os.getenv('ZALOPAY_KEY2') or '').strip()
 ZALOPAY_CREATE_ENDPOINT = (os.getenv('ZALOPAY_CREATE_ENDPOINT') or '').strip() or (
     'https://sb-openapi.zalopay.vn/v2/create'
 )
+ZALOPAY_QUERY_ENDPOINT = (os.getenv('ZALOPAY_QUERY_ENDPOINT') or '').strip() or (
+    'https://sb-openapi.zalopay.vn/v2/query'
+)
 ZALOPAY_CALLBACK_PATH = os.getenv('ZALOPAY_CALLBACK_PATH', '/api/payments/zalopay/callback/')

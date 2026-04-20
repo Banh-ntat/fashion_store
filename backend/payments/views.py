@@ -38,6 +38,12 @@ def _frontend_orders_url(**params) -> str:
     return f"{base}/orders?{q}" if q else f"{base}/orders"
 
 
+def _frontend_wallet_url(**params) -> str:
+    base = getattr(settings, "FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
+    q = urlencode(params)
+    return f"{base}/dashboard/wallet?{q}" if q else f"{base}/dashboard/wallet"
+
+
 class VnpayReturnView(View):
     """Trình duyệt quay lại sau thanh toán VNPay."""
 
@@ -145,6 +151,35 @@ class MomoNotifyView(View):
                 status=400,
             )
 
+        from decimal import Decimal
+
+        from wallets.services import complete_wallet_deposit, mark_wallet_deposit_failed
+
+        wallet_tid = momo.parse_wallet_tx_id_from_momo(body.get("orderId"))
+        if wallet_tid is not None:
+            result = int(body.get("resultCode", -1))
+            raw_amt = body.get("amount")
+            amt: Decimal | None = None
+            if raw_amt is not None and str(raw_amt).strip() != "":
+                try:
+                    amt = Decimal(str(raw_amt))
+                except Exception:
+                    amt = None
+            if result == 0:
+                if not complete_wallet_deposit(
+                    wallet_tid,
+                    gateway="momo",
+                    external_ref=str(body.get("transId") or ""),
+                    amount_vnd=amt,
+                ):
+                    logger.warning("MoMo notify wallet could not complete tx=%s", wallet_tid)
+            else:
+                mark_wallet_deposit_failed(wallet_tid)
+            return HttpResponse(
+                json.dumps({"status": 0, "message": "ok"}),
+                content_type="application/json",
+            )
+
         oid = momo.parse_order_id_from_momo(body.get("orderId"))
         if not oid:
             return HttpResponseBadRequest("bad orderId")
@@ -169,15 +204,57 @@ class MomoReturnView(View):
         from decimal import Decimal
 
         from orders.models import Order
+        from wallets.models import WalletTransaction
+        from wallets.services import complete_wallet_deposit, mark_wallet_deposit_failed
 
-        oid = momo.parse_order_id_from_momo(request.GET.get("orderId"))
-        if not oid:
-            return HttpResponseRedirect(_frontend_orders_url(payment="failed"))
-
+        oid_raw = request.GET.get("orderId")
+        wallet_tid = momo.parse_wallet_tx_id_from_momo(oid_raw)
         try:
             result = int(request.GET.get("resultCode", -1))
         except (TypeError, ValueError):
             result = -1
+
+        if wallet_tid is not None:
+            try:
+                wtx = WalletTransaction.objects.get(pk=wallet_tid, type="deposit", gateway="momo")
+            except WalletTransaction.DoesNotExist:
+                return HttpResponseRedirect(_frontend_wallet_url(payment="failed"))
+
+            raw_amount = request.GET.get("amount")
+            if wtx.status == "pending":
+                if raw_amount is not None and str(raw_amount).strip() != "":
+                    try:
+                        if Decimal(str(raw_amount)) != wtx.amount.quantize(Decimal("1")):
+                            logger.warning("MoMo return wallet amount mismatch tx=%s", wallet_tid)
+                    except Exception:
+                        pass
+                if result == 0:
+                    amt = None
+                    if raw_amount is not None and str(raw_amount).strip() != "":
+                        try:
+                            amt = Decimal(str(raw_amount))
+                        except Exception:
+                            amt = None
+                    complete_wallet_deposit(
+                        wallet_tid,
+                        gateway="momo",
+                        external_ref=str(request.GET.get("transId") or ""),
+                        amount_vnd=amt,
+                    )
+                else:
+                    mark_wallet_deposit_failed(wallet_tid)
+
+            if result == 0:
+                return HttpResponseRedirect(
+                    _frontend_wallet_url(payment="success", deposit_tx=str(wallet_tid)),
+                )
+            return HttpResponseRedirect(
+                _frontend_wallet_url(payment="failed", deposit_tx=str(wallet_tid)),
+            )
+
+        oid = momo.parse_order_id_from_momo(oid_raw)
+        if not oid:
+            return HttpResponseRedirect(_frontend_orders_url(payment="failed"))
 
         try:
             order = Order.objects.get(pk=oid)
@@ -235,8 +312,40 @@ class ZalopayCallbackView(View):
         except json.JSONDecodeError:
             return JsonResponse({"return_code": 2, "return_message": "Invalid data"})
 
+        from wallets.models import WalletTransaction
+        from wallets.services import complete_wallet_deposit
+
         app_trans_id = zalopay.callback_inner_get(inner, "app_trans_id", "apptransid")
-        oid = zalopay.parse_order_id_from_app_trans_id(str(app_trans_id or ""))
+        app_trans_id_str = str(app_trans_id or "")
+
+        wid = zalopay.parse_wallet_tx_id_from_app_trans_id(app_trans_id_str)
+        if wid is not None:
+            try:
+                wtx = WalletTransaction.objects.get(pk=wid, type="deposit", gateway="zalopay")
+            except WalletTransaction.DoesNotExist:
+                logger.warning("ZaloPay callback unknown wallet_tx=%s", wid)
+                return JsonResponse({"return_code": 2, "return_message": "Txn not found"})
+
+            raw_amt = zalopay.callback_inner_get(inner, "amount")
+            if raw_amt is not None and str(raw_amt).strip() != "":
+                try:
+                    if int(raw_amt) != int(wtx.amount.quantize(Decimal("1"))):
+                        logger.warning("ZaloPay callback amount mismatch wallet_tx=%s", wid)
+                        return JsonResponse({"return_code": 2, "return_message": "Amount mismatch"})
+                except (TypeError, ValueError):
+                    pass
+
+            zp = str(zalopay.callback_inner_get(inner, "zp_trans_id", "zptransid") or "")
+            if zp:
+                complete_wallet_deposit(
+                    wid,
+                    gateway="zalopay",
+                    external_ref=zp,
+                    amount_vnd=wtx.amount,
+                )
+            return JsonResponse({"return_code": 1, "return_message": "success"})
+
+        oid = zalopay.parse_order_id_from_app_trans_id(app_trans_id_str)
         if not oid:
             return JsonResponse({"return_code": 2, "return_message": "Bad app_trans_id"})
 

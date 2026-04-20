@@ -62,7 +62,7 @@ export default function Footer() {
     { label: "YouTube", href: "#", type: "youtube" },
   ];
 
-  const paymentMethods = ["VNPAY", "ZaloPay", "MoMo", "VISA"];
+  const paymentMethods = ["ZaloPay", "MoMo"];
   const shippingMethods = ["GHN", "GHTK", "Ahamove", "J&T"];
 
   const navLinks = [

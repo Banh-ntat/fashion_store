@@ -297,6 +297,8 @@
         payment_method?: string;
         [key: string]: unknown;
       }>("/orders/orders/checkout/", data),
+    /** Đối soát ZaloPay /v2/query — cập nhật gateway_status khi IPN không về server. */
+    zalopaySync: (id: number) => api.post(`/orders/orders/${id}/zalopay-sync/`),
   };
 
   export const reviews = {

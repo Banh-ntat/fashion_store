@@ -9,7 +9,11 @@ import { orders, reviews, returns } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import type { Order, PurchasableProduct } from "../types";
 import { getAddressProvince, getEstimatedDeliveryTime, shouldShowDeliveryEstimate } from "../utils/delivery";
-import ZaloPayQrModal from "../components/ZaloPayQrModal";
+import {
+  assignGatewayUrl,
+  closeGatewayTab,
+  openBlankGatewayTab,
+} from "../utils/gatewayTab";
 import "../styles/pages/OrderHistory.css";
 
 /** Gợi ý theo mã VNPay (một phần — khớp backend payments/vnpay.py) */
@@ -81,6 +85,8 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
     : "/login";
   const clearedPlacedState = useRef(false);
   const [list, setList] = useState<Order[]>([]);
+  const listRef = useRef<Order[]>([]);
+  listRef.current = list;
   const [purchasableItems, setPurchasableItems] = useState<
     PurchasableProduct[]
   >([]);
@@ -89,16 +95,12 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   );
   const [loading, setLoading] = useState(true);
   const [showOrderPlacedBanner, setShowOrderPlacedBanner] = useState(false);
+  const [orderPlacedExternalTab, setOrderPlacedExternalTab] = useState(false);
   const [paymentRedirectNotice, setPaymentRedirectNotice] = useState<
     "success" | "failed" | "pending" | null
   >(null);
   const [vnpayFailHint, setVnpayFailHint] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<number | null>(null);
-  const [zalopayModal, setZalopayModal] = useState<{
-    open: boolean;
-    url: string | null;
-    orderId?: number;
-  }>({ open: false, url: null });
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
   const [cancelErrorId, setCancelErrorId] = useState<number | null>(null);
@@ -117,10 +119,14 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
 
   useEffect(() => {
     if (clearedPlacedState.current) return;
-    const state = location.state as { orderPlaced?: boolean } | null;
+    const state = location.state as {
+      orderPlaced?: boolean;
+      externalPayTab?: boolean;
+    } | null;
     if (state?.orderPlaced) {
       clearedPlacedState.current = true;
       setShowOrderPlacedBanner(true);
+      setOrderPlacedExternalTab(Boolean(state.externalPayTab));
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
@@ -128,6 +134,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   useEffect(() => {
     const p = searchParams.get("payment");
     const vnpRc = searchParams.get("vnp_rc");
+    const oidStr = searchParams.get("order_id");
     if (p === "success" || p === "failed" || p === "pending") {
       setPaymentRedirectNotice(p);
       if (p === "failed" && vnpRc) {
@@ -135,9 +142,35 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
       } else {
         setVnpayFailHint(null);
       }
+      if (p === "pending" && oidStr && /^\d+$/.test(oidStr) && user) {
+        const oid = Number(oidStr);
+        void (async () => {
+          const maxAttempts = 24;
+          const delayMs = 2500;
+          for (let i = 0; i < maxAttempts; i++) {
+            try {
+              const res = await orders.zalopaySync(oid);
+              const up = res.data as Order;
+              if (up.gateway_status === "paid") break;
+            } catch {
+              /* có thể chưa có app_trans_id (đơn cũ) */
+            }
+            await new Promise((r) => setTimeout(r, delayMs));
+          }
+          try {
+            const ordersRes = await orders.list();
+            const orderData = ordersRes.data as Order[] | { results?: Order[] };
+            setList(
+              Array.isArray(orderData) ? orderData : (orderData.results ?? []),
+            );
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, user]);
 
   useEffect(() => {
     if (!user) {
@@ -168,6 +201,37 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  /** Tự động đối soát ZaloPay /v2/query cho đơn chờ thanh toán (sau khi user trả trên app). */
+  useEffect(() => {
+    if (!user || loading) return;
+    const t = window.setInterval(() => {
+      const cur = listRef.current;
+      const pendingZalo = cur.filter(
+        (o) =>
+          o.payment_method === "zalopay" &&
+          o.gateway_status === "pending" &&
+          o.status === "pending",
+      );
+      if (pendingZalo.length === 0) return;
+      void Promise.all(
+        pendingZalo.map(async (o) => {
+          try {
+            const res = await orders.zalopaySync(o.id);
+            const up = res.data as Order;
+            if (up.gateway_status === "paid") {
+              setList((prev) =>
+                prev.map((row) => (row.id === o.id ? { ...row, ...up } : row)),
+              );
+            }
+          } catch {
+            /* ignore */
+          }
+        }),
+      );
+    }, 5000);
+    return () => window.clearInterval(t);
+  }, [user, loading]);
 
   const handleConfirmReceived = async (orderId: number) => {
     setReceivedLoadingId(orderId);
@@ -248,25 +312,29 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
   const handleRetryPayment = async (order: Order) => {
     setCancelErrorId(null);
     setCancelErrorMsg("");
+    const pm = order.payment_method ?? "";
+    const gatewayTab = ["zalopay", "momo", "vnpay"].includes(pm)
+      ? openBlankGatewayTab()
+      : null;
     setRetryingId(order.id);
     try {
       const res = await orders.retryPayment(order.id);
-      const data = res.data as { payment_url?: string };
-      if (data.payment_url && order.payment_method === "zalopay") {
-        setZalopayModal({
-          open: true,
-          url: data.payment_url,
-          orderId: order.id,
-        });
-        setRetryingId(null);
-        return;
-      }
-      if (data.payment_url) {
-        window.location.href = data.payment_url;
-      } else {
+      const data = res.data as {
+        payment_url?: string;
+        payment_method?: string;
+      };
+      const url = typeof data.payment_url === "string" ? data.payment_url : "";
+      if (!url) {
         throw new Error("Không lấy được đường dẫn thanh toán.");
       }
+      setRetryingId(null);
+      if (assignGatewayUrl(gatewayTab, url)) {
+        return;
+      }
+      closeGatewayTab(gatewayTab);
+      window.location.href = url;
     } catch (err) {
+      closeGatewayTab(gatewayTab);
       const detail = (err as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail;
       setCancelErrorId(order.id);
@@ -372,7 +440,15 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
 
         {showOrderPlacedBanner && (
           <div className="orderPlacedBanner" role="status">
-            Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại cửa hàng.
+            {orderPlacedExternalTab ? (
+              <>
+                Đặt hàng thành công. Cổng thanh toán đã mở trong{" "}
+                <strong>tab mới</strong> — vui lòng hoàn tất ở đó. Nếu không thấy tab, kiểm tra
+                chặn popup hoặc dùng &quot;Thanh toán lại&quot; trên đơn tương ứng.
+              </>
+            ) : (
+              <>Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại cửa hàng.</>
+            )}
           </div>
         )}
 
@@ -392,8 +468,8 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
         )}
         {paymentRedirectNotice === "pending" && (
           <div className="orderPlacedBanner" role="status">
-            Bạn vừa quay lại từ ZaloPay. Nếu đã thanh toán, trạng thái đơn sẽ cập nhật sau vài
-            giây — vui lòng làm mới trang nếu vẫn hiển thị trạng thái chờ thanh toán.
+            Bạn vừa quay lại từ ZaloPay. Hệ thống đang tự đối soát thanh toán; trạng thái đơn sẽ
+            cập nhật trong vài giây sau khi thanh toán thành công trên app.
           </div>
         )}
 
@@ -644,7 +720,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                           {order.payment_method &&
                             ["vnpay", "momo", "zalopay"].includes(
                               order.payment_method,
@@ -658,7 +734,10 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                                   color: "white",
                                   border: "none",
                                 }}
-                                disabled={cancellingId === order.id || retryingId === order.id}
+                                disabled={
+                                  cancellingId === order.id ||
+                                  retryingId === order.id
+                                }
                                 onClick={() => handleRetryPayment(order)}
                               >
                                 {retryingId === order.id ? "Đang xử lý..." : "Thanh toán lại"}
@@ -668,7 +747,9 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                           <button
                             type="button"
                             className="orderCancelBtn"
-                            disabled={cancellingId === order.id || retryingId === order.id}
+                            disabled={
+                              cancellingId === order.id || retryingId === order.id
+                            }
                             onClick={() => handleCancelRequest(order.id)}
                           >
                             {cancellingId === order.id
@@ -685,27 +766,6 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
           </ul>
         )}
       </div>
-      <ZaloPayQrModal
-        open={zalopayModal.open}
-        orderUrl={zalopayModal.url}
-        orderId={zalopayModal.orderId}
-        onClose={() => {
-          const oid = zalopayModal.orderId;
-          setZalopayModal({ open: false, url: null });
-          const base = embedded ? "/dashboard/orders" : "/orders";
-          navigate(
-            `${base}?payment=pending${oid != null ? `&order_id=${String(oid)}` : ""}`,
-          );
-        }}
-        onDone={() => {
-          const oid = zalopayModal.orderId;
-          setZalopayModal({ open: false, url: null });
-          const base = embedded ? "/dashboard/orders" : "/orders";
-          navigate(
-            `${base}?payment=pending${oid != null ? `&order_id=${String(oid)}` : ""}`,
-          );
-        }}
-      />
     </section>
   );
 }
