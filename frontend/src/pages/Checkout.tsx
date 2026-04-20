@@ -388,28 +388,7 @@ export default function Checkout() {
       };
       const payUrl =
         typeof data.payment_url === "string" ? data.payment_url : "";
-<<<<<<< Updated upstream
-      const pm =
-        typeof (data as { payment_method?: string }).payment_method ===
-        "string"
-          ? (data as { payment_method: string }).payment_method
-          : "";
-      if (payUrl && pm === "zalopay") {
-        notifyCartUpdated();
-        setForm({ name: "", phone: "", address: "", note: "" });
-        setDiscountCode("");
-        setPricingPreview(null);
-        setDiscountMessage("");
-        const oid =
-          typeof (data as { id?: number }).id === "number"
-            ? (data as { id: number }).id
-            : undefined;
-        setZalopayModal({ open: true, url: payUrl, orderId: oid });
-        return;
-      }
-=======
       /* ZaloPay / MoMo: tab trống mở ngay khi bấm; gán URL khi có — cổng tải ở tab mới, trang này về đơn hàng. */
->>>>>>> Stashed changes
       if (payUrl) {
         notifyCartUpdated();
         if (assignGatewayUrl(gatewayTab, payUrl)) {
