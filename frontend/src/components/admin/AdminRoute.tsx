@@ -1,7 +1,7 @@
 import { Link, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { isStaffRole } from '../../utils/staff';
-import '../../pages/admin/Admin.css';
+import "../../styles/admin/Admin.css";
 
 function canEnterAdmin(user: {
   can_access_admin?: boolean;

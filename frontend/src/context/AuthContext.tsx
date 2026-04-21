@@ -1,5 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth } from '../api/client';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { auth } from "../api/client";
 
 export interface AuthUser {
   username: string;
@@ -7,10 +13,10 @@ export interface AuthUser {
   first_name?: string;
   last_name?: string;
   id?: number;
-  /** Role từ Profile (backend) — dùng cho /admin */
   role?: string;
-  /** Khớp backend `is_staff` + superuser — ưu tiên dùng thay vì chỉ đoán từ role */
   can_access_admin?: boolean;
+  is_admin?: boolean;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
@@ -30,14 +36,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(u);
   }, []);
 
-  const logout = useCallback(() => {
-    auth.logout();
-    localStorage.removeItem('user_role');
+  const logout = useCallback(async () => {
+    try {
+      await auth.logout();
+    } catch (err) {
+      console.log(err);
+    }
+
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_role");
+
     setUserState(null);
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem("access_token");
     if (!token) {
       setLoading(false);
       return;
@@ -53,22 +67,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id?: number;
           role?: string;
           can_access_admin?: boolean;
+          is_admin?: boolean;
+          avatar?: string | null;
         }) => {
           if (data.role) {
-            localStorage.setItem('user_role', data.role);
+            localStorage.setItem("user_role", data.role);
           } else {
-            localStorage.removeItem('user_role');
+            localStorage.removeItem("user_role");
           }
           setUserState({
-            username: data.username ?? 'User',
+            username: data.username ?? "User",
             email: data.email,
             first_name: data.first_name,
             last_name: data.last_name,
             id: data.id,
             role: data.role,
             can_access_admin: data.can_access_admin,
+            is_admin: data.is_admin,
+            avatar: data.avatar ?? null,
           });
-        }
+        },
       )
       .catch(() => {
         auth.logout();
@@ -86,6 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

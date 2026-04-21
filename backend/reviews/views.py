@@ -9,8 +9,18 @@ from orders.models import Order, OrderItem
 from products.serializers import normalize_size_name
 from .models import Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
+from django.db.models import Avg
+from products.models import ProductVariant, Product
 
-
+def _recalc_product_rating(product_variant: ProductVariant) -> None:
+    product = product_variant.product
+    avg = (
+        Review.objects
+        .filter(product__product=product, is_visible=True)
+        .aggregate(avg=Avg("rating"))["avg"]
+    )
+    product.rating = round(avg, 2) if avg is not None else 0
+    product.save(update_fields=["rating"])
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
@@ -25,7 +35,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = (
             Review.objects.select_related(
-                "user", "product", "product__product", "product__color", "product__size"
+                "user", "user__profile", "product", "product__product", "product__color", "product__size"
             )
             .all()
             .order_by("-created_at")
@@ -38,7 +48,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return qs.filter(is_visible=True)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        review = serializer.save(user=self.request.user)
+        _recalc_product_rating(review.product)
+        
+    def perform_update(self, serializer):
+        review = serializer.save()
+        _recalc_product_rating(review.product)
 
     def destroy(self, request, *args, **kwargs):
         """Allow admin to delete any review, others can only delete their own"""
@@ -56,7 +71,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if not request.user.is_authenticated:
             return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         reviews = Review.objects.filter(user=request.user).select_related(
-            "product", "product__product", "product__color", "product__size"
+            "user__profile", "product", "product__product", "product__color", "product__size"
         ).order_by("-created_at")
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)
@@ -99,11 +114,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="by_product/(?P<product_id>[^/.]+)")
     def by_product(self, request, product_id=None):
-        """Get reviews for a specific product"""
         reviews = (
             self.get_queryset()
             .filter(product__product_id=product_id)
-            .select_related("user", "product", "product__color", "product__size")
+            .select_related("user", "user__profile", "product", "product__color", "product__size")
         )
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data)

@@ -1,6 +1,6 @@
 import type { ApiProduct, Category } from '../types';
 
-const BASE = 'http://localhost:8000/api/products';
+const BASE = '/api/products';
 
 const getList = async <T>(url: string): Promise<T[]> => {
   const res = await fetch(url);
@@ -14,7 +14,7 @@ export const fetchCategories = () =>
   getList<Category>(`${BASE}/categories/`).then(data => data.slice(0, 4));
 
 export const fetchHotDeals = () =>
-  getList<ApiProduct>(`${BASE}/?has_promotion=true`).then(data => data.slice(0, 4));
+  getList<ApiProduct>(`${BASE}/hot_deals/`).then(data => data.slice(0, 4));
 
 export const fetchNewArrivals = () =>
-  getList<ApiProduct>(`${BASE}/?ordering=-id`).then(data => data.slice(0, 4));
+  getList<ApiProduct>(`${BASE}/new_arrivals/`).then(data => data.slice(0, 4));

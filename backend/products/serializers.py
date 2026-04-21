@@ -10,25 +10,42 @@ def normalize_size_name(value: str) -> str:
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    """Đọc/ghi ảnh danh mục; response luôn là URL đầy đủ hoặc placeholder."""
 
     class Meta:
         model = Category
-        fields = ("id", "name", "description", "image")
+        fields = ("id", "name", "description", "image", "is_active")
+        extra_kwargs = {"image": {"required": False, "allow_null": True}}
 
-    def get_image(self, obj):  # thêm method này
-        if obj.image:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return f'https://via.placeholder.com/400x400?text={obj.name.replace(" ", "+")}'
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if instance.image:
+            url = instance.image.url
+            data["image"] = request.build_absolute_uri(url) if request else url
+        else:
+            data["image"] = (
+                f'https://via.placeholder.com/400x400?text={instance.name.replace(" ", "+")}'
+            )
+        return data
 
 
 class PromotionSerializer(serializers.ModelSerializer):
+    is_active = serializers.SerializerMethodField()
+
     class Meta:
         model = Promotion
-        fields = ("id", "name", "discount_percent", "start_date", "end_date")
+        fields = ("id", "name", "discount_percent", "start_date", "end_date", "is_active")
+
+    def get_is_active(self, obj) -> bool:
+        return obj.is_active
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.")
+        return attrs
 
 
 class ColorSerializer(serializers.ModelSerializer):
@@ -40,8 +57,8 @@ class ColorSerializer(serializers.ModelSerializer):
 class SizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Size
-        fields = ("id", "name")
-
+        fields = ("id", "name", "order")
+        
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["name"] = normalize_size_name(data.get("name", ""))
@@ -72,15 +89,28 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         source="product", queryset=Product.objects.all(), write_only=True
     )
+    effective_price = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock")
+        fields = ("id", "product_id", "color", "color_id", "size", "size_id", "stock", "price", "effective_price",)
+
+    def get_effective_price(self, obj) -> int:
+        from decimal import Decimal, ROUND_HALF_UP
+        base = Decimal(obj.get_price())
+        promo = obj.product.promotion
+        if promo and promo.is_active:
+            base = base * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100)
+        return int(base.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
     def validate(self, attrs):
-        product = attrs.get("product")
-        color = attrs.get("color")
-        size = attrs.get("size")
+        product = attrs.get("product") or (
+            self.instance.product if self.instance else None
+        )
+        color = attrs.get("color") or (
+            self.instance.color if self.instance else None
+        )
+        size = attrs.get("size") or (self.instance.size if self.instance else None)
         if product and color and size:
             # Kiểm tra trùng lặp
             exists = ProductVariant.objects.filter(
@@ -91,7 +121,6 @@ class ProductVariantSerializer(serializers.ModelSerializer):
                     "Biến thể này đã tồn tại (cùng sản phẩm, màu, size)."
                 )
         return attrs
-
 
 class ProductImageSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -138,6 +167,13 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    clear_promotion = serializers.BooleanField(write_only=True, required=False)
+    size_chart = serializers.SerializerMethodField()
+    
+    size_chart_upload = serializers.ImageField(
+            write_only=True, required=False, allow_null=True
+        )
+    clear_size_chart = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Product
@@ -155,24 +191,55 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_id",
             "promotion",
             "promotion_id",
+            "clear_promotion",
             "variants",
+            "rating",
+            "sold_count",
+            "size_chart",
+            "size_chart_upload",
+            "clear_size_chart",
         )
+        
+    def get_size_chart(self, obj: Product) -> str | None:
+        if not obj.size_chart:
+            return None
+        request = self.context.get("request")
+        url = obj.size_chart.url
+        return request.build_absolute_uri(url) if request else url
 
     def create(self, validated_data):
         upload_images = validated_data.pop('upload_images', [])
+        validated_data.pop('clear_promotion', None)
+        size_chart_upload = validated_data.pop('size_chart_upload', None)
+        validated_data.pop('clear_size_chart', None)
+        
+        if size_chart_upload:
+            validated_data['size_chart'] = size_chart_upload
+        
         product = Product.objects.create(**validated_data)
-        # Lưu các ảnh được upload
         for image in upload_images:
             ProductImage.objects.create(product=product, image=image)
         return product
 
     def update(self, instance, validated_data):
         upload_images = validated_data.pop('upload_images', [])
-        # Cập nhật thông tin sản phẩm
+        size_chart_upload = validated_data.pop('size_chart_upload', None)
+        clear_size_chart = validated_data.pop('clear_size_chart', False)
+        
+        if validated_data.pop("clear_promotion", False):
+            instance.promotion = None
+            validated_data.pop("promotion", None)
+        
+        # Xử lý size_chart
+        if size_chart_upload:
+            instance.size_chart = size_chart_upload
+        elif clear_size_chart:
+            instance.size_chart = None
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        # Thêm các ảnh mới được upload
+        
         for image in upload_images:
             ProductImage.objects.create(product=instance, image=image)
         return instance
@@ -203,23 +270,46 @@ class ProductSerializer(serializers.ModelSerializer):
         return total["total"] or 0
 
     def get_old_price(self, obj: Product) -> float | None:
-        """Trả về giá gốc (nếu có khuyến mãi thì tính lại giá gốc)"""
-        if obj.promotion:
-            # Tính giá gốc từ giá đã giảm
+        if obj.promotion and obj.promotion.is_active:
             discount = obj.promotion.discount_percent
             original_price = float(obj.price) / (1 - discount / 100)
             return round(original_price)
         return None
 
     def get_variants(self, obj: Product) -> list:
-        """Lấy danh sách variants với màu sắc, kích thước và tồn kho"""
-        variants = ProductVariant.objects.filter(product=obj).select_related('color', 'size')
-        return [
-            {
+        variants = ProductVariant.objects.filter(product=obj).select_related("color", "size").order_by("size__order", "size__name")
+        promo = obj.promotion if (obj.promotion and obj.promotion.is_active) else None
+        result = []
+        for v in variants:
+            base_price = v.get_price()
+            effective = base_price
+            if promo:
+                from decimal import Decimal, ROUND_HALF_UP
+                effective = int(
+                    (Decimal(base_price) * (Decimal(100) - Decimal(promo.discount_percent)) / Decimal(100))
+                    .quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                )
+            result.append({
                 "id": v.id,
                 "color": {"id": v.color.id, "name": v.color.name, "code": v.color.code},
-                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name)},
+                "size": {"id": v.size.id, "name": normalize_size_name(v.size.name),
+                "order": v.size.order},
                 "stock": v.stock,
-            }
-            for v in variants
-        ]
+                "price": base_price,
+                "effective_price": effective,
+            })
+        return result
+        
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        promo = data.get("promotion")
+        if promo and not promo.get("is_active", False):
+            data["promotion"] = None
+        return data
+    
+    def validate_promotion_id(self, value):
+        if value is not None and not value.is_active:
+            raise serializers.ValidationError(
+                "Khuyến mãi này đã hết hạn hoặc chưa bắt đầu, không thể gán cho sản phẩm."
+            )
+        return value

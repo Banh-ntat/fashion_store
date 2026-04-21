@@ -26,6 +26,7 @@ from accounts.views import (
     ChangePasswordView,
     CurrentUserView,
     PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 from accounts.views import GoogleAuthUrlView, GoogleCallbackView, GoogleLoginView
 from accounts.views import FacebookAuthUrlView, FacebookCallbackView, FacebookLoginView
@@ -40,6 +41,7 @@ urlpatterns = [
     path('api/auth/user/', CurrentUserView.as_view(), name='current_user'),
     path('api/auth/password/change/', ChangePasswordView.as_view(), name='password_change'),
     path('api/auth/password/reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('api/auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 
     # Google OAuth endpoints
     path('api/auth/google/url/', GoogleAuthUrlView.as_view(), name='google_auth_url'),
@@ -51,7 +53,7 @@ urlpatterns = [
     path('api/auth/facebook/callback/', FacebookCallbackView.as_view(), name='facebook_callback'),
     path('api/auth/facebook/login/', FacebookLoginView.as_view(), name='facebook_login'),
 
-    # App endpoints
+    # App endpointsc
     path('api/accounts/', include('accounts.urls')),
     path('api/products/', include('products.urls')),
     path('api/cart/', include('cart.urls')),
@@ -60,6 +62,10 @@ urlpatterns = [
     path('api/contact/', include('contact.urls')),
     path('api/core/', include('core.api_urls')),
     path('api/wishlist/', include('wishlist.urls')),
+    path('api/payments/', include('payments.urls')),
+
+    # Wallet endpoints
+    path('api/wallets/', include('wallets.urls')),
 ]
 
 if settings.DEBUG:

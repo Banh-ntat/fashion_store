@@ -2,7 +2,12 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import {
+  filterAndSortCatalogProducts,
+  parseCatalogSortKey,
+  type CatalogSortKey,
+} from '../utils/productSort';
 import '../styles/pages/Products.css';
 
 export default function Products() {
@@ -18,7 +23,7 @@ export default function Products() {
   const { items: products, loading, error } = useProducts({ categoryId });
   const { items: categories } = useCategories();
 
-  const [sort, setSort] = useState('default');
+  const sort: CatalogSortKey = parseCatalogSortKey(searchParams.get('sort'));
 
   const currentCategory = categories.find(c => c.id === categoryId);
 
@@ -26,28 +31,26 @@ export default function Products() {
   const titleItalic = query ? `"${query}"` : currentCategory ? currentCategory.name : 'Sản Phẩm';
 
   /* Filter + sort — client-side */
-  const displayed = useMemo(() => {
-    let list = [...products];
-
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description ?? '').toLowerCase().includes(q)
-      );
-    }
-
-    if (sort === 'price-asc')  list.sort((a, b) => Number(a.price) - Number(b.price));
-    if (sort === 'price-desc') list.sort((a, b) => Number(b.price) - Number(a.price));
-    if (sort === 'name-asc')   list.sort((a, b) => a.name.localeCompare(b.name));
-
-    return list;
-  }, [products, query, sort]);
+  const displayed = useMemo(
+    () => filterAndSortCatalogProducts(products, query, sort),
+    [products, query, sort],
+  );
 
   // Khi chọn danh mục thì xoá search để tránh conflict
   const handleCategoryClick = (id?: number) => {
     setSearchParams(id ? { category: String(id) } : {});
-    setSort('default');
+  };
+
+  const handleSortClick = (value: CatalogSortKey) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === 'default') {
+        next.delete('sort');
+      } else {
+        next.set('sort', value);
+      }
+      return next;
+    });
   };
 
   return (
@@ -102,12 +105,14 @@ export default function Products() {
                 { value: 'price-asc',  label: 'Giá tăng dần' },
                 { value: 'price-desc', label: 'Giá giảm dần' },
                 { value: 'name-asc',   label: 'Tên A → Z' },
+                { value: 'popular',    label: 'Bán chạy' },
+                { value: 'discount',   label: 'Giảm giá lớn' },
               ] as const).map(opt => (
                 <button
                   key={opt.value}
                   type="button"
                   className={`sortNavItem ${sort === opt.value ? 'active' : ''}`}
-                  onClick={() => setSort(opt.value)}
+                  onClick={() => handleSortClick(opt.value)}
                 >
                   <span className="sortRadio" />
                   {opt.label}

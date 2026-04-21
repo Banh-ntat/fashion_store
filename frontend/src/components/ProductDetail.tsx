@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  products,
-  cart,
-  promotions,
-  reviews as reviewsApi,
-} from "../api/client";
+import { products, cart, reviews as reviewsApi } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../hooks/useWishlist";
 import { notifyCartUpdated } from "../utils/cartEvents";
@@ -35,14 +30,7 @@ interface Product {
   category: { id: number; name: string };
   promotion: { id: number; name: string; discount_percent: number } | null;
   variants?: ProductVariant[];
-}
-
-interface Promotion {
-  id: number;
-  name: string;
-  discount_percent: number;
-  start_date: string;
-  end_date: string;
+  size_chart?: string | null;
 }
 
 type NotifType = "success" | "error" | "info" | "warning";
@@ -61,7 +49,6 @@ function ProductDetail() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -81,6 +68,9 @@ function ProductDetail() {
     { variant_id: number }[]
   >([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showSizeChart, setShowSizeChart] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const addingRef = useRef(false);
 
   const thumbListRef = useRef<HTMLDivElement>(null);
   const variants = product?.variants ?? [];
@@ -137,19 +127,20 @@ function ProductDetail() {
           setLoading(false);
           return;
         }
-        const [relatedRes, promotionsRes, reviewsRes] = await Promise.all([
+        const [relatedRes, reviewsRes] = await Promise.all([
           products.related(productId),
-          promotions.active(),
           reviewsApi.getByProduct(productId),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
-        setActivePromotions((promotionsRes?.data ?? []) as Promotion[]);
-        setReviewsList((reviewsRes?.data ?? []) as Review[]);
+        setReviewsList(
+          ((reviewsRes?.data ?? []) as Review[]).filter(
+            (r) => r.is_visible !== false,
+          ),
+        );
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
         setRelatedProducts([]);
-        setActivePromotions([]);
         setReviewsList([]);
       } finally {
         setLoading(false);
@@ -165,7 +156,8 @@ function ProductDetail() {
       setSelectedSize("");
       return;
     }
-    const firstVariant = variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
+    const firstVariant =
+      variants.find((v) => (v.stock ?? 0) > 0) || variants[0];
     setSelectedColor(firstVariant?.color.name || "");
     setSelectedSize(firstVariant?.size.name || "");
   }, [product, variants]);
@@ -209,8 +201,13 @@ function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+    if (addingRef.current) return;
     if (!user) {
       notify("Vui lòng đăng nhập để thêm vào giỏ hàng", "warning");
+      return;
+    }
+    if (user.can_access_admin) {
+      notify("Tài khoản quản trị không thể thêm vào giỏ hàng.", "warning");
       return;
     }
     const selectedVariant = variants.find(
@@ -220,6 +217,8 @@ function ProductDetail() {
       notify("Vui lòng chọn size và màu sắc.", "warning");
       return;
     }
+    addingRef.current = true;
+    setIsAddingToCart(true);
     try {
       await cart.addItem({
         quantity,
@@ -229,6 +228,7 @@ function ProductDetail() {
       });
       notifyCartUpdated();
       notify("Đã thêm vào giỏ hàng!", "success");
+      await new Promise((res) => setTimeout(res, 1500));
     } catch (err: unknown) {
       const ax = err as {
         response?: {
@@ -242,10 +242,41 @@ function ProductDetail() {
       const apiMsg = Array.isArray(q) ? q[0] : data?.detail;
       if (status === 401)
         notify("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.", "error");
-      else if (typeof apiMsg === "string")
-        notify(apiMsg, "error");
+      else if (typeof apiMsg === "string") notify(apiMsg, "error");
       else notify("Không thể thêm vào giỏ hàng. Vui lòng thử lại.", "error");
+    } finally {
+      setIsAddingToCart(false);
+      addingRef.current = false;
     }
+  };
+
+  const getDisplayPrice = (
+    product: Product,
+    selectedVariant?: ProductVariant,
+  ): { current: number; original: number | null } => {
+    if (selectedVariant) {
+      // effective_price đã bao gồm promotion (tính ở backend)
+      const current =
+        selectedVariant.effective_price ??
+        selectedVariant.price ??
+        Number(product.price);
+      // Giá gốc của variant (trước promotion)
+      const basePrice = selectedVariant.price ?? Number(product.price);
+      const hasPromo = product.promotion != null;
+      return {
+        current,
+        original: hasPromo && current !== basePrice ? basePrice : null,
+      };
+    }
+    // Không có variant → dùng giá sản phẩm
+    if (product.promotion) {
+      const current = Math.round(
+        parseFloat(product.price) *
+          (1 - product.promotion.discount_percent / 100),
+      );
+      return { current, original: Number(product.price) };
+    }
+    return { current: Number(product.price), original: null };
   };
 
   const calculateDiscountedPrice = (price: string, discountPercent: number) => {
@@ -258,6 +289,11 @@ function ProductDetail() {
       notify("Vui lòng đăng nhập để đánh giá sản phẩm", "warning");
       return;
     }
+    if (user.can_access_admin) {
+      notify("Tài khoản quản trị không thể đánh giá sản phẩm.", "warning");
+      return;
+    }
+
     try {
       const res = await reviewsApi.getPurchasable();
       const purchasable = (res?.data ?? []) as { variant_id: number }[];
@@ -288,6 +324,10 @@ function ProductDetail() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user?.can_access_admin) {
+      notify("Tài khoản quản trị không thể đánh giá sản phẩm.", "warning");
+      return;
+    }
     if (!reviewSelectedVariantId) {
       notify("Vui lòng chọn phân loại sản phẩm muốn đánh giá.", "warning");
       return;
@@ -301,13 +341,28 @@ function ProductDetail() {
       });
       notify("Cảm ơn bạn đã đánh giá!", "success");
       setShowReviewModal(false);
-      const reviewsRes = await reviewsApi.getByProduct(Number(id));
-      setReviewsList((reviewsRes?.data ?? []) as Review[]);
+
+      const [reviewsRes, productRes] = await Promise.all([
+        reviewsApi.getByProduct(Number(id)),
+        products.get(Number(id)),
+      ]);
+      setReviewsList(
+        ((reviewsRes?.data ?? []) as Review[]).filter(
+          (r) => r.is_visible !== false,
+        ),
+      );
+      if (productRes?.data) {
+        setProduct(productRes.data as Product);
+      }
     } catch (err: unknown) {
+      const errData = (err as { response?: { data?: Record<string, unknown> } })
+        ?.response?.data;
+      const productErr = errData?.product;
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail || "Không thể gửi đánh giá.";
-      notify(msg, "error");
+        (Array.isArray(productErr) ? productErr[0] : null) ??
+        (typeof errData?.detail === "string" ? errData.detail : null) ??
+        "Không thể gửi đánh giá.";
+      notify(String(msg), "error");
     }
   };
 
@@ -339,7 +394,17 @@ function ProductDetail() {
   }
 
   const sizes = variants.length
-    ? [...new Set(variants.map((v) => v.size.name))]
+    ? [
+        ...new Map(
+          [...variants]
+            .sort(
+              (a, b) =>
+                (a.size.order ?? 0) - (b.size.order ?? 0) ||
+                a.size.name.localeCompare(b.size.name),
+            )
+            .map((v) => [v.size.name, v.size.name]),
+        ).keys(),
+      ]
     : ["M"];
   const colors = variants.length
     ? [...new Set(variants.map((v) => v.color.name))]
@@ -357,11 +422,8 @@ function ProductDetail() {
   const selectedVariant = variants.find(
     (v) => v.size.name === selectedSize && v.color.name === selectedColor,
   );
-  const variantStock = variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
-
-  const totalStock = product.variants
-    ? product.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
-    : (product.stock ?? 0);
+  const variantStock =
+    variants.length > 0 ? (selectedVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const productVariantIds = new Set(product.variants?.map((v) => v.id) ?? []);
   const eligiblePurchasableVariants = purchasableVariants.filter((p) =>
@@ -412,25 +474,31 @@ function ProductDetail() {
                 -{product.promotion.discount_percent}%
               </span>
             )}
-            <button
-              type="button"
-              className={`image-wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
-              title={
-                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
-              }
-              aria-label={
-                isInWishlist(product.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"
-              }
-              onClick={() => {
-                if (!user) {
-                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
-                  return;
+            {!user?.can_access_admin && (
+              <button
+                type="button"
+                className={`image-wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
+                title={
+                  isInWishlist(product.id)
+                    ? "Bỏ yêu thích"
+                    : "Thêm vào yêu thích"
                 }
-                void toggleWishlist(product.id);
-              }}
-            >
-              {isInWishlist(product.id) ? "♥" : "♡"}
-            </button>
+                aria-label={
+                  isInWishlist(product.id)
+                    ? "Bỏ yêu thích"
+                    : "Thêm vào yêu thích"
+                }
+                onClick={() => {
+                  if (!user) {
+                    notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
+                    return;
+                  }
+                  void toggleWishlist(product.id);
+                }}
+              >
+                {isInWishlist(product.id) ? "♥" : "♡"}
+              </button>
+            )}
           </div>
 
           {hasThumbnails && (
@@ -476,9 +544,7 @@ function ProductDetail() {
             <span className="sep">/</span>
             <span>{product.name}</span>
           </nav>
-
           <h1>{product.name}</h1>
-
           <div className="product-rating">
             <div className="rating-stars">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -496,32 +562,47 @@ function ProductDetail() {
                 : "Chưa có đánh giá"}
             </span>
           </div>
+          {(() => {
+            const { current, original } = getDisplayPrice(
+              product,
+              selectedVariant,
+            );
 
-          <div className="product-price">
-            {product.promotion ? (
-              <>
-                <span className="current-price">
-                  {Number(
-                    calculateDiscountedPrice(
-                      product.price,
-                      product.promotion.discount_percent,
-                    ),
-                  ).toLocaleString("vi-VN")}
-                  đ
-                </span>
-                <span className="original-price">
-                  {Number(product.price).toLocaleString("vi-VN")}đ
-                </span>
-                <span className="discount-tag">
-                  -{product.promotion.discount_percent}%
-                </span>
-              </>
-            ) : (
-              <span className="current-price">
-                {Number(product.price).toLocaleString("vi-VN")}đ
-              </span>
-            )}
-          </div>
+            const vs = product.variants ?? [];
+            const allPrices = vs.map(
+              (v) => v.effective_price ?? v.price ?? Number(product.price),
+            );
+            const minP = Math.min(...allPrices);
+            const maxP = Math.max(...allPrices);
+            const hasRange = vs.length > 0 && minP !== maxP && !selectedVariant;
+
+            return (
+              <div className="product-price">
+                {hasRange ? (
+                  <span className="current-price">
+                    {minP.toLocaleString("vi-VN")}đ –{" "}
+                    {maxP.toLocaleString("vi-VN")}đ
+                  </span>
+                ) : (
+                  <span className="current-price">
+                    {current.toLocaleString("vi-VN")}đ
+                  </span>
+                )}
+                {original && !hasRange && (
+                  <>
+                    <span className="original-price">
+                      {original.toLocaleString("vi-VN")}đ
+                    </span>
+                    {product.promotion && (
+                      <span className="discount-tag">
+                        -{product.promotion.discount_percent}%
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="product-options">
             {colors.length > 0 && (
               <div className="option-group color-selection">
@@ -547,7 +628,10 @@ function ProductDetail() {
                         type="button"
                         className={`color-btn${selectedColor === color ? " selected" : ""}${isWhite ? " white" : ""}${!hasStock ? " out-of-stock" : ""}`}
                         onClick={() => {
-                          const nextVariant = findVariantForColor(color, selectedSize);
+                          const nextVariant = findVariantForColor(
+                            color,
+                            selectedSize,
+                          );
                           if (!nextVariant) return;
                           setSelectedColor(nextVariant.color.name);
                           setSelectedSize(nextVariant.size.name);
@@ -572,14 +656,17 @@ function ProductDetail() {
                   );
                   const sizeHasStock = variantForSize
                     ? (variantForSize.stock ?? 0) > 0
-                    : variants.some((v) => v.size.name === size && (v.stock ?? 0) > 0);
+                    : false;
                   return (
                     <button
                       key={size}
                       type="button"
                       className={`size-btn${selectedSize === size ? " selected" : ""}${!sizeHasStock ? " out-of-stock" : ""}`}
                       onClick={() => {
-                        const nextVariant = findVariantForSize(size, selectedColor);
+                        const nextVariant = findVariantForSize(
+                          size,
+                          selectedColor,
+                        );
                         if (!nextVariant) return;
                         setSelectedColor(nextVariant.color.name);
                         setSelectedSize(nextVariant.size.name);
@@ -626,31 +713,40 @@ function ProductDetail() {
               </div>
             </div>
           </div>
-
           <div className="product-actions">
-            <button
-              className="add-to-cart-btn"
-              onClick={handleAddToCart}
-              disabled={variantStock === 0}
-              type="button"
-            >
-              {variantStock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
-            </button>
-            <button
-              type="button"
-              className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
-              onClick={() => {
-                if (!user) {
-                  notify("Vui lòng đăng nhập để dùng yêu thích.", "warning");
-                  return;
-                }
-                void toggleWishlist(product.id);
-              }}
-            >
-              {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
-            </button>
+            {!user?.can_access_admin && (
+              <>
+                <button
+                  className="add-to-cart-btn"
+                  onClick={handleAddToCart}
+                  disabled={variantStock === 0 || isAddingToCart}
+                  type="button"
+                >
+                  {variantStock === 0
+                    ? "Hết hàng"
+                    : isAddingToCart
+                      ? "Thêm vào giỏ hàng"
+                      : "Thêm vào giỏ hàng"}
+                </button>
+                <button
+                  type="button"
+                  className={`wishlist-btn${isInWishlist(product.id) ? " active" : ""}`}
+                  onClick={() => {
+                    if (!user) {
+                      notify(
+                        "Vui lòng đăng nhập để dùng yêu thích.",
+                        "warning",
+                      );
+                      return;
+                    }
+                    void toggleWishlist(product.id);
+                  }}
+                >
+                  {isInWishlist(product.id) ? "♥" : "♡"} Yêu thích
+                </button>
+              </>
+            )}
           </div>
-
           <div className="product-trust-badges">
             <div className="trust-badge">
               <div className="trust-badge-text">
@@ -671,6 +767,7 @@ function ProductDetail() {
               </div>
             </div>
           </div>
+          {/* Mô tả */}
           <div className="product-description">
             <p className="product-description__title">Chi tiết sản phẩm:</p>
             {product.description
@@ -690,8 +787,82 @@ function ProductDetail() {
               <p>{product.description}</p>
             )}
           </div>
+
+          {/* ── Ảnh bảng kích thước (nếu có) ── */}
+          {product.size_chart && (
+            <div className="size-chart-section">
+              <p
+                className="product-description__title"
+                style={{ marginBottom: "10px" }}
+              >
+                Bảng kích thước:
+              </p>
+              <img
+                src={product.size_chart}
+                alt="Bảng kích thước sản phẩm"
+                className="size-chart-img"
+                onClick={() => setShowSizeChart(true)}
+                style={{
+                  borderRadius: "8px",
+                  cursor: "zoom-in",
+                  border: "1px solid #eee",
+                }}
+                title="Nhấn để phóng to"
+              />
+              <p
+                style={{ fontSize: "0.78rem", color: "#888", marginTop: "4px" }}
+              >
+                Nhấn vào ảnh để xem kích thước đầy đủ
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Lightbox bảng size ── */}
+      {showSizeChart && product.size_chart && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowSizeChart(false)}
+          style={{ zIndex: 1500, cursor: "zoom-out" }}
+        >
+          <div
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              background: "#fff",
+              borderRadius: "12px",
+              overflow: "hidden",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setShowSizeChart(false)}
+              style={{
+                position: "absolute",
+                top: "8px",
+                right: "12px",
+                zIndex: 1,
+              }}
+            >
+              ×
+            </button>
+            <img
+              src={product.size_chart}
+              alt="Bảng kích thước"
+              style={{
+                display: "block",
+                maxWidth: "90vw",
+                maxHeight: "88vh",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+        </div>
+      )}
       <section className="product-reviews">
         <div className="reviews-header">
           <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>
@@ -725,7 +896,20 @@ function ProductDetail() {
                 <div className="review-header">
                   <div className="review-user">
                     <span className="user-avatar">
-                      {review.user.username.charAt(0).toUpperCase()}
+                      {review.user.avatar ? (
+                        <img
+                          src={review.user.avatar}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        review.user.username.charAt(0).toUpperCase()
+                      )}
                     </span>
                     <span className="user-name">{review.user.username}</span>
                   </div>
@@ -771,7 +955,7 @@ function ProductDetail() {
         )}
 
         <div className="review-action-area">
-          {user && (
+          {user && !user.can_access_admin && (
             <button
               className="btn-review-product"
               type="button"

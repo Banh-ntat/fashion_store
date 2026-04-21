@@ -2,12 +2,30 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import ProfileViewSet, RegisterView, ChangePasswordView, CurrentUserView, PasswordResetRequestView
+from .views import (
+    BirthdayEmailPreviewView,
+    BirthdayEmailTemplateAdminView,
+    ProfileViewSet,
+    RegisterView,
+    ChangePasswordView,
+    CurrentUserView,
+    PasswordResetRequestView,
+)
 
 router = DefaultRouter()
 router.register(r'profiles', ProfileViewSet, basename='profile')
 
 urlpatterns = [
+    path(
+        "birthday-email-template/",
+        BirthdayEmailTemplateAdminView.as_view(),
+        name="birthday_email_template",
+    ),
+    path(
+        "birthday-email-template/preview/",
+        BirthdayEmailPreviewView.as_view(),
+        name="birthday_email_preview",
+    ),
     # JWT Authentication
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

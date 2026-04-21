@@ -1,99 +1,60 @@
-from rest_framework import permissions, status
-from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from products.models import Product
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 from .models import WishlistItem
-
+from products.models import Product
+# Import Wallet từ app wallets để lấy dữ liệu thực
+from wallets.models import Wallet, WalletTransaction
 
 class WishlistProductIdsView(APIView):
-    """GET — danh sách product_id yêu thích của user."""
-
-    permission_classes = [permissions.IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]
     def get(self, request):
-        ids = list(
-            WishlistItem.objects.filter(user=request.user)
-            .values_list('product_id', flat=True)
-            .order_by('-created_at')
-        )
-        return Response({'product_ids': ids})
-
+        ids = list(WishlistItem.objects.filter(user=request.user).values_list('product_id', flat=True))
+        return Response({"product_ids": ids})
 
 class WishlistToggleView(APIView):
-    """POST { product_id } — thêm hoặc bỏ yêu thích, trả về trạng thái mới."""
-
-    permission_classes = [permissions.IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]
     def post(self, request):
+        product_id = request.data.get('product_id')
+        if not product_id:
+            return Response({"error": "product_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            product_id = int(request.data.get('product_id'))
-        except (TypeError, ValueError):
-            return Response(
-                {'detail': 'product_id không hợp lệ.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if not Product.objects.filter(pk=product_id).exists():
-            return Response(
-                {'detail': 'Sản phẩm không tồn tại.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        item = WishlistItem.objects.filter(
-            user=request.user, product_id=product_id
-        ).first()
-        if item:
-            item.delete()
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        wishlist_item = WishlistItem.objects.filter(user=request.user, product_id=product_id)
+        if wishlist_item.exists():
+            wishlist_item.delete()
             in_wishlist = False
         else:
-            WishlistItem.objects.create(user=request.user, product_id=product_id)
+            WishlistItem.objects.create(user=request.user, product=product)
             in_wishlist = True
-
-        product_ids = list(
-            WishlistItem.objects.filter(user=request.user)
-            .values_list('product_id', flat=True)
-            .order_by('-created_at')
-        )
-        return Response(
-            {
-                'in_wishlist': in_wishlist,
-                'product_ids': product_ids,
-            }
-        )
-
+        
+        # Trả về danh sách product_ids hiện tại
+        product_ids = list(WishlistItem.objects.filter(user=request.user).values_list('product_id', flat=True))
+        return Response({
+            "in_wishlist": in_wishlist,
+            "product_ids": product_ids
+        }, status=status.HTTP_200_OK)
 
 class WishlistSyncView(APIView):
-    """
-    POST { product_ids: number[] } — đồng bộ từ localStorage lên server (merge, không xóa mục đã có).
-    Chỉ thêm các id chưa có trong wishlist.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        raw = request.data.get('product_ids')
-        if not isinstance(raw, list):
-            return Response(
-                {'detail': 'product_ids phải là mảng.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        ids = []
-        for x in raw:
-            try:
-                ids.append(int(x))
-            except (TypeError, ValueError):
-                continue
-        ids = list(dict.fromkeys(ids))
-        valid_ids = set(
-            Product.objects.filter(pk__in=ids).values_list('pk', flat=True)
-        )
-        for pid in valid_ids:
-            WishlistItem.objects.get_or_create(
-                user=request.user, product_id=pid
-            )
-        product_ids = list(
-            WishlistItem.objects.filter(user=request.user)
-            .values_list('product_id', flat=True)
-            .order_by('-created_at')
-        )
-        return Response({'product_ids': product_ids})
+        incoming_ids = request.data.get('product_ids', [])
+        if not isinstance(incoming_ids, list):
+            return Response({"error": "product_ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Xóa tất cả wishlist hiện tại
+        WishlistItem.objects.filter(user=request.user).delete()
+        
+        # Thêm các sản phẩm mới (chỉ những sản phẩm tồn tại)
+        valid_products = Product.objects.filter(id__in=incoming_ids)
+        wishlist_items = [WishlistItem(user=request.user, product=product) for product in valid_products]
+        WishlistItem.objects.bulk_create(wishlist_items, ignore_conflicts=True)
+        
+        # Trả về danh sách product_ids sau khi sync
+        product_ids = list(WishlistItem.objects.filter(user=request.user).values_list('product_id', flat=True))
+        return Response({"product_ids": product_ids})

@@ -3,7 +3,7 @@ from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsAdminOrStaff, is_admin, is_customer_support
+from core.permissions import IsAdminOrStaff, is_staff
 from .models import Contact, Feedback, Policy
 from .serializers import ContactSerializer, FeedbackSerializer, PolicySerializer
 
@@ -21,8 +21,7 @@ class ContactMetaView(APIView):
                 "hotline_e164": "+84964942121",
                 "email": "cskh@fashionstore.vn",
                 "address": (
-                    "Tầng 8, Tòa nhà 311-313 Trường Chinh, "
-                    "Phường Phương Liệt, Thành phố Hà Nội, Việt Nam"
+                    "70 Tô Ký, Phường Tân Chánh Hiệp, Quận 12, TP. Hồ Chí Minh"
                 ),
                 "hours": "Thứ Hai – Thứ Sáu: 8:30 – 17:30 (GMT+7). Thứ Bảy, Chủ nhật & ngày lễ: không làm việc tại văn phòng.",
                 "response_note": (
@@ -60,7 +59,7 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_customer_support(user):
+        if is_staff(user):
             return Contact.objects.all().order_by("-created_at")
         return Contact.objects.none()  # Non-staff can't see contacts
 
@@ -83,7 +82,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if is_admin(user) or is_customer_support(user):
+        if is_staff(user):
             return Feedback.objects.all().order_by("-created_at")
         return Feedback.objects.filter(user=user).order_by("-created_at")
 

@@ -41,13 +41,13 @@ export default function About() {
 
             <div className="heroImageGrid">
               <img
-                src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=500&fit=crop"
+                src="https://bizweb.dktcdn.net/100/369/010/products/dico-x-rls9722-copy-compressed-08238205-d381-4655-aeb2-bd936234211d.jpg?v=1766811407193"
                 alt="Thương hiệu thời trang"
                 className="heroImg1"
               />
 
               <img
-                src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=280&fit=crop"
+                src="https://bd-media-production.hcm.ss.bfcplatform.vn/upload_media/31-03-26/1774951057042_429375.png"
                 alt="Bộ sưu tập thời trang"
                 className="heroImg2"
               />
@@ -63,7 +63,7 @@ export default function About() {
 
             <div className="storyImageWrapper">
               <img
-                src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=600&h=700&fit=crop"
+                src="https://bizweb.dktcdn.net/100/369/010/files/002.jpg?v=1676537144959"
                 alt="Câu chuyện của chúng tôi"
                 className="storyImage"
               />
@@ -78,7 +78,7 @@ export default function About() {
               </h2>
 
               <p className="storyText">
-                Được thành lập năm 2019 tại trung tâm TP. Hồ Chí Minh,
+                Được thành lập năm 2026 tại trung tâm TP. Hồ Chí Minh,
                 FashionStore ra đời từ một ý tưởng đơn giản:
                 mọi người đều xứng đáng được mặc những bộ trang phục đẹp,
                 chất lượng mà không phải đánh đổi giá trị hay ngân sách của mình.

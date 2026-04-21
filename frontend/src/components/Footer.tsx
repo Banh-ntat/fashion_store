@@ -6,11 +6,12 @@ function SocialIcon({ type }: { type: string }) {
   const common = {
     width: size,
     height: size,
-    fill: "none",
+    fill: "none" as const,
     stroke: "currentColor",
     strokeWidth: 1.8,
-    strokeLinecap: "round" as "round",
-  };
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  } as const;
   switch (type) {
     case "facebook":
       return (
@@ -61,7 +62,7 @@ export default function Footer() {
     { label: "YouTube", href: "#", type: "youtube" },
   ];
 
-  const paymentMethods = ["VNPAY", "ZaloPay", "MoMo","VISA"];
+  const paymentMethods = ["ZaloPay", "MoMo"];
   const shippingMethods = ["GHN", "GHTK", "Ahamove", "J&T"];
 
   const navLinks = [
@@ -96,7 +97,7 @@ export default function Footer() {
         <div className="footerCol footerColContact">
           <h3 className="footerHeading">Thông tin liên hệ</h3>
           <div className="footerContactList">
-            <p>Địa chỉ: Tầng 8, Tòa nhà 311-313 Trường Chinh, Phường Phương Liệt, Thành phố Hà Nội, Việt Nam</p>
+            <p>Địa chỉ: Số 70 đường Tô Ký, phường Tân Chánh Hiệp, quận 12, TP. Hồ Chí Minh, Việt Nam</p>
             <p>Điện thoại: 0964942121</p>
             <p>Fax: 0904636356</p>
             <p>Email: <a href="mailto:cskh@fashionstore.vn">cskh@fashionstore.vn</a></p>

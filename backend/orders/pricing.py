@@ -9,9 +9,12 @@ SHIPPING_FEE_VND = Decimal("30000")
 
 
 def unit_price_vnd(product) -> Decimal:
-    p = Decimal(product.price)
-    if getattr(product, "promotion_id", None):
-        d = Decimal(product.promotion.discount_percent)
+    base_price = product.price if product.price is not None else product.product.price
+    p = Decimal(base_price)
+    
+    promo = getattr(product.product, "promotion", None)
+    if promo and getattr(promo, "is_active", False):
+        d = Decimal(promo.discount_percent)
         p = p * (Decimal(100) - d) / Decimal(100)
     return p.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 

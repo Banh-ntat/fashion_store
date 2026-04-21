@@ -6,18 +6,15 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import filters
 from datetime import datetime
 
-from core.permissions import (
-    IsAdminOrReadOnly, IsProductManager, IsAdmin
-)
-from rest_framework.permissions import IsAuthenticated
+from core.permissions import IsAdminOrReadOnly, IsAdminWritePublicRead
 from .models import Category, Promotion, Product, ProductVariant, Color, Size, ProductImage
 from .serializers import CategorySerializer, PromotionSerializer, ProductSerializer, ProductVariantSerializer, ColorSerializer, SizeSerializer, ProductImageSerializer
 
 
 class ProductPagination(PageNumberPagination):
-    page_size = 100
+    page_size = 10
     page_size_query_param = 'page_size'
-    max_page_size = 1000
+    max_page_size = 100
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -27,6 +24,12 @@ class CategoryViewSet(viewsets.ModelViewSet):
     search_fields = ["name"]
     ordering_fields = ["id", "name"]
     filter_backends = []  # Disable filters
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not getattr(self.request.user, 'is_staff', False) and not getattr(self.request.user, 'is_superuser', False):
+            queryset = queryset.filter(is_active=True)
+        return queryset
 
     @action(detail=True, methods=['get'])
     def products(self, request, pk=None):
@@ -70,6 +73,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
+        if not getattr(self.request.user, 'is_staff', False) and not getattr(self.request.user, 'is_superuser', False):
+            queryset = queryset.filter(category__is_active=True)
+
         # Tìm kiếm nâng cao với Q objects - tìm kiếm một phần (partial matching)
         search_query = self.request.query_params.get('search', '')
         if search_query:
@@ -112,14 +118,21 @@ class ProductViewSet(viewsets.ModelViewSet):
                     )
                 )
             )
+        
+        sort = self.request.query_params.get('sort', '')
+        if sort == 'rating-desc':
+            queryset = queryset.order_by('-rating')
+        elif sort == 'popular':
+            queryset = queryset.order_by('-sold_count')
 
         return queryset
 
     @action(detail=False, methods=['get'], url_path='featured')
     def featured(self, request):
-        """Lấy danh sách sản phẩm nổi bật (có khuyến mãi)"""
+        today = datetime.now().date()
         products = self.get_queryset().filter(
-            promotion__isnull=False
+            promotion__start_date__lte=today,
+            promotion__end_date__gte=today,
         ).order_by('-price')[:12]
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
@@ -154,24 +167,24 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class ColorViewSet(viewsets.ModelViewSet):
-    """Quản lý màu sắc"""
+    """Quản lý màu sắc — đọc công khai; ghi chỉ staff/admin (tránh khách sửa catalog)."""
     queryset = Color.objects.all()
     serializer_class = ColorSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class SizeViewSet(viewsets.ModelViewSet):
-    """Quản lý kích thước"""
+    """Quản lý kích thước — đọc công khai; ghi chỉ staff/admin."""
     queryset = Size.objects.all()
     serializer_class = SizeSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class ProductVariantViewSet(viewsets.ModelViewSet):
-    """Quản lý biến thể sản phẩm (màu + size + tồn kho)"""
+    """Biến thể (màu + size + tồn): đọc công khai; ghi chỉ admin (staff chỉ xem để theo dõi)."""
     queryset = ProductVariant.objects.select_related('product', 'color', 'size').all()
     serializer_class = ProductVariantSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminWritePublicRead]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -182,10 +195,10 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
 
 
 class ProductImageViewSet(viewsets.ModelViewSet):
-    """Quản lý ảnh sản phẩm"""
+    """Quản lý ảnh sản phẩm — đọc công khai; ghi chỉ staff/admin."""
     queryset = ProductImage.objects.all()
     serializer_class = ProductImageSerializer
-    permission_classes = [IsAuthenticated]  # Chỉ cần đăng nhập
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         queryset = super().get_queryset()
