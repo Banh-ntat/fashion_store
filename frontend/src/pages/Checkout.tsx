@@ -163,6 +163,9 @@ export default function Checkout() {
   const [pricingPreview, setPricingPreview] = useState<PricingPreview | null>(
     null,
   );
+  const [retryOrderStr] = useState(searchParams.get("retry_order_id"));
+  const [retryOrder, setRetryOrder] = useState<any>(null);
+
   const [step, setStep] = useState<"shipping" | "confirm">("shipping");
   const [paymentMethod, setPaymentMethod] = useState<
     "cod" | "momo" | "zalopay"
@@ -273,6 +276,43 @@ export default function Checkout() {
       return;
     }
 
+    if (retryOrderStr) {
+      orders
+        .get(Number(retryOrderStr))
+        .then((res) => {
+          const data = res.data;
+          setRetryOrder(data);
+          const mappedItems = (data.items || []).map((it: any) => ({
+             id: it.id,
+             product: {
+               id: it.product?.id,
+               name: it.product?.name,
+               price: it.price,
+               image: it.product?.image,
+               promotion: null,
+             },
+             variant_info: it.variant_info,
+             quantity: it.quantity,
+          }));
+          setItems(mappedItems);
+          
+          if (data.shipping) {
+             setForm({
+               name: data.shipping.name || "",
+               phone: data.shipping.phone || "",
+               address: data.shipping.address || "",
+               note: data.shipping.note || "",
+             });
+             setStep("confirm");
+          }
+        })
+        .catch(() => {
+          setSelectionNotice("Không thể tải đơn hàng để thanh toán lại.");
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+
     // Load from sessionStorage first
     const stored = getStoredCartItems();
     if (stored && stored.items.length > 0) {
@@ -341,12 +381,27 @@ export default function Checkout() {
   }, [user]); // Only depend on user, not on selection params
 
   const selectedCartItemIds = items.map((item) => item.id);
-  const subtotal = items.reduce(
-    (sum, item) => sum + getUnitPrice(item) * item.quantity,
-    0,
-  );
-  const shippingFee = subtotal >= 500000 ? 0 : 30000;
-  const pricing = pricingPreview
+  
+  let subtotal = 0;
+  if (retryOrder) {
+    subtotal = parseMoney(retryOrder.subtotal);
+  } else {
+    subtotal = items.reduce(
+      (sum, item) => sum + getUnitPrice(item) * item.quantity,
+      0,
+    );
+  }
+  
+  const shippingFee = retryOrder ? parseMoney(retryOrder.shipping_fee) : (subtotal >= 500000 ? 0 : 30000);
+  
+  const pricing = retryOrder
+    ? {
+        subtotal,
+        shippingFee,
+        discountAmount: parseMoney(retryOrder.discount_amount),
+        total: parseMoney(retryOrder.total_price),
+      }
+    : pricingPreview
     ? {
         subtotal: parseMoney(pricingPreview.subtotal),
         shippingFee: parseMoney(pricingPreview.shipping_fee),
@@ -360,7 +415,7 @@ export default function Checkout() {
         total: subtotal + shippingFee,
       };
 
-  const appliedDiscountCode = pricingPreview?.discount_code ?? "";
+  const appliedDiscountCode = retryOrder ? (retryOrder.discount_code || retryOrder.discount_code_snapshot || "") : (pricingPreview?.discount_code ?? "");
   const hasAppliedDiscount = !!appliedDiscountCode;
 
   const handleContinueToConfirm = () => {
@@ -425,7 +480,7 @@ export default function Checkout() {
     if (!user || items.length === 0) return;
 
     const normalizedCode = normalizeDiscountCode(discountCode);
-    if (normalizedCode && appliedDiscountCode !== normalizedCode) {
+    if (!retryOrder && normalizedCode && appliedDiscountCode !== normalizedCode) {
       setDiscountCode("");
       setPricingPreview(null);
       setDiscountMessage(
@@ -441,6 +496,38 @@ export default function Checkout() {
         : null;
 
     setSubmitting(true);
+    
+    if (retryOrder) {
+      try {
+        const res = await orders.retryPayment(retryOrder.id, { payment_method: paymentMethod });
+        const data = res.data as { payment_url?: string };
+        const payUrl = typeof data.payment_url === "string" ? data.payment_url : "";
+        if (payUrl) {
+          if (assignGatewayUrl(gatewayTab, payUrl)) {
+            navigate("/orders", {
+              state: {
+                orderPlaced: true,
+                externalPayTab: true,
+                orderId: retryOrder.id,
+              },
+            });
+            return;
+          }
+          closeGatewayTab(gatewayTab);
+          window.location.href = payUrl;
+          return;
+        }
+        closeGatewayTab(gatewayTab);
+        navigate("/orders", { state: { orderPlaced: true } });
+      } catch (err) {
+        closeGatewayTab(gatewayTab);
+        const resData = (err as { response?: { data?: unknown } })?.response?.data;
+        alert(getApiErrorMessage(resData, "Thanh toán lại thất bại. Vui lòng thử lại."));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     try {
       const res = await orders.checkout({
         name: form.name.trim(),
@@ -790,13 +877,15 @@ export default function Checkout() {
                       <span>{form.address}</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="checkout-edit-btn"
-                    onClick={() => setStep("shipping")}
-                  >
-                    Chỉnh sửa
-                  </button>
+                  {!retryOrder && (
+                    <button
+                      type="button"
+                      className="checkout-edit-btn"
+                      onClick={() => setStep("shipping")}
+                    >
+                      Chỉnh sửa
+                    </button>
+                  )}
                 </div>
 
                 <div className="checkout-summary-section checkout-payment-section">
@@ -891,7 +980,7 @@ export default function Checkout() {
                   <button
                     type="button"
                     className="checkout-btn back-btn"
-                    onClick={() => setStep("shipping")}
+                    onClick={() => retryOrder ? navigate("/orders") : setStep("shipping")}
                     disabled={submitting}
                   >
                     ← Quay lại
@@ -919,9 +1008,10 @@ export default function Checkout() {
 
               <div className="checkout-summary-picked">
                 Bạn đang thanh toán <strong>{items.length}</strong> sản phẩm đã
-                chọn từ giỏ hàng.
+                chọn từ {retryOrder ? "đơn hàng cũ" : "giỏ hàng"}.
               </div>
 
+              {!retryOrder && (
               <div className="checkout-discount-box">
                 <label
                   htmlFor="discount-code"
@@ -984,6 +1074,7 @@ export default function Checkout() {
                   </p>
                 )}
               </div>
+              )}
 
               <div className="checkout-summary-rows">
                 <div className="checkout-summary-row">

@@ -121,6 +121,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                 ProductVariant.objects.filter(pk=item.product_id).update(
                     stock=F("stock") + item.quantity
                 )
+            if order.gateway_status == "paid":
+                credit_order_refund_to_user_wallet(
+                    order.user,
+                    order_id=order.id,
+                    total_price=order.total_price,
+                    reason_label="Hoàn tiền hủy đơn hàng",
+                )
             order.status = "cancelled"
             order.save(update_fields=["status"])
         serializer = self.get_serializer(order)
@@ -146,9 +153,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         raw_payment = (request.data.get("payment_method") or order.payment_method).strip().lower()
-        if raw_payment not in {"vnpay", "momo", "zalopay"}:
+        if raw_payment not in {"vnpay", "momo", "zalopay", "cod"}:
             return Response(
-                {"detail": "Phương thức thanh toán không hỗ trợ thanh toán lại."},
+                {"detail": "Phương thức thanh toán không được hỗ trợ."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

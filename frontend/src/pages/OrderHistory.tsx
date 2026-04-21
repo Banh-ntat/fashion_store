@@ -309,38 +309,8 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
     }
   };
 
-  const handleRetryPayment = async (order: Order) => {
-    setCancelErrorId(null);
-    setCancelErrorMsg("");
-    const pm = order.payment_method ?? "";
-    const gatewayTab = ["zalopay", "momo", "vnpay"].includes(pm)
-      ? openBlankGatewayTab()
-      : null;
-    setRetryingId(order.id);
-    try {
-      const res = await orders.retryPayment(order.id);
-      const data = res.data as {
-        payment_url?: string;
-        payment_method?: string;
-      };
-      const url = typeof data.payment_url === "string" ? data.payment_url : "";
-      if (!url) {
-        throw new Error("Không lấy được đường dẫn thanh toán.");
-      }
-      setRetryingId(null);
-      if (assignGatewayUrl(gatewayTab, url)) {
-        return;
-      }
-      closeGatewayTab(gatewayTab);
-      window.location.href = url;
-    } catch (err) {
-      closeGatewayTab(gatewayTab);
-      const detail = (err as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail;
-      setCancelErrorId(order.id);
-      setCancelErrorMsg(detail ?? "Không thể tạo lại thanh toán. Vui lòng thử lại.");
-      setRetryingId(null);
-    }
+  const handleRetryPayment = (order: Order) => {
+    navigate(`/checkout?retry_order_id=${order.id}`);
   };
 
   const purchasableOrderIds = new Set(
@@ -721,11 +691,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                         </div>
                       ) : (
                         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                          {order.payment_method &&
-                            ["vnpay", "momo", "zalopay"].includes(
-                              order.payment_method,
-                            ) &&
-                            order.gateway_status !== "paid" && (
+                          {order.payment_method && order.gateway_status !== "paid" && (
                               <button
                                 type="button"
                                 className="orderCancelBtn"
@@ -740,7 +706,7 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
                                 }
                                 onClick={() => handleRetryPayment(order)}
                               >
-                                {retryingId === order.id ? "Đang xử lý..." : "Thanh toán lại"}
+                                {retryingId === order.id ? "Đang xử lý..." : (order.payment_method === "cod" ? "Đổi phương thức thanh toán" : "Thanh toán lại")}
                               </button>
                             )}
 
