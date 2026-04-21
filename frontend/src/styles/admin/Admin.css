@@ -244,6 +244,12 @@
   font-weight: 700;
 }
 
+.numPages{
+  font-size: 0.85rem;
+  color: #7a7670;
+  align-self: center;
+}
+
 .btn-primary {
   background: #c96b65;
   color: #fff;

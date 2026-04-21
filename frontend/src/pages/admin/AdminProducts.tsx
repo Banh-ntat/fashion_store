@@ -182,11 +182,17 @@ export default function AdminProducts() {
   const [editingSizeName, setEditingSizeName] = useState("");
   const [editingSizeOrder, setEditingSizeOrder] = useState(0);
   const [deletingSizeId, setDeletingSizeId] = useState<number | null>(null);
+  const [productCount, setProductCount] = useState(0);
+  const [productPage, setProductPage] = useState(1);
+  const PRODUCT_PAGE_SIZE = 10;
 
-  const loadData = (search?: string, lowStock?: boolean) => {
+  const loadData = (search?: string, lowStock?: boolean, page = 1) => {
     const q = search !== undefined ? search : searchQuery;
     const low = lowStock !== undefined ? lowStock : lowStockOnly;
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = {
+      page,
+      page_size: PRODUCT_PAGE_SIZE,
+    };
     if (q.trim()) params.search = q.trim();
     if (low) {
       params.low_stock = "true";
@@ -194,7 +200,7 @@ export default function AdminProducts() {
     }
 
     Promise.all([
-      admin.products.list(Object.keys(params).length ? params : undefined),
+      admin.products.list(params),
       categories.list(),
       colorsApi.list(),
       sizesApi.list(),
@@ -202,8 +208,12 @@ export default function AdminProducts() {
     ])
       .then(
         ([productsRes, categoriesRes, colorsRes, sizesRes, promotionsRes]) => {
-          const pdata = productsRes.data as { results?: Product[] };
+          const pdata = productsRes.data as {
+            results?: Product[];
+            count?: number;
+          };
           setProducts(pdata.results || (productsRes.data as Product[]) || []);
+          setProductCount(pdata.count ?? 0);
           setCategoriesList(categoriesRes.data.results || categoriesRes.data);
           setColorsList(colorsRes.data.results || colorsRes.data);
           const rawSizes: Size[] = sizesRes.data.results || sizesRes.data;
@@ -238,7 +248,8 @@ export default function AdminProducts() {
 
   const applyProductFilters = (e: React.FormEvent) => {
     e.preventDefault();
-    loadData(searchQuery, lowStockOnly);
+    setProductPage(1);
+    loadData(searchQuery, lowStockOnly, 1);
   };
 
   const handleSubmitProduct = async (e: React.FormEvent) => {
@@ -742,6 +753,42 @@ export default function AdminProducts() {
             ))}
           </tbody>
         </table>
+
+        {/* Pagination sản phẩm */}
+        {productCount > PRODUCT_PAGE_SIZE && (
+          <div className="admin-pagination">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={productPage <= 1}
+              onClick={() => {
+                const newPage = productPage - 1;
+                setProductPage(newPage);
+                loadData(searchQuery, lowStockOnly, newPage);
+              }}
+            >
+              ← Trước
+            </button>
+            <span className="numPages">
+              Trang {productPage} /{" "}
+              {Math.ceil(productCount / PRODUCT_PAGE_SIZE)}
+            </span>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={
+                productPage >= Math.ceil(productCount / PRODUCT_PAGE_SIZE)
+              }
+              onClick={() => {
+                const newPage = productPage + 1;
+                setProductPage(newPage);
+                loadData(searchQuery, lowStockOnly, newPage);
+              }}
+            >
+              Sau →
+            </button>
+          </div>
+        )}
 
         {/* ── Product Modal ── */}
         {showProductModal && (
