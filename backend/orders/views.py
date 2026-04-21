@@ -606,7 +606,11 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
             "order__orderitem_set__product__size",
         )
         if is_staff(user):
-            return base_qs.all()
+            qs = base_qs.all()
+            status_filter = self.request.query_params.get("status")
+            if status_filter:
+                qs = qs.filter(status=status_filter)
+            return qs
         return base_qs.filter(user=user)
 
     def get_permissions(self):

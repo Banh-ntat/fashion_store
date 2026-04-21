@@ -326,6 +326,7 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  white-space: nowrap;
 }
 
 .admin-filters label {
@@ -415,6 +416,18 @@
   border-bottom: 1px solid #f2f0ed;
   color: #2a2825;
   vertical-align: middle;
+  word-break: break-word;
+}
+
+.discount-table .col-code {
+  max-width: 120px;
+  word-break: break-all;
+  font-size: 0.85em;
+}
+
+.discount-table .col-name {
+  max-width: 150px;
+  word-break: break-word;
 }
 
 .data-table tr:last-child td {
@@ -438,6 +451,7 @@
   font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .status-pending { background: #fdf6e3; color: #9a7a30; }
@@ -2242,6 +2256,7 @@
     white-space: nowrap;
     padding: 10px 12px;
     font-size: 0.8rem;
+    word-break: break-word;
   }
 
   .data-table th:first-child,
@@ -2363,6 +2378,7 @@
   .role-badge {
     font-size: 0.7rem;
     padding: 2px 8px;
+    white-space: nowrap;
   }
 
   .status-select,

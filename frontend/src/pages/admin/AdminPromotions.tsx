@@ -325,7 +325,7 @@ export default function AdminPromotions() {
           </button>
         </div>
 
-        <table className="data-table">
+        <table className="data-table discount-table">
           <thead>
             <tr>
               <th>Mã</th>
@@ -341,10 +341,10 @@ export default function AdminPromotions() {
           <tbody>
             {discountCodes.map((discountCode) => (
               <tr key={discountCode.id}>
-                <td>
-                  <strong>{discountCode.code}</strong>
+                <td className="col-code">
+                    {discountCode.code}
                 </td>
-                <td>{discountCode.name}</td>
+                <td className="col-name">{discountCode.name}</td>
                 <td>{discountCode.discount_percent}%</td>
                 <td>
                   {(Number(discountCode.min_order_value) || 0).toLocaleString(
