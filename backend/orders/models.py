@@ -90,6 +90,7 @@ class Order(models.Model):
 
     PAYMENT_METHOD_CHOICES = (
         ("cod", "Thanh toán khi nhận hàng (COD)"),
+        ("wallet", "Ví trên ứng dụng"),
         ("vnpay", "VNPay"),
         ("momo", "Ví MoMo"),
         ("zalopay", "Ví ZaloPay"),

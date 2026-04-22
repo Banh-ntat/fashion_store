@@ -64,6 +64,7 @@ function getPaymentMethodLabel(method?: string) {
   if (method === 'vnpay') return 'VNPay';
   if (method === 'momo') return 'Ví MoMo';
   if (method === 'zalopay') return 'ZaloPay';
+  if (method === 'wallet') return 'Ví trên ứng dụng';
   if (method === 'cod') return 'Thanh toán khi nhận hàng (COD)';
   return method || 'N/A';
 }
@@ -325,9 +326,29 @@ export default function AdminOrders() {
                     </p>
                     <p>
                       <strong>Phương thức:</strong> {getPaymentMethodLabel(detail.payment_method)}
-                      {detail.payment_method && detail.payment_method !== 'cod' && (
-                        <span> — <strong>Trạng thái cổng:</strong> <span className={detail.gateway_status === 'paid' ? 'status-completed' : detail.gateway_status === 'failed' ? 'status-cancelled' : 'status-pending'} style={{padding: '2px 6px', borderRadius: '4px', fontSize: '13px'}}>{getGatewayStatusLabel(detail.gateway_status)}</span></span>
-                      )}
+                      {detail.payment_method &&
+                        ['vnpay', 'momo', 'zalopay'].includes(detail.payment_method) && (
+                          <span>
+                            {' '}
+                            — <strong>Trạng thái cổng:</strong>{' '}
+                            <span
+                              className={
+                                detail.gateway_status === 'paid'
+                                  ? 'status-completed'
+                                  : detail.gateway_status === 'failed'
+                                    ? 'status-cancelled'
+                                    : 'status-pending'
+                              }
+                              style={{
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                              }}
+                            >
+                              {getGatewayStatusLabel(detail.gateway_status)}
+                            </span>
+                          </span>
+                        )}
                     </p>
                     {detail.shipping && (
                       <>

@@ -5,7 +5,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { cart, orders } from "../api/client";
+import { api, cart, orders } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { notifyCartUpdated } from "../utils/cartEvents";
 import {
@@ -127,6 +127,17 @@ export default function Checkout() {
   const hasSpecificSelection = selectedIdsFromQuery.length > 0;
   const redirectTo = `${location.pathname}${location.search}` || "/checkout";
 
+  const retryOrder = (
+    location.state as {
+      retryOrder?: {
+        id?: number;
+        payment_method?: string;
+        discount_code?: string;
+        discount_code_snapshot?: string;
+      };
+    } | null
+  )?.retryOrder;
+
   const [items, setItems] = useState<CartItemType[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -137,8 +148,9 @@ export default function Checkout() {
   );
   const [step, setStep] = useState<"shipping" | "confirm">("shipping");
   const [paymentMethod, setPaymentMethod] = useState<
-    "cod" | "momo" | "zalopay"
+    "cod" | "momo" | "zalopay" | "wallet"
   >("cod");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [selectionNotice, setSelectionNotice] = useState("");
   const discountFromUrl =
     searchParams.get("discount")?.trim().toUpperCase() ?? "";
@@ -232,6 +244,33 @@ export default function Checkout() {
   }, [selectedDistrictCode]);
 
   useEffect(() => {
+    if (!retryOrder?.payment_method) return;
+    const m = String(retryOrder.payment_method).toLowerCase();
+    if (m === "cod" || m === "momo" || m === "zalopay" || m === "wallet") {
+      setPaymentMethod(m);
+    }
+  }, [retryOrder]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (step !== "confirm") return;
+    let cancelled = false;
+    api
+      .get<{ balance: string | number }>("/wallets/info/")
+      .then((r) => {
+        if (cancelled) return;
+        const b = r.data.balance;
+        setWalletBalance(typeof b === "string" ? parseFloat(b) : Number(b));
+      })
+      .catch(() => {
+        if (!cancelled) setWalletBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, step, retryOrder?.id]);
+
+  useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
@@ -291,7 +330,14 @@ export default function Checkout() {
         total: subtotal + shippingFee,
       };
 
-  const appliedDiscountCode = pricingPreview?.discount_code ?? "";
+  const walletInsufficient =
+    paymentMethod === "wallet" &&
+    walletBalance !== null &&
+    walletBalance < pricing.total;
+
+  const appliedDiscountCode = retryOrder
+    ? retryOrder.discount_code || retryOrder.discount_code_snapshot || ""
+    : pricingPreview?.discount_code ?? "";
   const hasAppliedDiscount = !!appliedDiscountCode;
 
   const handleContinueToConfirm = () => {
@@ -354,6 +400,11 @@ export default function Checkout() {
 
   const handleSubmit = async () => {
     if (!user || items.length === 0) return;
+
+    if (walletInsufficient) {
+      alert("Số dư ví không đủ để thanh toán đơn hàng này.");
+      return;
+    }
 
     const normalizedCode = normalizeDiscountCode(discountCode);
     if (normalizedCode && appliedDiscountCode !== normalizedCode) {
@@ -511,7 +562,9 @@ export default function Checkout() {
 
   return (
     <section className="pageSection checkout-page">
-      {submitting && (paymentMethod === "zalopay" || paymentMethod === "momo") && (
+                    {submitting &&
+                      (paymentMethod === "zalopay" ||
+                        paymentMethod === "momo") && (
         <div className="checkout-gatewayOverlay" role="status" aria-live="polite">
           <div className="checkout-gatewayOverlayCard">
             <span className="checkout-gatewaySpinner" aria-hidden />
@@ -747,6 +800,29 @@ export default function Checkout() {
                       <input
                         type="radio"
                         name="payment"
+                        checked={paymentMethod === "wallet"}
+                        disabled={
+                          walletBalance !== null && walletBalance < pricing.total
+                        }
+                        onChange={() => setPaymentMethod("wallet")}
+                      />
+                      <span>
+                        <strong>Ví trên ứng dụng</strong>
+                        <small>
+                          {walletBalance === null
+                            ? "Đang tải số dư…"
+                            : `Số dư: ${formatCurrency(walletBalance)}${
+                                walletBalance < pricing.total
+                                  ? " — không đủ cho đơn này"
+                                  : ""
+                              }`}
+                        </small>
+                      </span>
+                    </label>
+                    <label className="checkout-payment-option">
+                      <input
+                        type="radio"
+                        name="payment"
                         checked={paymentMethod === "momo"}
                         onChange={() => setPaymentMethod("momo")}
                       />
@@ -829,13 +905,15 @@ export default function Checkout() {
                     type="button"
                     className="checkout-btn checkout-btn-primary"
                     onClick={handleSubmit}
-                    disabled={submitting}
+                    disabled={submitting || walletInsufficient}
                   >
                     {submitting
                       ? "Đang xử lý..."
                       : paymentMethod === "cod"
                         ? `Đặt hàng — ${formatCurrency(pricing.total)}`
-                        : `Thanh toán — ${formatCurrency(pricing.total)}`}
+                        : paymentMethod === "wallet"
+                          ? `Thanh toán bằng ví — ${formatCurrency(pricing.total)}`
+                          : `Thanh toán — ${formatCurrency(pricing.total)}`}
                   </button>
                 </div>
               </div>

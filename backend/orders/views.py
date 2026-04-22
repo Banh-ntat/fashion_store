@@ -17,7 +17,7 @@ from rest_framework.permissions import AllowAny
 from cart.models import Cart, CartItem
 from core.permissions import is_staff, IsAdminOrStaff, IsOrderStaff
 from products.models import ProductVariant
-from wallets.services import credit_order_refund_to_user_wallet
+from wallets.services import credit_order_refund_to_user_wallet, debit_wallet_for_order_payment
 from products.serializers import normalize_size_name
 from .mail import (
     send_order_confirmation_email,
@@ -146,11 +146,48 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         raw_payment = (request.data.get("payment_method") or order.payment_method).strip().lower()
-        if raw_payment not in {"vnpay", "momo", "zalopay"}:
+        if raw_payment not in {"vnpay", "momo", "zalopay", "cod", "wallet"}:
             return Response(
                 {"detail": "Phương thức thanh toán không hỗ trợ thanh toán lại."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if raw_payment == "wallet":
+            try:
+                with transaction.atomic():
+                    order_locked = Order.objects.select_for_update().get(pk=order.pk)
+                    if order_locked.user_id != request.user.id:
+                        return Response(
+                            {"detail": "Bạn không có quyền thực hiện thao tác này."},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+                    if order_locked.status != "pending":
+                        return Response(
+                            {"detail": "Chỉ có thể thanh toán lại cho đơn hàng đang chờ xử lý."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    if order_locked.gateway_status == "paid":
+                        return Response(
+                            {"detail": "Đơn hàng này đã được thanh toán."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    debit_wallet_for_order_payment(
+                        request.user,
+                        order_id=order_locked.id,
+                        amount=order_locked.total_price,
+                    )
+                    order_locked.payment_method = "wallet"
+                    order_locked.gateway_status = "paid"
+                    order_locked.gateway_transaction_id = ""
+                    order_locked.save(
+                        update_fields=["payment_method", "gateway_status", "gateway_transaction_id"]
+                    )
+                    oid = order_locked.id
+                transaction.on_commit(lambda o=oid: send_order_confirmation_email(o))
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            order.refresh_from_db()
+            return Response(self.get_serializer(order).data, status=status.HTTP_200_OK)
 
         if raw_payment != order.payment_method:
             order.payment_method = raw_payment
@@ -424,7 +461,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         allowed_payment = {c[0] for c in Order.PAYMENT_METHOD_CHOICES}
         raw_payment = (request.data.get("payment_method") or "cod").strip().lower()
         payment_method = raw_payment if raw_payment in allowed_payment else "cod"
-        gateway_status = "pending" if payment_method in ("vnpay", "momo", "zalopay") else "none"
+        if payment_method in ("vnpay", "momo", "zalopay"):
+            gateway_status = "pending"
+        elif payment_method == "wallet":
+            gateway_status = "paid"
+        else:
+            gateway_status = "none"
 
         with transaction.atomic():
             try:
@@ -509,8 +551,20 @@ class OrderViewSet(viewsets.ModelViewSet):
             Shipping.objects.create(order=order, name=name, phone=phone, address=address, note=note)
             CartItem.objects.filter(cart=cart, id__in=[cart_item.id for cart_item, _variant, _unit in line_build]).delete()
 
+            if payment_method == "wallet":
+                try:
+                    debit_wallet_for_order_payment(
+                        user,
+                        order_id=order.id,
+                        amount=total_price,
+                    )
+                except ValueError as exc:
+                    raise ValidationError(str(exc))
+
             order_id_for_email = order.id
             if payment_method == "cod":
+                transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
+            elif payment_method == "wallet":
                 transaction.on_commit(lambda oid=order_id_for_email: send_order_confirmation_email(oid))
 
         serializer = OrderSerializer(order)

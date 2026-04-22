@@ -43,7 +43,10 @@ def mark_order_paid(order_id: int, gateway_txn_id: str = "") -> bool:
 
 
 def mark_order_payment_failed(order_id: int) -> None:
-    from orders.models import Order
+    from django.db.models import F
+
+    from orders.models import Order, OrderItem
+    from products.models import ProductVariant
 
     with transaction.atomic():
         try:
@@ -52,7 +55,27 @@ def mark_order_payment_failed(order_id: int) -> None:
             return
         if order.gateway_status == "paid":
             return
+        if order.gateway_status == "failed":
+            return
         if order.payment_method == "cod":
             return
+
+        prev_gateway = order.gateway_status
+        update_fields = ["gateway_status"]
         order.gateway_status = "failed"
-        order.save(update_fields=["gateway_status"])
+
+        # MoMo / ZaloPay: thanh toán không thành công → hủy đơn và hoàn tồn (giống POST cancel).
+        if (
+            order.payment_method in ("momo", "zalopay")
+            and order.status == "pending"
+            and prev_gateway == "pending"
+        ):
+            items = OrderItem.objects.filter(order=order)
+            for item in items:
+                ProductVariant.objects.filter(pk=item.product_id).update(
+                    stock=F("stock") + item.quantity
+                )
+            order.status = "cancelled"
+            update_fields.append("status")
+
+        order.save(update_fields=update_fields)
