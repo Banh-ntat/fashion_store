@@ -47,6 +47,35 @@ def credit_order_refund_to_user_wallet(
     return credit_refund_to_wallet(user, total_price, description=desc)
 
 
+def debit_wallet_for_order_payment(
+    user: User,
+    *,
+    order_id: int,
+    amount: Decimal | float | str,
+) -> WalletTransaction:
+    """
+    Trừ ví để thanh toán đơn (type=payment, completed).
+    Gọi trong transaction.atomic() cùng khóa đơn hàng.
+    """
+    amt = amount if isinstance(amount, Decimal) else Decimal(str(amount))
+    if amt <= 0:
+        raise ValueError("Số tiền thanh toán không hợp lệ")
+
+    wallet, _ = Wallet.objects.select_for_update().get_or_create(user=user)
+    if wallet.balance < amt:
+        raise ValueError("Số dư ví không đủ để thanh toán đơn hàng này.")
+
+    wallet.balance -= amt
+    wallet.save(update_fields=["balance"])
+    return WalletTransaction.objects.create(
+        wallet=wallet,
+        amount=amt,
+        type="payment",
+        description=f"Thanh toán đơn hàng #{order_id}",
+        status="completed",
+    )
+
+
 def complete_wallet_deposit(
     transaction_id: int,
     *,

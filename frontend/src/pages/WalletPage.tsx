@@ -82,7 +82,7 @@ const WalletPage: React.FC = () => {
     null,
   );
 
-  const [modal, setModal] = useState<null | "deposit" | "withdraw">(null);
+  const [modal, setModal] = useState<null | "deposit">(null);
   const [amountStr, setAmountStr] = useState("");
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -229,8 +229,8 @@ const WalletPage: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [modal, closeModal]);
 
-  const openModal = (type: "deposit" | "withdraw") => {
-    setModal(type);
+  const openDepositModal = () => {
+    setModal("deposit");
     setAmountStr("");
     setModalError(null);
   };
@@ -240,36 +240,6 @@ const WalletPage: React.FC = () => {
     const amount = parseInt(raw, 10);
     if (Number.isNaN(amount) || amount <= 0) return null;
     return amount;
-  };
-
-  const submitModal = async () => {
-    if (!modal || modal !== "withdraw") return;
-    const amount = parseModalAmount();
-    if (amount === null) {
-      setModalError("Nhập số tiền hợp lệ (VNĐ, số nguyên dương).");
-      return;
-    }
-    setModalSubmitting(true);
-    setModalError(null);
-    try {
-      const response = await api.post("/wallets/action/", {
-        type: "withdraw",
-        amount,
-      });
-      const b = response.data.balance;
-      setBalance(typeof b === "string" ? parseFloat(b) : Number(b));
-      const msg =
-        typeof response.data.message === "string"
-          ? response.data.message
-          : "Giao dịch thành công.";
-      setFlash({ kind: "success", text: msg });
-      closeModal();
-      await fetchWalletData();
-    } catch (e) {
-      setModalError(apiErr(e));
-    } finally {
-      setModalSubmitting(false);
-    }
   };
 
   const startGatewayDeposit = async (provider: "momo" | "zalopay") => {
@@ -366,8 +336,7 @@ const WalletPage: React.FC = () => {
     <div className="pageSection wallet-page wallet-page--embed">
       <div className="sectionContainer customer-account-embedInner">
         <p className="wallet-lead">
-          Số dư dùng trong cửa hàng. Nạp tiền qua MoMo hoặc ZaloPay; rút tiền vẫn là thao tác nội bộ
-          (demo). Lịch sử giao dịch nằm bên dưới.
+          Số dư dùng trong cửa hàng. Nạp tiền qua MoMo hoặc ZaloPay. Lịch sử giao dịch nằm bên dưới.
         </p>
 
         {flash ? (
@@ -393,11 +362,8 @@ const WalletPage: React.FC = () => {
           </p>
           <p className="wallet-balance">{formatVnd(balance)}</p>
           <div className="wallet-heroActions">
-            <button type="button" className="btn-primary" onClick={() => openModal("deposit")}>
+            <button type="button" className="btn-primary" onClick={openDepositModal}>
               Nạp tiền
-            </button>
-            <button type="button" className="wallet-btnGhost" onClick={() => openModal("withdraw")}>
-              Rút tiền
             </button>
           </div>
         </section>
@@ -485,12 +451,10 @@ const WalletPage: React.FC = () => {
             aria-labelledby="wallet-modal-title"
           >
             <h3 id="wallet-modal-title" className="wallet-modalTitle">
-              {modal === "deposit" ? "Nạp tiền vào ví" : "Rút tiền từ ví"}
+              Nạp tiền vào ví
             </h3>
             <p className="wallet-modalHint">
-              {modal === "deposit"
-                ? "Nhập số tiền (10.000 – 50.000.000 VNĐ), sau đó chọn MoMo hoặc ZaloPay để chuyển sang cổng thanh toán."
-                : "Nhập số tiền cần rút. Số dư hiện tại phải đủ để thực hiện."}
+              Nhập số tiền (10.000 – 50.000.000 VNĐ), sau đó chọn MoMo hoặc ZaloPay để chuyển sang cổng thanh toán.
             </p>
             <label className="wallet-fieldLabel" htmlFor="wallet-amount-input">
               Số tiền (VNĐ)
@@ -519,79 +483,58 @@ const WalletPage: React.FC = () => {
               ))}
             </div>
             {modalError ? <p className="wallet-modalError">{modalError}</p> : null}
-            {modal === "withdraw" ? (
-              <div className="wallet-modalActions wallet-modalActions--inline">
+            <div className="wallet-modalActions wallet-modalActions--deposit">
+              <div className="wallet-modalPayRow">
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={closeModal}
+                  className="wallet-btnPayIcon"
+                  onClick={() => void startGatewayDeposit("momo")}
                   disabled={modalSubmitting}
+                  aria-label="Thanh toán MoMo"
                 >
-                  Hủy
+                  {modalSubmitting ? (
+                    <span className="wallet-payBtnLoading">Đang mở…</span>
+                  ) : (
+                    <img
+                      src={WALLET_GATEWAY_LOGO.momo}
+                      alt=""
+                      className="wallet-payLogo"
+                      width={112}
+                      height={40}
+                      decoding="async"
+                    />
+                  )}
                 </button>
                 <button
                   type="button"
-                  className="btn-primary"
-                  onClick={() => void submitModal()}
+                  className="wallet-btnPayIcon"
+                  onClick={() => void startGatewayDeposit("zalopay")}
                   disabled={modalSubmitting}
+                  aria-label="Thanh toán ZaloPay"
                 >
-                  {modalSubmitting ? "Đang xử lý…" : "Xác nhận"}
-                </button>
-              </div>
-            ) : (
-              <div className="wallet-modalActions wallet-modalActions--deposit">
-                <div className="wallet-modalPayRow">
-                  <button
-                    type="button"
-                    className="wallet-btnPayIcon"
-                    onClick={() => void startGatewayDeposit("momo")}
-                    disabled={modalSubmitting}
-                    aria-label="Thanh toán MoMo"
-                  >
-                    {modalSubmitting ? (
-                      <span className="wallet-payBtnLoading">Đang mở…</span>
-                    ) : (
-                      <img
-                        src={WALLET_GATEWAY_LOGO.momo}
-                        alt=""
-                        className="wallet-payLogo"
-                        width={112}
-                        height={40}
-                        decoding="async"
-                      />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="wallet-btnPayIcon"
-                    onClick={() => void startGatewayDeposit("zalopay")}
-                    disabled={modalSubmitting}
-                    aria-label="Thanh toán ZaloPay"
-                  >
-                    {modalSubmitting ? (
-                      <span className="wallet-payBtnLoading">Đang mở…</span>
-                    ) : (
-                      <img
-                        src={WALLET_GATEWAY_LOGO.zalopay}
-                        alt=""
-                        className="wallet-payLogo"
-                        width={112}
-                        height={40}
-                        decoding="async"
-                      />
-                    )}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="btn-secondary wallet-modalCancelWide"
-                  onClick={closeModal}
-                  disabled={modalSubmitting}
-                >
-                  Hủy
+                  {modalSubmitting ? (
+                    <span className="wallet-payBtnLoading">Đang mở…</span>
+                  ) : (
+                    <img
+                      src={WALLET_GATEWAY_LOGO.zalopay}
+                      alt=""
+                      className="wallet-payLogo"
+                      width={112}
+                      height={40}
+                      decoding="async"
+                    />
+                  )}
                 </button>
               </div>
-            )}
+              <button
+                type="button"
+                className="btn-secondary wallet-modalCancelWide"
+                onClick={closeModal}
+                disabled={modalSubmitting}
+              >
+                Hủy
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

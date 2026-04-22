@@ -312,10 +312,23 @@
   text-transform: uppercase;
 }
 
-.categoriesGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.categoriesCarousel {
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
+.categoriesCarouselTrack {
+  display: flex;
   gap: 16px;
+  width: max-content;
+  will-change: transform;
+}
+
+.categoriesCarouselItem {
+  flex: 0 0 clamp(220px, 28vw, 360px);
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .promoBanner {
@@ -526,9 +539,11 @@
   .heroImageWrapper {
     display: none;
   }
-  .productGrid,
-  .categoriesGrid {
+  .productGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .categoriesCarouselItem {
+    flex: 0 0 clamp(200px, 42vw, 320px);
   }
   .promoBanner {
     grid-template-columns: 1fr;
@@ -574,10 +589,15 @@
 }
 
 @media (max-width: 640px) {
-  .productGrid,
-  .categoriesGrid {
+  .productGrid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+  }
+  .categoriesCarouselTrack {
+    gap: 10px;
+  }
+  .categoriesCarouselItem {
+    flex: 0 0 clamp(160px, 72vw, 280px);
   }
   .sectionHeader {
     flex-direction: column;
@@ -589,6 +609,9 @@
 @media (max-width: 420px) {
   .productGrid {
     grid-template-columns: 1fr;
+  }
+  .categoriesCarouselItem {
+    flex: 0 0 min(300px, calc(100vw - 40px));
   }
   .promoContent {
     padding: 32px 20px;

@@ -1,7 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import CategoryCard from "../components/CategoryCard";
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+  useMemo,
+} from "react";
 import { fetchCategories, fetchHotDeals, fetchNewArrivals } from "../api/api";
 import type { Category } from "../types";
 import type { Product } from "../types";
@@ -33,6 +40,10 @@ const ArrowRight = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+const CATEGORY_AUTO_SLIDE_MS = 3000;
+/** Số lần lặp danh mục để luôn có vùng cuộn (màn rộng + ít danh mục). */
+const CATEGORY_CAROUSEL_COPIES = 6;
+
 const normalize = (
   p: import("../types").ApiProduct,
 ): import("../types").Product => ({
@@ -56,6 +67,44 @@ export default function Home() {
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [categoriesPaused, setCategoriesPaused] = useState(false);
+  const categoriesViewportRef = useRef<HTMLDivElement>(null);
+  const categoriesTrackRef = useRef<HTMLDivElement>(null);
+  const categoryOffsetRef = useRef(0);
+  const [categoryOffsetPx, setCategoryOffsetPx] = useState(0);
+  const [categorySkipTransition, setCategorySkipTransition] = useState(false);
+  const categoryLayoutRef = useRef({ step: 0, max: 0, setWidth: 0 });
+
+  const carouselCategories = useMemo(() => {
+    if (categories.length <= 1) return categories;
+    return Array.from({ length: CATEGORY_CAROUSEL_COPIES }, () => categories).flat();
+  }, [categories]);
+
+  const measureCategoryCarousel = useCallback(() => {
+    const outer = categoriesViewportRef.current;
+    const inner = categoriesTrackRef.current;
+    if (!outer || !inner) return;
+    const first = inner.firstElementChild as HTMLElement | null;
+    if (!first) {
+      categoryLayoutRef.current = { step: 0, max: 0, setWidth: 0 };
+      return;
+    }
+    const gap =
+      parseFloat(getComputedStyle(inner).columnGap || getComputedStyle(inner).gap || "0") ||
+      16;
+    const step = first.getBoundingClientRect().width + gap;
+    const max = Math.max(0, inner.scrollWidth - outer.clientWidth);
+    const n = categories.length;
+    const children = Array.from(inner.children) as HTMLElement[];
+    let setWidth = 0;
+    if (n > 1 && children.length >= n) {
+      for (let i = 0; i < n; i++) {
+        setWidth += children[i].getBoundingClientRect().width;
+        if (i < n - 1) setWidth += gap;
+      }
+    }
+    categoryLayoutRef.current = { step, max, setWidth };
+  }, [categories.length]);
   const sortedHotDeals = [...hotDeals].sort((a, b) =>
       (b.promotion?.discount_percent ?? 0) - (a.promotion?.discount_percent ?? 0)
     );
@@ -77,6 +126,73 @@ export default function Home() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useLayoutEffect(() => {
+    categoryOffsetRef.current = categoryOffsetPx;
+  }, [categoryOffsetPx]);
+
+  useLayoutEffect(() => {
+    measureCategoryCarousel();
+    const outer = categoriesViewportRef.current;
+    const inner = categoriesTrackRef.current;
+    if (!outer || !inner) return;
+    const ro = new ResizeObserver(() => {
+      measureCategoryCarousel();
+      const { max } = categoryLayoutRef.current;
+      setCategoryOffsetPx((o) => Math.min(o, max));
+    });
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [categories, measureCategoryCarousel]);
+
+  useEffect(() => {
+    if (categorySkipTransition) {
+      const id = requestAnimationFrame(() => setCategorySkipTransition(false));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [categorySkipTransition]);
+
+  useEffect(() => {
+    if (categories.length <= 1 || categoriesPaused) return;
+
+    const tick = () => {
+      measureCategoryCarousel();
+      const { step, max, setWidth } = categoryLayoutRef.current;
+      if (step <= 0 || max <= 0) return;
+
+      const prev = categoryOffsetRef.current;
+      let next = prev + step;
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      if (setWidth > 0 && categories.length > 1) {
+        let wrapped = false;
+        while (next >= setWidth) {
+          next -= setWidth;
+          wrapped = true;
+        }
+        if (wrapped && !reduceMotion) setCategorySkipTransition(true);
+      } else if (next >= max - 2) {
+        categoryOffsetRef.current = 0;
+        setCategoryOffsetPx(0);
+        if (!reduceMotion) setCategorySkipTransition(true);
+        return;
+      }
+
+      categoryOffsetRef.current = next;
+      setCategoryOffsetPx(next);
+    };
+
+    const id = window.setInterval(tick, CATEGORY_AUTO_SLIDE_MS);
+    return () => window.clearInterval(id);
+  }, [
+    categories.length,
+    categoriesPaused,
+    measureCategoryCarousel,
+    categories,
+  ]);
 
   const handleClaimCode = useCallback((code: string) => {
     navigator.clipboard.writeText(code).catch(() => {});
@@ -169,10 +285,31 @@ export default function Home() {
               Xem Tất Cả <ArrowRight size={11} />
             </Link>
           </div>
-          <div className="categoriesGrid">
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
+          <div
+            className="categoriesCarousel"
+            ref={categoriesViewportRef}
+            onMouseEnter={() => setCategoriesPaused(true)}
+            onMouseLeave={() => setCategoriesPaused(false)}
+          >
+            <div
+              className="categoriesCarouselTrack"
+              ref={categoriesTrackRef}
+              style={{
+                transform: `translate3d(-${categoryOffsetPx}px, 0, 0)`,
+                transition: categorySkipTransition
+                  ? "none"
+                  : "transform 0.5s ease-out",
+              }}
+            >
+              {carouselCategories.map((category, idx) => (
+                <div
+                  key={`${category.id}-${idx}`}
+                  className="categoriesCarouselItem"
+                >
+                  <CategoryCard category={category} />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

@@ -55,6 +55,7 @@ function getPaymentMethodLabel(method?: string) {
   if (method === "vnpay") return "VNPay";
   if (method === "momo") return "Ví MoMo";
   if (method === "zalopay") return "ZaloPay";
+  if (method === "wallet") return "Ví trên ứng dụng";
   if (method === "cod") return "Thanh toán khi nhận hàng (COD)";
   return method || "N/A";
 }
@@ -508,7 +509,8 @@ export default function OrderHistory({ embedded = false }: OrderHistoryProps) {
 
                   <div className="orderPaymentInfo" style={{ marginBottom: "16px", fontSize: "14px", color: "var(--text-secondary)" }}>
                     <strong>Phương thức:</strong> {getPaymentMethodLabel(order.payment_method)}
-                    {order.payment_method && order.payment_method !== "cod" && (
+                    {order.payment_method &&
+                      ["vnpay", "momo", "zalopay"].includes(order.payment_method) && (
                       <span>
                         {" "}— <strong>Trạng thái cổng:</strong>{" "}
                         <span

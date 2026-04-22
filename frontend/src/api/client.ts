@@ -288,7 +288,7 @@
       note?: string;
       discount_code?: string;
       cart_item_ids?: number[];
-      payment_method?: "cod" | "vnpay" | "momo" | "zalopay";
+      payment_method?: "cod" | "wallet" | "vnpay" | "momo" | "zalopay";
     }) =>
       api.post<{
         id: number;

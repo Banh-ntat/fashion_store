@@ -19,7 +19,6 @@ const WalletInfo = () => {
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
                 <button className="btn-deposit">Nạp tiền</button>
-                <button className="btn-withdraw">Rút tiền</button>
             </div>
         </div>
     );
