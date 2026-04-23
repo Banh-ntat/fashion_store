@@ -57,6 +57,9 @@ const normalize = (
   category: p.category,
   promotion: p.promotion,
   variants: p.variants,
+  rating: p.rating,
+  sold_count: p.sold_count,
+  review_count: p.review_count,
 });
 
 export default function Home() {
