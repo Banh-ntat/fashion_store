@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   filterAndSortCatalogProducts,
   parseCatalogSortKey,
@@ -26,16 +26,23 @@ export default function Products() {
   const sort: CatalogSortKey = parseCatalogSortKey(searchParams.get('sort'));
 
   const currentCategory = categories.find(c => c.id === categoryId);
-
+  const PAGE_SIZE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => { setCurrentPage(1); }, [categoryId, query, sort]);
   const titleMain   = query ? 'Kết quả' : currentCategory ? 'Danh mục' : 'Tất cả';
   const titleItalic = query ? `"${query}"` : currentCategory ? currentCategory.name : 'Sản Phẩm';
-
+  
   /* Filter + sort — client-side */
   const displayed = useMemo(
     () => filterAndSortCatalogProducts(products, query, sort),
     [products, query, sort],
   );
+  const totalPages = Math.ceil(displayed.length / PAGE_SIZE);
+  const paginated = displayed.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
   // Khi chọn danh mục thì xoá search để tránh conflict
   const handleCategoryClick = (id?: number) => {
     setSearchParams(id ? { category: String(id) } : {});
@@ -147,10 +154,19 @@ export default function Products() {
                 </div>
 
                 <div className="productGrid">
-                  {displayed.map((product) => (
+                  {paginated.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button className="paginationBtn" onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === 1}>‹</button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button key={page} className={`paginationBtn ${currentPage === page ? 'active' : ''}`} onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{page}</button>
+                    ))}
+                    <button className="paginationBtn" onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === totalPages}>›</button>
+                  </div>
+                )}
               </>
             )}
           </div>

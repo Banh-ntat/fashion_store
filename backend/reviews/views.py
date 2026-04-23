@@ -19,8 +19,10 @@ def _recalc_product_rating(product_variant: ProductVariant) -> None:
         .filter(product__product=product, is_visible=True)
         .aggregate(avg=Avg("rating"))["avg"]
     )
+    # ✅ Luôn lưu vào product.rating — đây là nguồn duy nhất
     product.rating = round(avg, 2) if avg is not None else 0
     product.save(update_fields=["rating"])
+    
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer

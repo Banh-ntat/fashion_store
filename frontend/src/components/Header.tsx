@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { cart } from "../api/client";
@@ -115,15 +115,28 @@ export default function Header() {
   const isAdmin = Boolean(user?.can_access_admin);
 
   const closeMenu = () => setMenuOpen(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const closeAccountMenu = () => setAccountMenuOpen(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const refreshCartCount = useCallback(async () => {
-    if (!user || isAdmin) {
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  const userId = user?.id ?? null;
+    const refreshCartCount = useCallback(async () => {
+      if (!userId || isAdmin) {
       setCartCount(0);
       return;
     }
     const count = await fetchCartItemCount();
     setCartCount(count);
-  }, [user, isAdmin]);
+  },  [userId, isAdmin]); 
 
   useEffect(() => {
     void refreshCartCount();
@@ -192,18 +205,15 @@ export default function Header() {
 
             {user ? (
               <div className="headerUserMenu">
-                <div className="accountDropdown">
-                  <button
-                    type="button"
-                    className="iconBtn accountTrigger"
-                    aria-label="Tài khoản"
-                  >
+                <div className="accountDropdown" ref={accountMenuRef}>
+                  <button type="button" className="iconBtn accountTrigger" aria-label="Tài khoản"
+                    onClick={() => setAccountMenuOpen(prev => !prev)}>
                     <HeaderAvatar
                       src={user.avatar}
                       initial={(user.first_name?.[0] ?? user.username?.[0] ?? "U").toUpperCase()}
                     />
                   </button>
-                  <div className="accountMenu">
+                  {accountMenuOpen && <div className={`accountMenu ${accountMenuOpen ? "accountMenuOpen" : ""}`}>
                     <div className="accountMenuHeader">
                       {/* Avatar lớn hơn trong dropdown */}
                       {user.avatar && (
@@ -225,29 +235,29 @@ export default function Header() {
                       <strong>{displayName}</strong>
                     </div>
                     {!isAdmin && (
-                      <Link to="/dashboard" className="accountMenuItem">
+                      <Link to="/dashboard" className="accountMenuItem" onClick={closeAccountMenu}>
                         Tổng quan tài khoản
                       </Link>
                     )}
-                    <Link to="/profile" className="accountMenuItem">
+                    <Link to="/profile" className="accountMenuItem" onClick={closeAccountMenu}>
                       Thông tin tài khoản
                     </Link>
                     {isAdmin ? (
-                      <Link to="/admin" className="accountMenuItem">
+                      <Link to="/admin" className="accountMenuItem" onClick={closeAccountMenu}>
                         Trang quản trị
                       </Link>
                     ) : (
                       <>
-                        <Link to="/wishlist" className="accountMenuItem">
+                        <Link to="/wishlist" className="accountMenuItem" onClick={closeAccountMenu}>
                           Yêu thích
                         </Link>
-                        <Link to="/orders" className="accountMenuItem">
+                        <Link to="/orders" className="accountMenuItem" onClick={closeAccountMenu}>
                           Lịch sử đơn hàng
                         </Link>
-                        <Link to="/my-returns" className="accountMenuItem">
+                        <Link to="/my-returns" className="accountMenuItem" onClick={closeAccountMenu}>
                           Trả hàng &amp; hoàn tiền
                         </Link>
-                        <Link to="/my-feedback" className="accountMenuItem">
+                        <Link to="/my-feedback" className="accountMenuItem" onClick={closeAccountMenu}>
                           Đánh giá sản phẩm
                         </Link>
                       </>
@@ -264,6 +274,7 @@ export default function Header() {
                       Đăng xuất
                     </button>
                   </div>
+                  } {/* đóng accountMenuOpen && */}
                 </div>
               </div>
             ) : (

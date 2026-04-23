@@ -31,6 +31,9 @@ export default function MyFeedback() {
   >([]);
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchPage, setPurchPage] = useState(1);
+  const [reviewPage, setReviewPage] = useState(1);
+  const PAGE_SIZE = 5;
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedProduct, setSelectedProduct] =
     useState<PurchasableProduct | null>(null);
@@ -54,8 +57,14 @@ export default function MyFeedback() {
         reviewsApi.getPurchasable(),
         reviewsApi.getMyReviews(),
       ]);
-      setPurchasableProducts(purchRes?.data ?? []);
+      const purchData = purchRes?.data;
+      console.log("purchRes.data:", purchData);
+      setPurchasableProducts(
+        Array.isArray(purchData) ? purchData : (purchData?.results ?? purchData?.items ?? [])
+      );
       setMyReviews(reviewsRes?.data ?? []);
+      setPurchPage(1);
+      setReviewPage(1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -96,7 +105,11 @@ export default function MyFeedback() {
       </div>
     );
   }
+  const totalPurchPages = Math.ceil(purchasableProducts.length / PAGE_SIZE);
+  const paginatedPurch = purchasableProducts.slice((purchPage - 1) * PAGE_SIZE, purchPage * PAGE_SIZE);
 
+  const totalReviewPages = Math.ceil(myReviews.length / PAGE_SIZE);
+  const paginatedReviews = myReviews.slice((reviewPage - 1) * PAGE_SIZE, reviewPage * PAGE_SIZE);
   if (loading) return <div className="my-feedback-page">Đang tải...</div>;
 
   return (
@@ -110,8 +123,8 @@ export default function MyFeedback() {
           <h2 className="section-title">
             Chờ đánh giá ({purchasableProducts.length})
           </h2>
-          {purchasableProducts.map((item) => (
-            <div key={item.variant_id} className="purchasable-card">
+          {paginatedPurch.map((item) => (
+            <div key={`${item.order_id}-${item.variant_id}`} className="purchasable-card">
               <div>
                 <strong>{item.product_name}</strong>
                 <p>
@@ -126,6 +139,15 @@ export default function MyFeedback() {
               </button>
             </div>
           ))}
+        {totalPurchPages > 1 && (
+          <div className="pagination">
+            <button className="paginationBtn" onClick={() => setPurchPage(p => Math.max(1, p - 1))} disabled={purchPage === 1}>‹</button>
+            {Array.from({ length: totalPurchPages }, (_, i) => i + 1).map(p => (
+              <button key={p} className={`paginationBtn ${purchPage === p ? "active" : ""}`} onClick={() => setPurchPage(p)}>{p}</button>
+            ))}
+            <button className="paginationBtn" onClick={() => setPurchPage(p => Math.min(totalPurchPages, p + 1))} disabled={purchPage === totalPurchPages}>›</button>
+          </div>
+        )}
         </section>
       )}
 
@@ -139,7 +161,7 @@ export default function MyFeedback() {
         </div>
       )}
 
-      {myReviews.map((review) => (
+      {paginatedReviews.map((review) => (
         <div key={review.id} className="review-card-compact">
           <div className="review-avatar">
             {user.avatar ? (
@@ -192,6 +214,15 @@ export default function MyFeedback() {
         </div>
       ))}
 
+      {totalReviewPages > 1 && (
+        <div className="pagination">
+          <button className="paginationBtn" onClick={() => setReviewPage(p => Math.max(1, p - 1))} disabled={reviewPage === 1}>‹</button>
+          {Array.from({ length: totalReviewPages }, (_, i) => i + 1).map(p => (
+            <button key={p} className={`paginationBtn ${reviewPage === p ? "active" : ""}`} onClick={() => setReviewPage(p)}>{p}</button>
+          ))}
+          <button className="paginationBtn" onClick={() => setReviewPage(p => Math.min(totalReviewPages, p + 1))} disabled={reviewPage === totalReviewPages}>›</button>
+        </div>
+      )}
       {showReviewModal && selectedProduct && (
         <div
           className="modal-overlay"

@@ -241,3 +241,35 @@ select {
   border-radius: 6px;
   border: none;
 }
+
+/* THÊM VÀO CUỐI FILE */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0;
+}
+.paginationBtn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.paginationBtn:hover:not(:disabled) {
+  border-color: #f55554;
+  color: #f55554;
+}
+.paginationBtn.active {
+  background: #f55554;
+  color: #fff;
+  border-color: #f55554;
+}
+.paginationBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

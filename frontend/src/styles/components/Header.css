@@ -215,8 +215,7 @@
     visibility 0.18s ease;
 }
 
-.accountDropdown:hover .accountMenu,
-.accountDropdown:focus-within .accountMenu {
+.accountMenuOpen {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

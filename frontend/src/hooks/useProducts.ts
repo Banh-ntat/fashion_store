@@ -17,6 +17,7 @@ export function useProducts(params?: { categoryId?: number; search?: string }) {
       const res = await products.list({
         category: params?.categoryId,
         search: params?.search,
+        page_size: 100,
       });
       const list = Array.isArray(res.data) ? res.data : (res.data?.results ?? res.data?.items ?? []);
       setItems(normalizeProducts(list as Parameters<typeof normalizeProducts>[0]));

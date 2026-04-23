@@ -28,6 +28,7 @@ const STATUS_VI: Record<string, string> = {
   pending: 'Chờ xử lý',
   shipping: 'Đang giao',
   awaiting_confirmation: "Chờ xác nhận",
+  refunded: "Đã hoàn tiền",
   returning: 'Hoàn trả',
   completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
