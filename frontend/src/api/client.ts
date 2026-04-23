@@ -306,8 +306,14 @@
       api.get("/reviews/reviews/", { params: { product: productId } }),
     getMyReviews: () => api.get("/reviews/reviews/my_reviews/"),
     getPurchasable: () => api.get("/reviews/reviews/purchasable/"),
-    getByProduct: (productId: number) =>
-      api.get(`/reviews/reviews/by_product/${productId}/`),
+    getByProduct: (productId: number, page = 1, pageSize = 4, ratingFilter?: number | null) =>
+      api.get(`/reviews/reviews/by_product/${productId}/`, {
+        params: {
+          page,
+          page_size: pageSize,
+          ...(ratingFilter ? { rating: ratingFilter } : {}),
+        },
+      }),
     create: (data: {
       product: number;
       rating: number;

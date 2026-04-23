@@ -10,6 +10,15 @@ import {
 } from "../../utils/delivery";
 import "../../styles/admin/Admin.css";
 
+type NotifType = "success" | "error" | "info" | "warning";
+interface Notification {
+  id: number;
+  type: NotifType;
+  message: string;
+}
+
+let _notifId = 0;
+
 interface OrderUser {
   id: number;
   username: string;
@@ -47,17 +56,25 @@ interface Order {
 
 const STATUS_CHOICES = [
   { value: "pending", label: "Chờ xử lý" },
-  { value: "shipping", label: "Đang giao hàng" },
   { value: "awaiting_confirmation", label: "Chờ xác nhận" },
+  { value: "shipping", label: "Đang giao hàng" },
   { value: "returning", label: "Đã hoàn trả" },
-  { value: "completed", label: "Hoàn thành" },
   { value: "cancelled", label: "Đã hủy" },
+  // Hoàn thành được ẩn vì người dùng sẽ tự xác nhận đã nhận hàng
 ];
 
 function isTerminalStatus(status: string) {
   return (
     status === "completed" || status === "cancelled" || status === "returning"
   );
+}
+
+function isOnlinePaymentMethod(method?: string) {
+  return method === "vnpay" || method === "momo" || method === "zalopay";
+}
+
+function isPaymentNotSuccessful(gatewayStatus?: string) {
+  return gatewayStatus !== "paid";
 }
 
 function formatVnd(value: string | number) {
@@ -87,12 +104,29 @@ const PAGE_SIZE = 10;
 
 export default function AdminOrders() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const page = parseInt(searchParams.get("page") || "1", 10);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState(0);
   const [detail, setDetail] = useState<Order | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const notify = (
+    message: string,
+    type: NotifType = "info",
+    duration = 4000,
+  ) => {
+    const notif: Notification = { id: ++_notifId, type, message };
+    setNotifications((prev) => [...prev, notif]);
+    if (duration > 0) {
+      setTimeout(() => removeNotif(notif.id), duration);
+    }
+  };
+
+  const removeNotif = (notifId: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+  };
 
   const statusFilter = searchParams.get("status") || "";
   const dateFrom = searchParams.get("date_from") || "";
@@ -132,6 +166,21 @@ export default function AdminOrders() {
   }, [page, statusFilter, dateFrom, dateTo]);
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // Check if this is an online payment order that hasn't been paid successfully
+    if (isOnlinePaymentMethod(order.payment_method) && isPaymentNotSuccessful(order.gateway_status)) {
+      // Allow only cancellation for unpaid online orders
+      if (newStatus !== "cancelled") {
+        notify(
+          "Đơn hàng chưa thanh toán thành công, không thể đổi trạng thái. Vui lòng chờ thanh toán hoặc hủy đơn hàng.",
+          "warning"
+        );
+        return;
+      }
+    }
+
     try {
       await admin.orders.update(orderId, { status: newStatus });
       setOrders((prev) =>
@@ -140,11 +189,12 @@ export default function AdminOrders() {
       if (detail?.id === orderId) {
         setDetail((prev) => (prev ? { ...prev, status: newStatus } : null));
       }
+      notify("Cập nhật trạng thái thành công!", "success");
     } catch (e) {
       const msg = axios.isAxiosError(e)
         ? (e.response?.data as { detail?: string })?.detail
         : null;
-      window.alert(msg ? String(msg) : "Không cập nhật được trạng thái.");
+      notify(msg ? String(msg) : "Không cập nhật được trạng thái.", "error");
     }
   };
 
@@ -213,6 +263,29 @@ export default function AdminOrders() {
   return (
     <AdminLayout>
       <div className="admin-page">
+        {notifications.length > 0 && (
+          <div className="notification-stack">
+            {notifications.map((n) => (
+              <div key={n.id} className={`notification notification--${n.type}`}>
+                <span className="notification__icon">
+                  {n.type === "success" && "✓"}
+                  {n.type === "error" && "✕"}
+                  {n.type === "warning" && "!"}
+                  {n.type === "info" && "i"}
+                </span>
+                <span className="notification__message">{n.message}</span>
+                <button
+                  type="button"
+                  className="notification__close"
+                  onClick={() => removeNotif(n.id)}
+                  aria-label="Đóng thông báo"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="page-header">
           <h3>Quản lý đơn hàng</h3>
         </div>
@@ -276,24 +349,31 @@ export default function AdminOrders() {
                 </td>
                 <td>{new Date(order.created_at).toLocaleString("vi-VN")}</td>
                 <td>
-                  <select
-                    className="status-select"
-                    value={order.status}
-                    disabled={isTerminalStatus(order.status)}
-                    onChange={(e) =>
-                      handleStatusChange(order.id, e.target.value)
-                    }
-                  >
-                    {STATUS_CHOICES.filter((status) => {
-                      if (isTerminalStatus(order.status))
-                        return status.value === order.status;
-                      return true;
-                    }).map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Disable status change for online unpaid orders (except cancellation) */}
+                  {isOnlinePaymentMethod(order.payment_method) && isPaymentNotSuccessful(order.gateway_status) ? (
+                    <span className="admin-muted" style={{ fontSize: "12px" }}>
+                      {getStatusLabel(order.status)}
+                    </span>
+                  ) : (
+                    <select
+                      className="status-select"
+                      value={order.status}
+                      disabled={isTerminalStatus(order.status)}
+                      onChange={(e) =>
+                        handleStatusChange(order.id, e.target.value)
+                      }
+                    >
+                      {STATUS_CHOICES.filter((status) => {
+                        if (isTerminalStatus(order.status))
+                          return status.value === order.status;
+                        return true;
+                      }).map((status) => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </td>
                 <td>
                   <button

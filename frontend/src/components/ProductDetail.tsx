@@ -55,6 +55,14 @@ function ProductDetail() {
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
+  const [reviewsPagination, setReviewsPagination] = useState({
+    count: 0,
+    total_pages: 0,
+    current_page: 1,
+    page_size: 4,
+  });
+  const [reviewsFilter, setReviewsFilter] = useState<number | null>(null);
+  const [totalReviewsCount, setTotalReviewsCount] = useState(0);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
@@ -129,14 +137,28 @@ function ProductDetail() {
         }
         const [relatedRes, reviewsRes] = await Promise.all([
           products.related(productId),
-          reviewsApi.getByProduct(productId),
+          reviewsApi.getByProduct(productId, reviewsPagination.current_page, reviewsPagination.page_size, reviewsFilter),
         ]);
         setRelatedProducts((relatedRes?.data ?? []) as Product[]);
+        const reviewsData = reviewsRes?.data ?? { results: [], count: 0, total_pages: 0 };
         setReviewsList(
-          ((reviewsRes?.data ?? []) as Review[]).filter(
+          (reviewsData.results as Review[]).filter(
             (r) => r.is_visible !== false,
           ),
         );
+        
+        // Track total reviews count when no filter is applied
+        if (reviewsFilter === null && reviewsData.count !== undefined) {
+          setTotalReviewsCount(reviewsData.count);
+        }
+        
+        if (reviewsData.count !== undefined) {
+          setReviewsPagination(prev => ({
+            ...prev,
+            count: reviewsData.count,
+            total_pages: reviewsData.total_pages,
+          }));
+        }
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
@@ -148,7 +170,7 @@ function ProductDetail() {
     };
     setLoading(true);
     fetchData();
-  }, [id]);
+  }, [id, reviewsPagination.current_page, reviewsPagination.page_size, reviewsFilter]);
 
   useEffect(() => {
     if (!product) {
@@ -343,14 +365,28 @@ function ProductDetail() {
       setShowReviewModal(false);
 
       const [reviewsRes, productRes] = await Promise.all([
-        reviewsApi.getByProduct(Number(id)),
+        reviewsApi.getByProduct(Number(id), reviewsPagination.current_page, reviewsPagination.page_size, reviewsFilter),
         products.get(Number(id)),
       ]);
+      const reviewsData = reviewsRes?.data ?? { results: [], count: 0, total_pages: 0 };
       setReviewsList(
-        ((reviewsRes?.data ?? []) as Review[]).filter(
+        (reviewsData.results as Review[]).filter(
           (r) => r.is_visible !== false,
         ),
       );
+      
+      // Update total count if no filter
+      if (reviewsFilter === null && reviewsData.count !== undefined) {
+        setTotalReviewsCount(reviewsData.count);
+      }
+      
+      if (reviewsData.count !== undefined) {
+        setReviewsPagination(prev => ({
+          ...prev,
+          count: reviewsData.count,
+          total_pages: reviewsData.total_pages,
+        }));
+      }
       if (productRes?.data) {
         setProduct(productRes.data as Product);
       }
@@ -374,12 +410,7 @@ function ProductDetail() {
     });
   };
 
-  const averageRating =
-    reviewsList.length > 0
-      ? (
-          reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length
-        ).toFixed(1)
-      : 0;
+  const averageRating = product?.rating ?? 0;
 
   if (loading) return <div className="loading">Đang tải...</div>;
   if (!product) {
@@ -558,7 +589,7 @@ function ProductDetail() {
             </div>
             <span className="rating-count">
               {reviewsList.length > 0
-                ? `${averageRating} (${reviewsList.length} đánh giá)`
+                ? `${Number(averageRating).toFixed(1)} (${totalReviewsCount} đánh giá)`
                 : "Chưa có đánh giá"}
             </span>
           </div>
@@ -865,27 +896,69 @@ function ProductDetail() {
       )}
       <section className="product-reviews">
         <div className="reviews-header">
-          <h2>Đánh giá sản phẩm ({reviewsList.length})</h2>
+          <h2>Đánh giá sản phẩm ({reviewsPagination.count})</h2>
         </div>
 
-        {reviewsList.length > 0 && (
-          <div className="reviews-summary">
-            <span className="avg-score">{averageRating}</span>
-            <div>
-              <div className="avg-stars">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <span
-                    key={s}
-                    className={
-                      s <= Math.round(Number(averageRating)) ? "filled" : ""
-                    }
+        {totalReviewsCount > 0 && (
+          <>
+            <div className="reviews-summary">
+              <span className="avg-score">{Number(averageRating).toFixed(1)}</span>
+              <div>
+                <div className="avg-stars">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <span
+                      key={s}
+                      className={
+                        s <= Math.round(Number(averageRating)) ? "filled" : ""
+                      }
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <div className="avg-count">{totalReviewsCount} đánh giá</div>
+              </div>
+            </div>
+
+            {/* Filter by stars */}
+            <div className="reviews-filter">
+              <span className="filter-label">Lọc theo:</span>
+              <div className="filter-stars">
+                {[5, 4, 3, 2, 1].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    className={`filter-star-btn${reviewsFilter === star ? " active" : ""}`}
+                    onClick={() => {
+                      setReviewsFilter(reviewsFilter === star ? null : star);
+                      setReviewsPagination(prev => ({ ...prev, current_page: 1 }));
+                    }}
                   >
-                    ★
-                  </span>
+                    <span className="star-count">{star}</span>
+                    <span className="star-icon">★</span>
+                  </button>
                 ))}
               </div>
-              <div className="avg-count">{reviewsList.length} đánh giá</div>
+              {reviewsFilter !== null && (
+                <button
+                  type="button"
+                  className="clear-filter-btn"
+                  onClick={() => {
+                    setReviewsFilter(null);
+                    setReviewsPagination(prev => ({ ...prev, current_page: 1 }));
+                  }}
+                >
+                  Xoá lọc
+                </button>
+              )}
             </div>
+          </>
+        )}
+
+        {/* Show message when no reviews match filter */}
+        {totalReviewsCount > 0 && reviewsList.length === 0 && reviewsFilter !== null && (
+          <div className="no-reviews">
+            Không có đánh giá nào với mức sao đã chọn.
           </div>
         )}
 
@@ -950,8 +1023,35 @@ function ProductDetail() {
           </div>
         ) : (
           <p className="no-reviews">
-            Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!
+            {reviewsFilter
+              ? "Không có đánh giá nào với mức sao đã chọn."
+              : "Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá!"}
           </p>
+        )}
+
+        {/* Pagination */}
+        {reviewsPagination.total_pages > 1 && (
+          <div className="reviews-pagination">
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={reviewsPagination.current_page === 1}
+              onClick={() => setReviewsPagination(prev => ({ ...prev, current_page: prev.current_page - 1 }))}
+            >
+              ← Trước
+            </button>
+            <span className="pagination-info">
+              Trang {reviewsPagination.current_page} / {reviewsPagination.total_pages}
+            </span>
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={reviewsPagination.current_page === reviewsPagination.total_pages}
+              onClick={() => setReviewsPagination(prev => ({ ...prev, current_page: prev.current_page + 1 }))}
+            >
+              Sau →
+            </button>
+          </div>
         )}
 
         <div className="review-action-area">

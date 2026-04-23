@@ -1722,3 +1722,139 @@
     padding: 20px;
   }
 }
+
+/* Reviews Filter */
+.reviews-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pd-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filter-stars {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-star-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 10px;
+  border: 1px solid var(--pd-border);
+  background: var(--pd-bg);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pd-text-secondary);
+  transition: all var(--pd-transition);
+}
+
+.filter-star-btn:hover {
+  border-color: var(--pd-accent);
+  color: var(--pd-accent);
+}
+
+.filter-star-btn.active {
+  background: var(--pd-accent);
+  border-color: var(--pd-accent);
+  color: #fff;
+}
+
+.filter-star-btn .star-count {
+  font-size: 0.85rem;
+}
+
+.filter-star-btn .star-icon {
+  color: #e8a020;
+  font-size: 0.9rem;
+}
+
+.filter-star-btn.active .star-icon {
+  color: #fff;
+}
+
+.clear-filter-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--pd-border);
+  background: var(--pd-bg-surface);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--pd-text-light);
+  transition: all var(--pd-transition);
+}
+
+.clear-filter-btn:hover {
+  border-color: var(--pd-accent);
+  color: var(--pd-accent);
+  background: var(--pd-accent-bg);
+}
+
+/* Reviews Pagination */
+.reviews-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pd-border);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--pd-border);
+  background: var(--pd-bg);
+  border-radius: var(--pd-radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--pd-text);
+  transition: all var(--pd-transition);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--pd-accent);
+  color: var(--pd-accent);
+  background: var(--pd-accent-bg);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--pd-text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .reviews-filter {
+    gap: 8px;
+  }
+  
+  .filter-star-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+  
+  .pagination-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
